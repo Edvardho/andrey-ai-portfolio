@@ -10,6 +10,7 @@ export type ViewType =
   | 'case_summary'
   | 'case_detail'
   | 'case_route'
+  | 'general_synthesis'
   | 'experience_summary'
   | 'experience_detail'
   | 'experience_route'
@@ -38,6 +39,23 @@ export type SafetyState =
   | 'limit_reached';
 
 export type AnswerMode = 'summary' | 'detail';
+
+export type ResponseSource = 'authored' | 'facts_constrained_synthesis';
+
+export type SynthesisTopic =
+  | 'strengths'
+  | 'decision_making'
+  | 'product_approach'
+  | 'collaboration'
+  | 'fit';
+
+export type SynthesisSnapshot = {
+  topic: SynthesisTopic;
+  question: string;
+  title: string;
+  paragraphs: string[];
+  bullets: string[];
+};
 
 export type Metric = {
   value: string;
@@ -271,6 +289,7 @@ export type AssistantEnvelope = {
   meta: {
     userMessagesUsed: number;
     userMessagesRemaining: number;
+    responseSource: ResponseSource;
   };
 };
 
@@ -281,6 +300,7 @@ export type AssistantSession = {
   currentView: ViewType;
   answerMode: AnswerMode | null;
   openModal: ModalPayload | null;
+  lastSynthesis: SynthesisSnapshot | null;
   recentHistory: string[];
   createdAt: string;
   updatedAt: string;

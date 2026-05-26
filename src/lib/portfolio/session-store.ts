@@ -25,6 +25,7 @@ function createEmptySession(sessionId: string): AssistantSession {
     currentView: 'entry',
     answerMode: null,
     openModal: null,
+    lastSynthesis: null,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,
@@ -169,5 +170,6 @@ export function updateContext(
     selectedContext,
     currentView,
     openModal: null,
+    lastSynthesis: null,
   };
 }

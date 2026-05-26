@@ -1,3 +1,4 @@
+import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   getCaseById,
   getContactContent,
@@ -15,8 +16,10 @@ import type {
   ContentBlock,
   ModalPayload,
   PromptChip,
+  ResponseSource,
   SafetyState,
   SelectedContext,
+  SynthesisSnapshot,
   UIAction,
   UIState,
   ViewType,
@@ -34,6 +37,7 @@ type BaseEnvelopeOptions = {
   modal?: ModalPayload | null;
   safetyState?: SafetyState;
   nextActions?: UIAction[];
+  responseSource?: ResponseSource;
 };
 
 function createEnvelope({
@@ -48,6 +52,7 @@ function createEnvelope({
   modal = null,
   safetyState = 'none',
   nextActions = [],
+  responseSource = 'authored',
 }: BaseEnvelopeOptions): AssistantEnvelope {
   return {
     sessionId: session.id,
@@ -65,6 +70,7 @@ function createEnvelope({
     meta: {
       userMessagesUsed: session.userMessageCount,
       userMessagesRemaining: Math.max(MAX_USER_MESSAGES_PER_SESSION - session.userMessageCount, 0),
+      responseSource,
     },
   };
 }
@@ -131,6 +137,49 @@ export function buildCaseRouteEnvelope(session: AssistantSession, caseId: string
       { type: 'open_case_summary', caseId },
       { type: 'open_case_detail', caseId },
     ],
+  });
+}
+
+export function buildGeneralSynthesisEnvelope(
+  session: AssistantSession,
+  synthesis: SynthesisSnapshot,
+): AssistantEnvelope {
+  const config = getSynthesisTopicConfig(synthesis.topic);
+  const contentBlocks: ContentBlock[] = [
+    {
+      type: 'lead',
+      title: synthesis.title,
+      body: synthesis.paragraphs,
+    },
+  ];
+
+  if (synthesis.bullets.length) {
+    contentBlocks.push({
+      type: 'bullet_list',
+      title: 'Что это подтверждает',
+      items: synthesis.bullets,
+    });
+  }
+
+  const contextPanel =
+    session.selectedContext.kind === 'case'
+      ? getCaseById(session.selectedContext.id)?.contextPanel ?? portfolioContent.entry.contextPanel
+      : session.selectedContext.kind === 'experience'
+        ? portfolioContent.experience.contextPanel
+        : session.selectedContext.kind === 'overview'
+          ? session.selectedContext.id === 'mobile-experience'
+            ? portfolioContent.mobileOverview.contextPanel
+            : portfolioContent.additionalCases.contextPanel
+          : portfolioContent.entry.contextPanel;
+
+  return createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    contentBlocks,
+    chips: config.chips,
+    contextPanel,
+    nextActions: config.chips.map((chip) => chip.action),
+    responseSource: 'facts_constrained_synthesis',
   });
 }
 

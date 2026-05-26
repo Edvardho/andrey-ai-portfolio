@@ -10,6 +10,7 @@ import {
   buildEntryEnvelope,
   buildExperienceEnvelope,
   buildExperienceRouteEnvelope,
+  buildGeneralSynthesisEnvelope,
   buildImageModalEnvelope,
   buildLimitEnvelope,
   buildLoadingEnvelope,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/portfolio/presenters';
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
 import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
+import { detectSynthesisTopic, synthesizeGeneralAnswer } from '@/lib/portfolio/synthesis';
 import type {
   AnswerMode,
   AssistantEnvelope,
@@ -101,6 +103,7 @@ function updateContext(
     selectedContext,
     currentView,
     openModal: null,
+    lastSynthesis: null,
   };
 }
 
@@ -119,6 +122,10 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
     case 'case_route':
       return session.selectedContext.kind === 'case'
         ? buildCaseRouteEnvelope(session, session.selectedContext.id)
+        : buildEntryEnvelope(session);
+    case 'general_synthesis':
+      return session.lastSynthesis
+        ? buildGeneralSynthesisEnvelope(session, session.lastSynthesis)
         : buildEntryEnvelope(session);
     case 'experience_summary':
       return buildExperienceEnvelope(session, 'summary');
@@ -255,6 +262,22 @@ export async function resolveMessage(
   const deterministic = classifyMessageDeterministically(text, nextSession);
   if (deterministic) {
     return resolveAction(nextSession, deterministic.action);
+  }
+
+  const synthesisTopic = detectSynthesisTopic(text);
+  if (synthesisTopic) {
+    const synthesis = await synthesizeGeneralAnswer(text, nextSession, synthesisTopic);
+    const synthesisSession = await persistSession(nextSession, {
+      currentView: 'general_synthesis',
+      openModal: null,
+      lastSynthesis: synthesis,
+      recentHistory: appendHistory(nextSession, `synthesis:${synthesis.topic}`),
+    });
+
+    return {
+      session: synthesisSession,
+      envelope: buildGeneralSynthesisEnvelope(synthesisSession, synthesis),
+    };
   }
 
   const modelClassification = await classifyMessageWithModel(text, nextSession);
