@@ -25,7 +25,7 @@ const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
   { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /anti-case/i] },
   { caseId: 'expenses-card-holders', patterns: [/держател/i, /расход/i, /истори/i] },
   { caseId: 'subscription-sharing', patterns: [/шаринг/i, /подписк.+ссыл/i, /приглаш/i] },
-  { caseId: 'family-superapp', patterns: [/superapp/i, /миш/i, /структур/i, /ux\/ui/i] },
+  { caseId: 'ux-ui-wannabelike', patterns: [/wannabelike/i, /superapp/i, /миш/i, /структур/i, /ux\/ui/i] },
 ];
 
 function findCaseId(text: string): string | null {
@@ -60,7 +60,7 @@ export function classifyMessageDeterministically(
 
   if (/мобил/i.test(lowered) || /mobile/i.test(lowered)) {
     const caseId = findCaseId(lowered);
-    if (caseId && ['expenses-card-holders', 'subscription-sharing', 'family-superapp', 'alfa-smart'].includes(caseId)) {
+    if (caseId && ['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike', 'alfa-smart'].includes(caseId)) {
       return { action: { type: 'open_mobile_case_summary', caseId } };
     }
     return { action: { type: 'open_mobile_experience_overview' } };
@@ -88,7 +88,7 @@ export function classifyMessageDeterministically(
         return { action: { type: 'open_experience_route', caseId } };
       }
 
-      if (['expenses-card-holders', 'subscription-sharing', 'family-superapp'].includes(caseId)) {
+      if (['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike'].includes(caseId)) {
         return { action: { type: 'open_mobile_case_detail', caseId } };
       }
 
@@ -102,7 +102,7 @@ export function classifyMessageDeterministically(
       return { action: { type: 'open_case_route', caseId } };
     }
 
-    if (['expenses-card-holders', 'subscription-sharing', 'family-superapp'].includes(caseId)) {
+    if (['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike'].includes(caseId)) {
       return { action: { type: 'open_mobile_case_summary', caseId } };
     }
 
@@ -146,7 +146,7 @@ const CLASSIFIER_PROMPT = `
 - chatpoint
 - expenses-card-holders
 - subscription-sharing
-- family-superapp
+- ux-ui-wannabelike
 
 Правила:
 - Если запрос про опыт работы -> open_experience_summary или open_experience_detail.

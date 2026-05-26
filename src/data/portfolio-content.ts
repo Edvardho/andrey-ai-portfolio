@@ -16,10 +16,12 @@ import type {
 
 const railItems: RailItem[] = [
   { id: 'alfa-smart', label: 'Альфа-Смарт', subtitle: 'Флагманский кейс', kind: 'case' },
-  { id: 'siebel', label: 'SIEBEL', subtitle: 'Enterprise workflow', kind: 'case' },
   { id: 'chatpoint', label: 'ChatPoint', subtitle: 'B2B anti-case', kind: 'case' },
+  { id: 'siebel', label: 'SIEBEL', subtitle: 'Enterprise workflow', kind: 'case' },
+  { id: 'expenses-card-holders', label: 'Расходы держателей', subtitle: 'Mobile case', kind: 'case' },
+  { id: 'subscription-sharing', label: 'Шаринг подписки', subtitle: 'Mobile case', kind: 'case' },
+  { id: 'ux-ui-wannabelike', label: 'UX/UI WannabeLike', subtitle: 'Systemic mobile UX/UI', kind: 'case' },
   { id: 'experience', label: 'Опыт работы', subtitle: 'Компании и траектория', kind: 'experience' },
-  { id: 'additional-cases', label: 'Дополнительные кейсы', subtitle: 'Ширина экспертизы', kind: 'overview' },
 ];
 
 const contactOptions: ContactContent = {
@@ -233,11 +235,7 @@ const alfaCase: CaseContent = {
     roleDescription: 'UX/UI, User Flow, прототипы, тесты, дизайн-чек, handoff',
     cta: { label: 'Открыть полный кейс', action: { type: 'open_case_detail', caseId: 'alfa-smart' } },
   },
-  followUpChips: [
-    { id: 'alfa-follow-process', label: 'Как он принимал решения?', action: { type: 'open_case_detail', caseId: 'alfa-smart' } },
-    { id: 'alfa-follow-artifacts', label: 'Покажи артефакты', action: { type: 'open_image_modal', caseId: 'alfa-smart', artifactId: 'alfa-miro' } },
-    { id: 'alfa-follow-mobile', label: 'Что еще он делал в мобилках?', action: { type: 'open_mobile_experience_overview' } },
-  ],
+  followUpChips: [],
 };
 
 const siebelDisclosures: DisclosureRow[] = [
@@ -394,11 +392,7 @@ const siebelCase: CaseContent = {
     roleDescription: 'Research, hypotheses, redesign, validation, handoff',
     cta: { label: 'Открыть полный кейс', action: { type: 'open_case_detail', caseId: 'siebel' } },
   },
-  followUpChips: [
-    { id: 'siebel-follow-why', label: 'Почему ты настоял на исследовании?', action: { type: 'open_case_detail', caseId: 'siebel' } },
-    { id: 'siebel-follow-artifact', label: 'Покажи гипотезы', action: { type: 'open_image_modal', caseId: 'siebel', artifactId: 'siebel-hypotheses' } },
-    { id: 'siebel-follow-experience', label: 'Какой у него еще опыт?', action: { type: 'open_experience_summary' } },
-  ],
+  followUpChips: [],
 };
 
 const chatpointDisclosures: DisclosureRow[] = [
@@ -546,11 +540,7 @@ const chatpointCase: CaseContent = {
     roleDescription: 'Onboarding, enterprise scenarios, research, design review',
     cta: { label: 'Открыть полный разбор', action: { type: 'open_case_detail', caseId: 'chatpoint' } },
   },
-  followUpChips: [
-    { id: 'chatpoint-follow-why', label: 'Почему продукт не взлетел?', action: { type: 'open_case_detail', caseId: 'chatpoint' } },
-    { id: 'chatpoint-follow-artifact', label: 'Покажи Apple onboarding', action: { type: 'open_image_modal', caseId: 'chatpoint', artifactId: 'chatpoint-apple-onboarding' } },
-    { id: 'chatpoint-follow-experience', label: 'Покажи опыт работы', action: { type: 'open_experience_summary' } },
-  ],
+  followUpChips: [],
 };
 
 const expensesDisclosures: DisclosureRow[] = [
@@ -637,10 +627,7 @@ const expensesCase: CaseContent = {
     roleDescription: 'Research, alignment, UX flow, UI, handoff',
     note: 'Сильная часть кейса — не “еще один экран”, а межкомандное согласование через доказанную потребность.',
   },
-  followUpChips: [
-    { id: 'expenses-follow-why', label: 'Как доказал потребность?', action: { type: 'open_mobile_case_detail', caseId: 'expenses-card-holders' } },
-    { id: 'expenses-follow-mobile', label: 'Что еще он делал в мобилках?', action: { type: 'open_mobile_experience_overview' } },
-  ],
+  followUpChips: [],
 };
 
 const sharingDisclosures: DisclosureRow[] = [
@@ -700,9 +687,7 @@ const sharingCase: CaseContent = {
     role: 'Product Designer',
     roleDescription: 'Flow redesign, branching logic, UX/UI',
   },
-  followUpChips: [
-    { id: 'sharing-follow-detail', label: 'Покажи подробнее', action: { type: 'open_mobile_case_detail', caseId: 'subscription-sharing' } },
-  ],
+  followUpChips: [],
 };
 
 const superappDisclosures: DisclosureRow[] = [
@@ -721,11 +706,11 @@ const superappDisclosures: DisclosureRow[] = [
 ];
 
 const superappCase: CaseContent = {
-  id: 'family-superapp',
-  shortTitle: 'Семейное superapp UX/UI',
-  title: 'Семейное superapp UX/UI',
-  railSubtitle: 'Mobile case',
-  shortDescription: 'Системный mobile UX/UI кейс с research и IA',
+  id: 'ux-ui-wannabelike',
+  shortTitle: 'UX/UI WannabeLike',
+  title: 'UX/UI WannabeLike',
+  railSubtitle: 'Systemic mobile UX/UI',
+  shortDescription: 'Системный mobile UX/UI кейс с research, IA и user flows',
   category: 'mobile',
   tags: ['Mobile', 'Research', 'IA', 'UX/UI'],
   summaryTitle: 'Короткий ответ',
@@ -758,15 +743,13 @@ const superappCase: CaseContent = {
     { id: 'superapp-ui', title: 'UI', description: 'Концепт интерфейса.' },
   ]),
   contextPanel: {
-    title: 'Семейное superapp UX/UI',
+    title: 'UX/UI WannabeLike',
     subtitle: 'Mobile · Systemic UX/UI',
     tags: ['Research', 'IA', 'Flows', 'UI'],
     role: 'Product Designer',
     roleDescription: 'Research, IA, flows, UI concept',
   },
-  followUpChips: [
-    { id: 'superapp-follow-detail', label: 'Покажи detail', action: { type: 'open_mobile_case_detail', caseId: 'family-superapp' } },
-  ],
+  followUpChips: [],
 };
 
 const experience: ExperienceContent = {
@@ -804,11 +787,7 @@ const experience: ExperienceContent = {
     note: 'Сильная часть траектории — ширина доменов без потери продуктовой дисциплины.',
     cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'experience' } },
   },
-  followUpChips: [
-    { id: 'experience-follow-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
-    { id: 'experience-follow-alfa', label: 'Покажи флагманский кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-    { id: 'experience-follow-mobile', label: 'Что он делал в мобилках?', action: { type: 'open_mobile_experience_overview' } },
-  ],
+  followUpChips: [],
 };
 
 const additionalCases: ContextPanelData = {
@@ -822,7 +801,7 @@ const additionalCasesContent: AdditionalCasesContent = {
   summaryBlocks: [
     { type: 'lead', title: 'Да, у Андрея есть сильные кейсы и кроме флагманов', body: ['Важно не размывать впечатление количеством. Здесь ценность в ширине сигнала: мобильные сценарии, плотные B2B-интерфейсы, системное мышление и product judgment.'] },
     { type: 'disclosures', title: 'Направления', items: [
-      { id: 'additional-mobile', title: 'Мобильные сценарии', summary: 'Подписки, семейные сценарии, роли, ветвления и межкомандные зависимости.', details: ['Хороший вход: кейсы про держателей карт, шаринг подписки и семейное superapp UX/UI.'] },
+      { id: 'additional-mobile', title: 'Мобильные сценарии', summary: 'Подписки, семейные сценарии, роли, ветвления и межкомандные зависимости.', details: ['Хороший вход: кейсы про держателей карт, шаринг подписки и UX/UI WannabeLike.'] },
       { id: 'additional-enterprise', title: 'Плотные B2B-интерфейсы', summary: 'Workflow-heavy продукты с высокой информационной плотностью.', details: ['Главные примеры: SIEBEL и ChatPoint.'] },
       { id: 'additional-systems', title: 'Системное мышление', summary: 'Не просто локальный UI, а структура, routing, процессы и delivery.', details: ['Это проявляется и в SIEBEL, и в Alpha-Smart, и в mobile кейсах.'] },
       { id: 'additional-judgment', title: 'Product judgment', summary: 'Умение не только делать фичи, но и видеть, когда продукт идет не туда.', details: ['Лучший пример — ChatPoint как anti-case.'] },
@@ -835,12 +814,7 @@ const additionalCasesContent: AdditionalCasesContent = {
     ]) },
   ],
   contextPanel: additionalCases,
-  followUpChips: [
-    { id: 'additional-chip-alfa', label: 'Открой Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-    { id: 'additional-chip-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
-    { id: 'additional-chip-chatpoint', label: 'Открой ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
-    { id: 'additional-chip-mobile', label: 'Покажи мобильные кейсы', action: { type: 'open_mobile_experience_overview' } },
-  ],
+  followUpChips: [],
 };
 
 const mobileOverview: MobileOverviewContent = {
@@ -850,7 +824,7 @@ const mobileOverview: MobileOverviewContent = {
       { id: 'alfa-smart', title: 'Альфа-Смарт', description: 'Флагманский mobile/web кейс.' },
       { id: 'expenses-card-holders', title: 'Расходы держателей', description: 'Исследование и межкомандное согласование.' },
       { id: 'subscription-sharing', title: 'Шаринг подписки', description: 'Снижение трения в branching flow.' },
-      { id: 'family-superapp', title: 'Семейное superapp UX/UI', description: 'Research, IA, flows и UI.' },
+      { id: 'ux-ui-wannabelike', title: 'UX/UI WannabeLike', description: 'Research, IA, flows и UI.' },
     ]) },
   ],
   contextPanel: {
@@ -859,11 +833,7 @@ const mobileOverview: MobileOverviewContent = {
     tags: ['Research', 'Mobile flows', 'Branching', 'Systemic UX'],
     note: 'Смысл этого блока — показать, что мобильный опыт Андрея не заканчивается одним флагманским кейсом.',
   },
-  followUpChips: [
-    { id: 'mobile-chip-expenses', label: 'Расходы держателей', action: { type: 'open_mobile_case_summary', caseId: 'expenses-card-holders' } },
-    { id: 'mobile-chip-sharing', label: 'Шаринг подписки', action: { type: 'open_mobile_case_summary', caseId: 'subscription-sharing' } },
-    { id: 'mobile-chip-superapp', label: 'Семейное superapp UX/UI', action: { type: 'open_mobile_case_summary', caseId: 'family-superapp' } },
-  ],
+  followUpChips: [],
 };
 
 export const portfolioContent: PortfolioContent = {
@@ -874,7 +844,7 @@ export const portfolioContent: PortfolioContent = {
     chatpoint: chatpointCase,
     'expenses-card-holders': expensesCase,
     'subscription-sharing': sharingCase,
-    'family-superapp': superappCase,
+    'ux-ui-wannabelike': superappCase,
   },
   experience,
   additionalCases: additionalCasesContent,

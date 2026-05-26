@@ -2,14 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { getCaseById } from '@/data/portfolio-content';
+import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getCaseById, getContactContent, getRailItems } from '@/data/portfolio-content';
 import type {
   AssistantEnvelope,
   Artifact,
   ChatRequestBody,
   ContactOption,
   GalleryItem,
+  ModalPayload,
   PromptChip,
+  RailItem,
   UIAction,
 } from '@/lib/portfolio/types';
 
@@ -17,16 +20,197 @@ type ThreadItem =
   | { kind: 'user'; text: string }
   | { kind: 'assistant'; envelope: AssistantEnvelope };
 
-function isModalView(envelope: AssistantEnvelope) {
-  return envelope.uiState === 'modal' || envelope.viewType === 'contact_modal' || envelope.viewType === 'image_modal';
-}
+type ContextId =
+  | 'entry'
+  | 'experience'
+  | 'mobile-experience'
+  | 'additional-cases'
+  | `case:${string}`;
 
-function renderActionLabel(label: string) {
-  return label.trim();
-}
+type ContextThread = {
+  contextId: ContextId;
+  items: ThreadItem[];
+  lastEnvelope: AssistantEnvelope | null;
+  initialized: boolean;
+  updatedAt: string;
+};
+
+type ThreadStore = Record<string, ContextThread>;
+
+type PersistedThreadState = {
+  sessionId: string | null;
+  activeContextId: ContextId;
+  threadsByContextId: ThreadStore;
+  sessionMeta: {
+    used: number;
+    remaining: number;
+  };
+};
+
+const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v1';
+const DEFAULT_SESSION_META = {
+  used: 0,
+  remaining: MAX_USER_MESSAGES_PER_SESSION,
+};
+const MOBILE_CASE_IDS = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike']);
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
+}
+
+function isCaseContextId(contextId: ContextId): contextId is `case:${string}` {
+  return contextId.startsWith('case:');
+}
+
+function makeCaseContextId(caseId: string): `case:${string}` {
+  return `case:${caseId}`;
+}
+
+function getContextIdFromEnvelope(envelope: AssistantEnvelope): ContextId {
+  if (envelope.selectedContext.kind === 'case') {
+    return makeCaseContextId(envelope.selectedContext.id);
+  }
+
+  if (envelope.selectedContext.kind === 'experience') {
+    return 'experience';
+  }
+
+  if (envelope.selectedContext.kind === 'overview') {
+    return envelope.selectedContext.id;
+  }
+
+  return 'entry';
+}
+
+function getContextIdFromAction(action: UIAction): ContextId | null {
+  switch (action.type) {
+    case 'open_entry':
+      return 'entry';
+    case 'open_case_summary':
+    case 'open_case_detail':
+    case 'open_case_route':
+    case 'open_mobile_case_summary':
+    case 'open_mobile_case_detail':
+      return makeCaseContextId(action.caseId);
+    case 'open_experience_summary':
+    case 'open_experience_detail':
+      return 'experience';
+    case 'open_experience_route':
+      return makeCaseContextId(action.caseId);
+    case 'open_mobile_experience_overview':
+      return 'mobile-experience';
+    case 'open_additional_cases_overview':
+      return 'additional-cases';
+    default:
+      return null;
+  }
+}
+
+function getCanonicalActionForCase(caseId: string): UIAction {
+  if (MOBILE_CASE_IDS.has(caseId)) {
+    return { type: 'open_mobile_case_summary', caseId };
+  }
+
+  return { type: 'open_case_summary', caseId };
+}
+
+function getSyncActionForContext(thread: ContextThread): UIAction | null {
+  const envelope = thread.lastEnvelope;
+
+  if (!envelope) {
+    if (thread.contextId === 'entry') {
+      return { type: 'open_entry' };
+    }
+
+    if (thread.contextId === 'experience') {
+      return { type: 'open_experience_summary' };
+    }
+
+    if (thread.contextId === 'mobile-experience') {
+      return { type: 'open_mobile_experience_overview' };
+    }
+
+    if (thread.contextId === 'additional-cases') {
+      return { type: 'open_additional_cases_overview' };
+    }
+
+    if (isCaseContextId(thread.contextId)) {
+      return getCanonicalActionForCase(thread.contextId.replace(/^case:/, ''));
+    }
+
+    return null;
+  }
+
+  if (envelope.selectedContext.kind === 'case') {
+    const caseId = envelope.selectedContext.id;
+
+    switch (envelope.viewType) {
+      case 'case_detail':
+        return { type: 'open_case_detail', caseId };
+      case 'case_route':
+        return { type: 'open_case_route', caseId };
+      case 'mobile_case_detail':
+        return { type: 'open_mobile_case_detail', caseId };
+      case 'mobile_case_summary':
+        return { type: 'open_mobile_case_summary', caseId };
+      default:
+        return getCanonicalActionForCase(caseId);
+    }
+  }
+
+  if (envelope.selectedContext.kind === 'experience') {
+    return envelope.viewType === 'experience_detail'
+      ? { type: 'open_experience_detail' }
+      : { type: 'open_experience_summary' };
+  }
+
+  if (envelope.selectedContext.kind === 'overview') {
+    return envelope.selectedContext.id === 'mobile-experience'
+      ? { type: 'open_mobile_experience_overview' }
+      : { type: 'open_additional_cases_overview' };
+  }
+
+  return { type: 'open_entry' };
+}
+
+function createContextThread(contextId: ContextId, envelope?: AssistantEnvelope): ContextThread {
+  const now = new Date().toISOString();
+
+  return {
+    contextId,
+    items: envelope ? [{ kind: 'assistant', envelope }] : [],
+    lastEnvelope: envelope ?? null,
+    initialized: Boolean(envelope),
+    updatedAt: now,
+  };
+}
+
+function buildContactModalPayload(): ModalPayload {
+  const content = getContactContent();
+
+  return {
+    type: 'contact',
+    title: content.title,
+    helper: content.helper,
+    options: content.options,
+  };
+}
+
+function buildImageModalPayload(caseId: string, artifactId: string): ModalPayload | null {
+  const artifact = getArtifact(caseId, artifactId);
+
+  if (!artifact) {
+    return null;
+  }
+
+  return {
+    type: 'image',
+    title: artifact.title,
+    caption: artifact.caption,
+    imageUrl: artifact.imageUrl,
+    sourceLabel: artifact.sourceLabel,
+    note: artifact.note,
+  };
 }
 
 function getArtifact(caseId: string, artifactId: string): Artifact | undefined {
@@ -512,17 +696,12 @@ function ContactOptionRow({ option }: { option: ContactOption }) {
 }
 
 function ModalOverlay({
-  envelope,
+  modal,
   onClose,
 }: {
-  envelope: AssistantEnvelope;
+  modal: ModalPayload;
   onClose: () => void;
 }) {
-  if (!envelope.modal) {
-    return null;
-  }
-
-  const modal = envelope.modal;
   const isContact = modal.type === 'contact';
 
   return (
@@ -573,100 +752,263 @@ function ModalOverlay({
 
 export function PortfolioShell() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [timeline, setTimeline] = useState<ThreadItem[]>([]);
-  const [activeEnvelope, setActiveEnvelope] = useState<AssistantEnvelope | null>(null);
-  const [modalEnvelope, setModalEnvelope] = useState<AssistantEnvelope | null>(null);
+  const [activeContextId, setActiveContextId] = useState<ContextId>('entry');
+  const [threadsByContextId, setThreadsByContextId] = useState<ThreadStore>({});
+  const [modalPayload, setModalPayload] = useState<ModalPayload | null>(null);
+  const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
   const [error, setError] = useState<string | null>(null);
+  const [hasHydrated, setHasHydrated] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const serverContextIdRef = useRef<ContextId | null>(null);
+  const threadsRef = useRef<ThreadStore>({});
 
-  const railItems = activeEnvelope?.railItems ?? [];
-  const messagesRemaining = activeEnvelope?.meta.userMessagesRemaining ?? 0;
-  const currentEnvelope =
-    activeEnvelope ??
-    [...timeline].reverse().find((item): item is Extract<ThreadItem, { kind: 'assistant' }> => item.kind === 'assistant')
-      ?.envelope ??
-    null;
+  const railItems = getRailItems();
+  const messagesRemaining = sessionMeta.remaining;
+  const currentThread = threadsByContextId[activeContextId] ?? createContextThread(activeContextId);
+  const currentEnvelope = currentThread.lastEnvelope;
+  const currentCaseId = currentEnvelope?.selectedContext.kind === 'case' ? currentEnvelope.selectedContext.id : null;
 
-  async function requestEnvelope(
-    body: ChatRequestBody,
-    options?: { userLabel?: string; appendAssistant?: boolean; appendUser?: boolean; showLoading?: boolean },
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  useEffect(() => {
+    threadsRef.current = threadsByContextId;
+  }, [threadsByContextId]);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    const payload: PersistedThreadState = {
+      sessionId,
+      activeContextId,
+      threadsByContextId,
+      sessionMeta,
+    };
+
+    globalThis.sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
+  }, [activeContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId]);
+
+  function setServerContextId(contextId: ContextId | null) {
+    serverContextIdRef.current = contextId;
+  }
+
+  function updateSessionMeta(envelope: AssistantEnvelope) {
+    setSessionMeta({
+      used: envelope.meta.userMessagesUsed,
+      remaining: envelope.meta.userMessagesRemaining,
+    });
+  }
+
+  function upsertThread(contextId: ContextId, recipe: (thread: ContextThread) => ContextThread) {
+    setThreadsByContextId((current) => {
+      const existing = current[contextId] ?? createContextThread(contextId);
+      return {
+        ...current,
+        [contextId]: recipe(existing),
+      };
+    });
+  }
+
+  function appendUserToThread(contextId: ContextId, text: string) {
+    upsertThread(contextId, (thread) => ({
+      ...thread,
+      items: [...thread.items, { kind: 'user', text }],
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
+  function appendAssistantToThread(contextId: ContextId, envelope: AssistantEnvelope) {
+    upsertThread(contextId, (thread) => ({
+      ...thread,
+      items: [...thread.items, { kind: 'assistant', envelope }],
+      lastEnvelope: envelope,
+      initialized: true,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+
+  function replaceThreadWithEnvelope(contextId: ContextId, envelope: AssistantEnvelope) {
+    setThreadsByContextId((current) => ({
+      ...current,
+      [contextId]: createContextThread(contextId, envelope),
+    }));
+  }
+
+  async function fetchChatEnvelope(body: ChatRequestBody): Promise<AssistantEnvelope> {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Chat request failed with ${response.status}`);
+    }
+
+    return (await response.json()) as AssistantEnvelope;
+  }
+
+  async function fetchBootstrapEnvelope(nextSessionId?: string | null): Promise<AssistantEnvelope> {
+    const query = nextSessionId ? `?sessionId=${encodeURIComponent(nextSessionId)}` : '';
+    const response = await fetch(`/api/assistant/bootstrap${query}`);
+
+    if (!response.ok) {
+      throw new Error(`Bootstrap failed with ${response.status}`);
+    }
+
+    return (await response.json()) as AssistantEnvelope;
+  }
+
+  async function ensureServerContextSynced(contextId: ContextId) {
+    if (!sessionIdRef.current || serverContextIdRef.current === contextId) {
+      return;
+    }
+
+    const thread = threadsRef.current[contextId];
+    const syncAction = thread ? getSyncActionForContext(thread) : null;
+
+    if (!syncAction) {
+      return;
+    }
+
+    const envelope = await fetchChatEnvelope({
+      sessionId: sessionIdRef.current,
+      input: { type: 'action', action: syncAction },
+    });
+
+    setSessionId(envelope.sessionId);
+    updateSessionMeta(envelope);
+    setServerContextId(getContextIdFromEnvelope(envelope));
+  }
+
+  async function openFreshContext(
+    targetContextId: ContextId,
+    action: UIAction,
+    options?: { userLabel?: string; appendUserBubble?: boolean },
   ) {
-    const shouldAppendAssistant = options?.appendAssistant ?? true;
-    const shouldAppendUser = options?.appendUser ?? Boolean(options?.userLabel);
-    const shouldShowLoading = options?.showLoading ?? true;
     const userLabel = options?.userLabel;
+    const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
-    if (userLabel && shouldAppendUser) {
-      setTimeline((current) => [...current, { kind: 'user', text: renderActionLabel(userLabel) }]);
-    }
-
-    if (shouldShowLoading) {
-      setLoading(true);
-    }
+    setModalPayload(null);
+    setActiveContextId(targetContextId);
+    setLoadingContextId(targetContextId);
     setError(null);
 
+    if (shouldAppendUserBubble && userLabel) {
+      appendUserToThread(targetContextId, userLabel);
+    }
+
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, sessionId }),
+      const envelope = await fetchChatEnvelope({
+        sessionId: sessionIdRef.current ?? undefined,
+        input: { type: 'action', action },
       });
+      const nextContextId = getContextIdFromEnvelope(envelope);
 
-      if (!response.ok) {
-        throw new Error(`Chat request failed with ${response.status}`);
-      }
-
-      const envelope = (await response.json()) as AssistantEnvelope;
       setSessionId(envelope.sessionId);
-
-      if (isModalView(envelope)) {
-        setModalEnvelope(envelope);
-      } else {
-        setModalEnvelope(null);
-        setActiveEnvelope(envelope);
-        if (shouldAppendAssistant) {
-          setTimeline((current) => [...current, { kind: 'assistant', envelope }]);
-        }
-      }
+      updateSessionMeta(envelope);
+      appendAssistantToThread(nextContextId, envelope);
+      setActiveContextId(nextContextId);
+      setServerContextId(nextContextId);
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
     } finally {
-      if (shouldShowLoading) {
-        setLoading(false);
-      }
+      setLoadingContextId(null);
     }
+  }
+
+  async function appendAssistantResponse(
+    contextId: ContextId,
+    body: ChatRequestBody,
+    options?: { userText?: string },
+  ) {
+    if (options?.userText) {
+      appendUserToThread(contextId, options.userText);
+    }
+
+    setModalPayload(null);
+    setLoadingContextId(contextId);
+    setError(null);
+
+    try {
+      const envelope = await fetchChatEnvelope(body);
+      const nextContextId = getContextIdFromEnvelope(envelope);
+
+      setSessionId(envelope.sessionId);
+      updateSessionMeta(envelope);
+      appendAssistantToThread(nextContextId, envelope);
+      setActiveContextId(nextContextId);
+      setServerContextId(nextContextId);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+    } finally {
+      setLoadingContextId(null);
+    }
+  }
+
+  function restoreExistingContext(contextId: ContextId) {
+    setModalPayload(null);
+    setError(null);
+    setActiveContextId(contextId);
   }
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
-      setLoading(true);
+      setLoadingContextId('entry');
       setError(null);
 
       try {
-        const response = await fetch('/api/assistant/bootstrap');
-        if (!response.ok) {
-          throw new Error(`Bootstrap failed with ${response.status}`);
+        try {
+          const persistedRaw = globalThis.sessionStorage.getItem(THREAD_STORAGE_KEY);
+          if (persistedRaw) {
+            const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
+            const persistedThreads = persisted.threadsByContextId ?? {};
+            const persistedActiveContext = persisted.activeContextId ?? 'entry';
+
+            if (persisted.sessionId && Object.keys(persistedThreads).length) {
+              if (!cancelled) {
+                setSessionId(persisted.sessionId);
+                setThreadsByContextId(persistedThreads);
+                setActiveContextId(persistedActiveContext);
+                setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
+                setServerContextId(null);
+                setLoadingContextId(null);
+                setHasHydrated(true);
+              }
+              return;
+            }
+          }
+        } catch {
+          globalThis.sessionStorage.removeItem(THREAD_STORAGE_KEY);
         }
 
-        const envelope = (await response.json()) as AssistantEnvelope;
+        const envelope = await fetchBootstrapEnvelope();
         if (cancelled) {
           return;
         }
 
+        const contextId = getContextIdFromEnvelope(envelope);
         setSessionId(envelope.sessionId);
-        setActiveEnvelope(envelope);
-        setTimeline([{ kind: 'assistant', envelope }]);
+        updateSessionMeta(envelope);
+        replaceThreadWithEnvelope(contextId, envelope);
+        setActiveContextId(contextId);
+        setServerContextId(contextId);
+        setHasHydrated(true);
       } catch (caughtError) {
         if (!cancelled) {
           setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setLoadingContextId(null);
         }
       }
     }
@@ -696,116 +1038,127 @@ export function PortfolioShell() {
   }, [input]);
 
   function handleChipClick(chip: PromptChip) {
-    void requestEnvelope(
-      { input: { type: 'action', action: chip.action }, sessionId: sessionId ?? undefined },
-      { userLabel: chip.label },
-    );
-  }
-
-  function handleRailClick(item: AssistantEnvelope['railItems'][number]) {
-    if (selectedRailId === item.id) {
+    const targetContextId = getContextIdFromAction(chip.action);
+    if (targetContextId && targetContextId !== activeContextId && threadsRef.current[targetContextId]?.initialized) {
+      restoreExistingContext(targetContextId);
       return;
     }
 
-    let action: UIAction;
-    let label = item.label;
-
-    switch (item.kind) {
-      case 'case':
-        action = { type: 'open_case_summary', caseId: item.id };
-        label = `Открой ${item.label}`;
-        break;
-      case 'experience':
-        action = { type: 'open_experience_summary' };
-        label = 'Расскажи про опыт работы';
-        break;
-      case 'overview':
-        action = { type: 'open_additional_cases_overview' };
-        label = 'Покажи дополнительные кейсы';
-        break;
-      default:
-        action = { type: 'open_entry' };
-    }
-
-    void requestEnvelope(
-      { input: { type: 'action', action }, sessionId: sessionId ?? undefined },
-      { userLabel: label },
-    );
-  }
-
-  function handleCta(action: UIAction, label?: string) {
-    const opensModal = action.type === 'open_contact_modal' || action.type === 'open_image_modal';
-
-    void requestEnvelope(
-      { input: { type: 'action', action }, sessionId: sessionId ?? undefined },
-      {
-        userLabel: label,
-        appendUser: !opensModal,
-        appendAssistant: action.type !== 'close_modal' && !opensModal,
-        showLoading: !opensModal && action.type !== 'close_modal',
-      },
-    );
-  }
-
-  function handleOpenArtifact(artifactId: string, title: string) {
-    if (!activeEnvelope || activeEnvelope.selectedContext.kind !== 'case') {
+    if (targetContextId && targetContextId !== activeContextId) {
+      void openFreshContext(targetContextId, chip.action, {
+        userLabel: chip.label,
+        appendUserBubble: true,
+      });
       return;
     }
 
-    void requestEnvelope(
+    void appendAssistantResponse(
+      activeContextId,
       {
-        input: {
-          type: 'action',
-          action: {
-            type: 'open_image_modal',
-            caseId: activeEnvelope.selectedContext.id,
-            artifactId,
-          },
-        },
-        sessionId: sessionId ?? undefined,
+        sessionId: sessionIdRef.current ?? undefined,
+        input: { type: 'action', action: chip.action },
       },
-      {
-        userLabel: `Открой артефакт: ${title}`,
-        appendUser: false,
-        appendAssistant: false,
-        showLoading: false,
-      },
+      { userText: chip.label },
     );
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleRailClick(item: RailItem) {
+    const targetContextId: ContextId =
+      item.kind === 'experience' ? 'experience' : makeCaseContextId(item.id);
+
+    if (targetContextId === activeContextId) {
+      return;
+    }
+
+    if (threadsRef.current[targetContextId]?.initialized) {
+      restoreExistingContext(targetContextId);
+      return;
+    }
+
+    const action =
+      item.kind === 'experience'
+        ? ({ type: 'open_experience_summary' } as UIAction)
+        : getCanonicalActionForCase(item.id);
+
+    void openFreshContext(targetContextId, action, { appendUserBubble: false });
+  }
+
+  function handleCta(action: UIAction) {
+    if (action.type === 'open_contact_modal') {
+      setModalPayload(buildContactModalPayload());
+      return;
+    }
+
+    if (action.type === 'open_image_modal') {
+      const modal = buildImageModalPayload(action.caseId, action.artifactId);
+      if (modal) {
+        setModalPayload(modal);
+      }
+      return;
+    }
+
+    const targetContextId = getContextIdFromAction(action);
+
+    if (targetContextId && targetContextId !== activeContextId && threadsRef.current[targetContextId]?.initialized) {
+      restoreExistingContext(targetContextId);
+      return;
+    }
+
+    if (targetContextId && targetContextId !== activeContextId) {
+      void openFreshContext(targetContextId, action, { appendUserBubble: false });
+      return;
+    }
+
+    void appendAssistantResponse(activeContextId, {
+      sessionId: sessionIdRef.current ?? undefined,
+      input: { type: 'action', action },
+    });
+  }
+
+  function handleOpenArtifact(artifactId: string) {
+    if (!currentCaseId) {
+      return;
+    }
+
+    const modal = buildImageModalPayload(currentCaseId, artifactId);
+    if (modal) {
+      setModalPayload(modal);
+    }
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = input.trim();
-    if (!text || loading) {
+    if (!text || loadingContextId) {
       return;
     }
 
     setInput('');
-    void requestEnvelope(
-      { input: { type: 'message', text }, sessionId: sessionId ?? undefined },
-      { userLabel: text },
+    try {
+      await ensureServerContextSynced(activeContextId);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+      return;
+    }
+
+    void appendAssistantResponse(
+      activeContextId,
+      { sessionId: sessionIdRef.current ?? undefined, input: { type: 'message', text } },
+      { userText: text },
     );
   }
 
   const selectedRailId = useMemo(() => {
-    if (!activeEnvelope) {
-      return null;
-    }
-
-    if (activeEnvelope.selectedContext.kind === 'case') {
-      return activeEnvelope.selectedContext.id;
-    }
-
-    if (activeEnvelope.selectedContext.kind === 'experience') {
+    if (activeContextId === 'experience') {
       return 'experience';
     }
 
-    if (activeEnvelope.selectedContext.kind === 'overview') {
-      return activeEnvelope.selectedContext.id;
+    if (isCaseContextId(activeContextId)) {
+      return activeContextId.replace(/^case:/, '');
     }
 
     return null;
-  }, [activeEnvelope]);
+  }, [activeContextId]);
 
   return (
     <>
@@ -831,7 +1184,7 @@ export function PortfolioShell() {
               </div>
             </div>
 
-            <div className="mt-10 text-[15px] font-semibold text-[#151310]">Навигация</div>
+            <div className="mt-10 text-[15px] font-semibold text-[#151310]">Мои проекты</div>
             <div className="mt-4 space-y-3 overflow-hidden">
               {railItems.map((item) => (
                 <button
@@ -866,7 +1219,7 @@ export function PortfolioShell() {
               </div>
               <button
                 type="button"
-                onClick={() => handleCta({ type: 'open_contact_modal', source: 'header' }, 'Написать Андрею')}
+                onClick={() => handleCta({ type: 'open_contact_modal', source: 'header' })}
                 className="rounded-full bg-[#13110f] px-6 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#22201c]"
               >
                 Написать Андрею
@@ -876,7 +1229,7 @@ export function PortfolioShell() {
             <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-6 overflow-hidden px-6 py-6">
               <div className="flex min-h-0 flex-col overflow-hidden rounded-[36px] bg-[#faf8f4] p-6">
                 <div className="min-h-0 flex-1 space-y-7 overflow-y-auto pr-2 pb-4">
-                  {timeline.map((item, index) =>
+                  {currentThread.items.map((item, index) =>
                     item.kind === 'user' ? (
                       <UserBubble key={`user-${index}`} text={item.text} />
                     ) : (
@@ -890,7 +1243,7 @@ export function PortfolioShell() {
                     ),
                   )}
 
-                  {loading ? (
+                  {loadingContextId === activeContextId ? (
                     <div className="flex gap-5">
                       <div className="mt-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#eef0ff] text-[22px] text-[#5b61ff]">
                         ✦
@@ -925,7 +1278,7 @@ export function PortfolioShell() {
                     />
                     <button
                       type="submit"
-                      disabled={loading}
+                      disabled={Boolean(loadingContextId)}
                       className="rounded-full bg-[#13110f] px-7 py-4 text-[16px] font-medium text-white transition hover:bg-[#22201c] disabled:cursor-not-allowed disabled:bg-[#c9c0b5]"
                     >
                       Отправить
@@ -941,15 +1294,10 @@ export function PortfolioShell() {
         </div>
       </div>
 
-              {modalEnvelope ? (
+      {modalPayload ? (
         <ModalOverlay
-          envelope={modalEnvelope}
-          onClose={() => {
-            void requestEnvelope(
-              { input: { type: 'action', action: { type: 'close_modal' } }, sessionId: sessionId ?? undefined },
-              { appendAssistant: false, appendUser: false, showLoading: false },
-            );
-          }}
+          modal={modalPayload}
+          onClose={() => setModalPayload(null)}
         />
       ) : null}
     </>

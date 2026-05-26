@@ -33,7 +33,7 @@ import type {
 } from '@/lib/portfolio/types';
 
 function isMobileCase(caseId: string): boolean {
-  return ['expenses-card-holders', 'subscription-sharing', 'family-superapp'].includes(caseId);
+  return ['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike'].includes(caseId);
 }
 
 function deriveContextFromAction(action: UIAction): { context: SelectedContext; view: ViewType } | null {

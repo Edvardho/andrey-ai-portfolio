@@ -124,12 +124,6 @@ export function buildCaseRouteEnvelope(session: AssistantSession, caseId: string
     viewType: 'case_route',
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: caseContent.routeBlocks,
-    chips: [
-      { id: `${caseId}-route-short`, label: 'Короткий ответ', action: { type: 'open_case_summary', caseId } },
-      { id: `${caseId}-route-detail`, label: 'Развернутый ответ', action: { type: 'open_case_detail', caseId } },
-      { id: `${caseId}-route-artifact`, label: 'Артефакты', action: { type: 'open_image_modal', caseId, artifactId: caseContent.gallery[0]?.artifactId ?? caseContent.artifacts[0]?.id ?? '' } },
-      { id: `${caseId}-route-what-proves`, label: 'Что это доказывает', action: { type: 'open_case_detail', caseId } },
-    ],
     contextPanel: caseContent.contextPanel,
     nextActions: [
       { type: 'open_case_summary', caseId },
@@ -243,10 +237,6 @@ export function buildExperienceRouteEnvelope(
     viewType: 'experience_route',
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: getExperienceRoute(caseId),
-    chips: [
-      { id: `${caseId}-exp-short`, label: 'Короткий ответ', action: { type: 'open_case_summary', caseId } },
-      { id: `${caseId}-exp-detail`, label: 'Развернутый ответ', action: { type: 'open_case_detail', caseId } },
-    ],
     contextPanel: caseContent.contextPanel,
     nextActions: [
       { type: 'open_case_summary', caseId },
@@ -385,7 +375,7 @@ export function buildNoMatchingEnvelope(session: AssistantSession): AssistantEnv
   const chips: PromptChip[] = [
     { id: 'nomatch-alfa', label: 'Покажи Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
     { id: 'nomatch-exp', label: 'Покажи опыт работы', action: { type: 'open_experience_summary' } },
-    { id: 'nomatch-breadth', label: 'Дополнительные кейсы', action: { type: 'open_additional_cases_overview' } },
+    { id: 'nomatch-chatpoint', label: 'Покажи ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
   ];
 
   return createEnvelope({
