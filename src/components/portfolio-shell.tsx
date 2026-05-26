@@ -591,12 +591,13 @@ export function PortfolioShell() {
 
   async function requestEnvelope(
     body: ChatRequestBody,
-    options?: { userLabel?: string; appendAssistant?: boolean },
+    options?: { userLabel?: string; appendAssistant?: boolean; appendUser?: boolean },
   ) {
     const shouldAppendAssistant = options?.appendAssistant ?? true;
+    const shouldAppendUser = options?.appendUser ?? Boolean(options?.userLabel);
     const userLabel = options?.userLabel;
 
-    if (userLabel) {
+    if (userLabel && shouldAppendUser) {
       setTimeline((current) => [...current, { kind: 'user', text: renderActionLabel(userLabel) }]);
     }
 
@@ -697,6 +698,10 @@ export function PortfolioShell() {
   }
 
   function handleRailClick(item: AssistantEnvelope['railItems'][number]) {
+    if (selectedRailId === item.id) {
+      return;
+    }
+
     let action: UIAction;
     let label = item.label;
 
@@ -717,13 +722,22 @@ export function PortfolioShell() {
         action = { type: 'open_entry' };
     }
 
-    void requestEnvelope({ input: { type: 'action', action }, sessionId: sessionId ?? undefined }, { userLabel: label });
+    void requestEnvelope(
+      { input: { type: 'action', action }, sessionId: sessionId ?? undefined },
+      { userLabel: label },
+    );
   }
 
   function handleCta(action: UIAction, label?: string) {
+    const opensModal = action.type === 'open_contact_modal' || action.type === 'open_image_modal';
+
     void requestEnvelope(
       { input: { type: 'action', action }, sessionId: sessionId ?? undefined },
-      { userLabel: label, appendAssistant: action.type !== 'close_modal' },
+      {
+        userLabel: label,
+        appendUser: !opensModal,
+        appendAssistant: action.type !== 'close_modal' && !opensModal,
+      },
     );
   }
 
@@ -744,7 +758,7 @@ export function PortfolioShell() {
         },
         sessionId: sessionId ?? undefined,
       },
-      { userLabel: `Открой артефакт: ${title}`, appendAssistant: false },
+      { userLabel: `Открой артефакт: ${title}`, appendUser: false, appendAssistant: false },
     );
   }
 
@@ -809,7 +823,14 @@ export function PortfolioShell() {
             <div className="mt-10 text-[15px] font-semibold text-[#151310]">Навигация</div>
             <div className="mt-4 space-y-3 overflow-hidden">
               {railItems.map((item) => (
-                <button key={item.id} type="button" onClick={() => handleRailClick(item)} className="w-full text-left">
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleRailClick(item)}
+                  disabled={selectedRailId === item.id}
+                  aria-current={selectedRailId === item.id ? 'page' : undefined}
+                  className="w-full text-left disabled:cursor-default"
+                >
                   <RailPreview title={item.label} subtitle={item.subtitle} selected={selectedRailId === item.id} />
                 </button>
               ))}
