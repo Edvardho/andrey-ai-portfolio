@@ -591,17 +591,20 @@ export function PortfolioShell() {
 
   async function requestEnvelope(
     body: ChatRequestBody,
-    options?: { userLabel?: string; appendAssistant?: boolean; appendUser?: boolean },
+    options?: { userLabel?: string; appendAssistant?: boolean; appendUser?: boolean; showLoading?: boolean },
   ) {
     const shouldAppendAssistant = options?.appendAssistant ?? true;
     const shouldAppendUser = options?.appendUser ?? Boolean(options?.userLabel);
+    const shouldShowLoading = options?.showLoading ?? true;
     const userLabel = options?.userLabel;
 
     if (userLabel && shouldAppendUser) {
       setTimeline((current) => [...current, { kind: 'user', text: renderActionLabel(userLabel) }]);
     }
 
-    setLoading(true);
+    if (shouldShowLoading) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -630,7 +633,9 @@ export function PortfolioShell() {
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
     } finally {
-      setLoading(false);
+      if (shouldShowLoading) {
+        setLoading(false);
+      }
     }
   }
 
@@ -737,6 +742,7 @@ export function PortfolioShell() {
         userLabel: label,
         appendUser: !opensModal,
         appendAssistant: action.type !== 'close_modal' && !opensModal,
+        showLoading: !opensModal && action.type !== 'close_modal',
       },
     );
   }
@@ -758,7 +764,12 @@ export function PortfolioShell() {
         },
         sessionId: sessionId ?? undefined,
       },
-      { userLabel: `Открой артефакт: ${title}`, appendUser: false, appendAssistant: false },
+      {
+        userLabel: `Открой артефакт: ${title}`,
+        appendUser: false,
+        appendAssistant: false,
+        showLoading: false,
+      },
     );
   }
 
@@ -930,13 +941,13 @@ export function PortfolioShell() {
         </div>
       </div>
 
-      {modalEnvelope ? (
+              {modalEnvelope ? (
         <ModalOverlay
           envelope={modalEnvelope}
           onClose={() => {
             void requestEnvelope(
               { input: { type: 'action', action: { type: 'close_modal' } }, sessionId: sessionId ?? undefined },
-              { appendAssistant: false },
+              { appendAssistant: false, appendUser: false, showLoading: false },
             );
           }}
         />

@@ -109,9 +109,7 @@ export function buildCaseEnvelope(
     answerMode: mode,
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: mode === 'summary' ? caseContent.summaryBlocks : caseContent.detailBlocks,
-    chips: caseContent.followUpChips,
     contextPanel: caseContent.contextPanel,
-    nextActions: caseContent.followUpChips.map((chip) => chip.action),
   });
 }
 
@@ -211,9 +209,7 @@ export function buildMobileCaseEnvelope(
     answerMode: mode,
     selectedContext: { kind: 'case', id: caseId, label: caseContent.shortTitle },
     contentBlocks: mode === 'summary' ? caseContent.summaryBlocks : caseContent.detailBlocks,
-    chips: caseContent.followUpChips,
     contextPanel: caseContent.contextPanel,
-    nextActions: caseContent.followUpChips.map((chip) => chip.action),
   });
 }
 
