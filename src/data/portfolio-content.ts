@@ -805,7 +805,7 @@ const experience: ExperienceContent = {
     cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'experience' } },
   },
   followUpChips: [
-    { id: 'experience-follow-siebel', label: 'Открой SIEBEL', action: { type: 'open_experience_route', caseId: 'siebel' } },
+    { id: 'experience-follow-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
     { id: 'experience-follow-alfa', label: 'Покажи флагманский кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
     { id: 'experience-follow-mobile', label: 'Что он делал в мобилках?', action: { type: 'open_mobile_experience_overview' } },
   ],
@@ -836,9 +836,9 @@ const additionalCasesContent: AdditionalCasesContent = {
   ],
   contextPanel: additionalCases,
   followUpChips: [
-    { id: 'additional-chip-alfa', label: 'Открой Альфа-Смарт', action: { type: 'open_case_route', caseId: 'alfa-smart' } },
-    { id: 'additional-chip-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_route', caseId: 'siebel' } },
-    { id: 'additional-chip-chatpoint', label: 'Открой ChatPoint', action: { type: 'open_case_route', caseId: 'chatpoint' } },
+    { id: 'additional-chip-alfa', label: 'Открой Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+    { id: 'additional-chip-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
+    { id: 'additional-chip-chatpoint', label: 'Открой ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
     { id: 'additional-chip-mobile', label: 'Покажи мобильные кейсы', action: { type: 'open_mobile_experience_overview' } },
   ],
 };

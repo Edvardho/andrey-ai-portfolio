@@ -10,7 +10,17 @@ type DeterministicIntent = {
 };
 
 const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
-  { caseId: 'alfa-smart', patterns: [/альфа/i, /смарт/i, /сильн(ый|ого).+кейс/i, /подписк/i] },
+  {
+    caseId: 'alfa-smart',
+    patterns: [
+      /альфа/i,
+      /смарт/i,
+      /флагман/i,
+      /сильн(ый|ого|ом|ые|ых)?.+кейс/i,
+      /сам(ый|ого|ом)?.+сильн(ый|ого|ом)?.+кейс/i,
+      /подписк/i,
+    ],
+  },
   { caseId: 'siebel', patterns: [/siebel/i, /оператор/i, /мтс/i] },
   { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /anti-case/i] },
   { caseId: 'expenses-card-holders', patterns: [/держател/i, /расход/i, /истори/i] },
@@ -58,6 +68,13 @@ export function classifyMessageDeterministically(
 
   if (/кроме|еще делал|шире|дополнительн/i.test(lowered)) {
     return { action: { type: 'open_additional_cases_overview' } };
+  }
+
+  if (
+    (lowered.includes('кейс') && lowered.includes('сильн')) ||
+    lowered.includes('флагман')
+  ) {
+    return { action: { type: 'open_case_summary', caseId: 'alfa-smart' } };
   }
 
   if (/контакт|связа|написа/i.test(lowered)) {
