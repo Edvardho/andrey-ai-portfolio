@@ -1,0 +1,130 @@
+import type { AssistantEnvelope, UIAction } from '@/lib/portfolio/types';
+import { getCaseById } from '@/data/portfolio-content';
+import { PortfolioPreviewSurface } from './portfolio-preview-surface';
+
+function getCasePreview(caseId: string | null) {
+  if (!caseId) {
+    return null;
+  }
+
+  const caseContent = getCaseById(caseId);
+  if (!caseContent) {
+    return null;
+  }
+
+  const heroArtifact = caseContent.artifacts[0];
+
+  return {
+    title: caseContent.title,
+    subtitle: caseContent.shortDescription,
+    imageUrl: heroArtifact?.imageUrl,
+    badge: caseContent.tags[0] ?? caseContent.category,
+  };
+}
+
+export function PortfolioContextPanel({
+  envelope,
+  onAction,
+}: {
+  envelope: AssistantEnvelope;
+  onAction: (action: UIAction, label?: string) => void;
+}) {
+  const panel = envelope.contextPanel;
+  const contextPreview =
+    envelope.selectedContext.kind === 'case'
+      ? getCasePreview(envelope.selectedContext.id) ?? {
+          title: envelope.selectedContext.label,
+          subtitle: 'Подтвержденный кейс из портфолио.',
+          imageUrl: undefined,
+          badge: 'Case',
+        }
+      : envelope.selectedContext.kind === 'experience'
+        ? {
+            title: 'Опыт работы',
+            subtitle: 'Компании, домены и траектория роста.',
+            imageUrl: undefined,
+            badge: 'Career',
+          }
+        : envelope.selectedContext.kind === 'overview'
+          ? {
+              title:
+                envelope.selectedContext.id === 'mobile-experience'
+                  ? 'Мобильный опыт'
+                  : 'Дополнительные кейсы',
+              subtitle:
+                envelope.selectedContext.id === 'mobile-experience'
+                  ? 'Ширина mobile signal за пределами флагмана.'
+                  : 'Не остатки, а breadth с нормальным сигналом.',
+              imageUrl: undefined,
+              badge: 'Overview',
+            }
+          : {
+              title: 'Стартовая точка',
+              subtitle: 'Опыт, кейсы, доказательства и выход на связь.',
+              imageUrl: undefined,
+              badge: 'Desktop',
+            };
+
+  return (
+    <aside className="rounded-[34px] border border-[#e8e1d7] bg-white p-5 shadow-[0_14px_36px_rgba(31,26,20,0.04)]">
+      <PortfolioPreviewSurface
+        src={contextPreview.imageUrl}
+        title={contextPreview.title}
+        subtitle={contextPreview.subtitle}
+        badge={contextPreview.badge}
+        className="aspect-[1.25/1]"
+      />
+
+      <div className="mt-5">
+        <div className="text-[28px] font-semibold tracking-[-0.03em] text-[#11110f]">{panel.title}</div>
+        <div className="mt-2 text-[15px] text-[#7c746a]">{panel.subtitle}</div>
+      </div>
+
+      {panel.tags.length ? (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {panel.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-[#ece5da] bg-[#faf7f1] px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {panel.metrics?.length ? (
+        <div className="mt-5 space-y-3 border-t border-[#eee7dd] pt-5">
+          {panel.metrics.map((metric) => (
+            <div key={`${metric.value}-${metric.label}`} className="flex items-start justify-between gap-3">
+              <span className="text-[18px] font-semibold text-[#11110f]">{metric.value}</span>
+              <span className="text-right text-[14px] leading-6 text-[#726a60]">{metric.label}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {panel.role ? (
+        <div className="mt-5 border-t border-[#eee7dd] pt-5">
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#9a9083]">Роль</div>
+          <div className="mt-2 text-[16px] font-semibold text-[#11110f]">{panel.role}</div>
+          {panel.roleDescription ? (
+            <div className="mt-2 text-[15px] leading-7 text-[#665f56]">{panel.roleDescription}</div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {panel.note ? <div className="mt-5 text-[15px] leading-7 text-[#5e564d]">{panel.note}</div> : null}
+
+      {panel.cta ? (
+        <button
+          type="button"
+          onClick={() => onAction(panel.cta!.action, panel.cta!.label)}
+          className="mt-6 w-full rounded-full bg-[#13110f] px-5 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#22201c]"
+        >
+          {panel.cta.label}
+        </button>
+      ) : null}
+    </aside>
+  );
+}
