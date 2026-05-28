@@ -1,5 +1,4 @@
 import type { ModalPayload, ContactOption } from '@/lib/portfolio/types';
-import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -62,14 +61,31 @@ export function PortfolioModalOverlay({
             ))}
           </div>
         ) : (
-          <div className="mt-7 rounded-[30px] border border-[#e8e1d7] bg-[#faf7f1] p-5">
-            <PortfolioPreviewSurface
-              src={modal.imageUrl}
-              title={modal.title}
-              subtitle={modal.note ?? modal.caption}
-              badge={modal.sourceLabel ?? 'Artifact'}
-              className="min-h-[72vh] w-full"
-            />
+          <div className="mt-7 rounded-[30px] border border-[#EBEDF2] bg-[#faf7f1] p-5">
+            <div className="overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-white">
+              {modal.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={modal.imageUrl}
+                  alt={modal.title}
+                  className="max-h-[72vh] w-full object-contain"
+                />
+              ) : (
+                <div className="flex min-h-[72vh] items-center justify-center text-[16px] text-[#847b6f]">
+                  Нет изображения для предпросмотра.
+                </div>
+              )}
+            </div>
+            {modal.sourceLabel || modal.note ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                {modal.sourceLabel ? (
+                  <span className="rounded-full border border-[#ded5c9] bg-white px-3 py-1.5 text-[12px] font-medium text-[#665d53]">
+                    {modal.sourceLabel}
+                  </span>
+                ) : null}
+                {modal.note ? <div className="text-[14px] leading-6 text-[#6e665d]">{modal.note}</div> : null}
+              </div>
+            ) : null}
           </div>
         )}
       </div>

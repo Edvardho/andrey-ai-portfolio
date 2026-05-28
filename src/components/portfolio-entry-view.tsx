@@ -1,14 +1,58 @@
 'use client';
 
 import type { RefObject } from 'react';
+import { useRef } from 'react';
 import type { RailItem, PromptChip, UIAction } from '@/lib/portfolio/types';
-import { PortfolioPreviewSurface } from './portfolio-preview-surface';
+import { PortfolioAvailabilityPill } from './portfolio-availability-pill';
+import { PortfolioButton } from './portfolio-button';
 import { PortfolioComposer } from './portfolio-composer';
+import { PortfolioMetadataChip } from './portfolio-metadata-chip';
+import { PortfolioProjectPromptCard } from './portfolio-project-prompt-card';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
+
+type EntryProjectCard = {
+  id: string;
+  title: string;
+  imageSrc: string;
+};
+
+const entryProjectCards: EntryProjectCard[] = [
+  {
+    id: 'alfa-smart',
+    title: 'Альфа-смарт подписка на банковские продукты',
+    imageSrc: '/entry/card-alfa-smart.png',
+  },
+  {
+    id: 'expenses-card-holders',
+    title: 'Добавление функционала в истории операции',
+    imageSrc: '/entry/card-expenses-history.png',
+  },
+  {
+    id: 'subscription-sharing',
+    title: 'Улучшение пути пользователя при добавлении участников',
+    imageSrc: '/entry/card-subscription-sharing.png',
+  },
+  {
+    id: 'ux-ui-wannabelike',
+    title: 'Прохождение курса Миши Розова по прокачке UI',
+    imageSrc: '/entry/card-wannabelike.png',
+  },
+  {
+    id: 'chatpoint',
+    title: 'Платформа для коммуникации ChatPoint',
+    imageSrc: '/entry/card-chatpoint.png',
+  },
+];
+
+const metadataChips = [
+  { id: 'experience', label: '6 лет опыта', iconSrc: '/entry/icon-experience.svg' },
+  { id: 'domain', label: 'B2B / B2C', iconSrc: '/entry/icon-domain.svg' },
+  { id: 'platform', label: 'Mobile & Web', iconSrc: '/entry/icon-platform.svg' },
+  { id: 'ai', label: 'AI products', iconSrc: '/entry/icon-ai.svg' },
+];
 
 export function PortfolioEntryView({
   railItems,
-  getCasePreview,
   onRailClick,
   input,
   onChangeInput,
@@ -20,12 +64,6 @@ export function PortfolioEntryView({
   onCta,
 }: {
   railItems: RailItem[];
-  getCasePreview: (caseId: string | null) => {
-    title: string;
-    subtitle: string;
-    imageUrl?: string;
-    badge: string;
-  } | null;
   onRailClick: (item: RailItem) => void;
   input: string;
   onChangeInput: (value: string) => void;
@@ -34,86 +72,107 @@ export function PortfolioEntryView({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   chips: PromptChip[];
   onChipClick: (chip: PromptChip) => void;
-  onCta: (action: UIAction, label: string) => void;
+  onCta: (action: UIAction) => void;
 }) {
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+
+  function scrollProjects(direction: 'left' | 'right') {
+    const container = carouselRef.current;
+    if (!container) {
+      return;
+    }
+
+    const offset = direction === 'left' ? -344 : 344;
+    container.scrollBy({ left: offset, behavior: 'smooth' });
+  }
+
+  const caseRailItems = entryProjectCards
+    .map((card) => ({
+      card,
+      item: railItems.find((item) => item.id === card.id && item.kind === 'case'),
+    }))
+    .filter((entry): entry is { card: EntryProjectCard; item: RailItem } => Boolean(entry.item));
+
   return (
-    <div className="mx-auto flex h-full max-w-[1800px] flex-col overflow-hidden rounded-[38px] border border-[#e6dfd4] bg-white shadow-[0_24px_80px_rgba(31,26,20,0.07)]">
-      <header className="flex items-center justify-between border-b border-[#ece5da] px-10 py-6">
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-[#12110e]">Андрей Макаревич</span>
-          <span className="text-[#8a8378]">•</span>
-          <span className="text-[#7a7268]">Product Designer</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-            </span>
-            <span className="text-[14px] font-medium text-[#4e4740]">Открыт к предложениям</span>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-white">
+      <header className="mx-auto flex h-[84px] w-full max-w-[1548px] items-center py-[18px]">
+        <div className="flex min-w-0 flex-1 items-center">
+          <div className="flex items-center gap-[10px] whitespace-nowrap">
+            <span className="text-[15px] font-semibold leading-5 text-[#1a1d23]">Андрей Макаревич</span>
+            <span className="text-[14px] leading-[18px] text-[#c6c8d0]">•</span>
+            <span className="text-[14px] leading-[18px] text-[#9da1ae]">Product Designer</span>
           </div>
-          <button
-            type="button"
-            onClick={() => onCta({ type: 'open_contact_modal', source: 'entry' }, 'Написать мне')}
-            className="rounded-full bg-[#13110f] px-6 py-3 text-[15px] font-medium text-white transition hover:bg-[#22201c]"
-          >
-            Написать мне
-          </button>
+          <div className="min-w-px flex-1" />
+          <div className="flex items-center gap-3">
+            <PortfolioAvailabilityPill />
+            <PortfolioButton onClick={() => onCta({ type: 'open_contact_modal', source: 'entry' })}>
+              Написать мне
+            </PortfolioButton>
+          </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center py-10 px-8">
-        <div className="text-center max-w-[800px] mt-auto">
-          <h1 className="text-[64px] font-bold tracking-tight text-[#11110f] leading-tight">
+      <div className="mx-auto flex w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[32px]">
+        <section className="flex flex-col items-center gap-5">
+          <h1 className="text-center text-[78px] font-semibold leading-[84px] tracking-[-0.03em] text-[#11131a]">
             Макаревич Андрей
           </h1>
-          <p className="mt-3 text-[24px] text-[#6e675d] font-medium">
-            Продуктовый дизайнер
-          </p>
-        </div>
-
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          {['6 лет опыта', 'B2B / B2C', 'Mobile & Web', 'AI products'].map((badgeText) => (
-            <span
-              key={badgeText}
-              className="rounded-full border border-[#d9d1c6] bg-[#faf7f1] px-5 py-2.5 text-[15px] font-medium text-[#6b6257] shadow-sm"
-            >
-              {badgeText}
-            </span>
-          ))}
-        </div>
-
-        <div className="w-full max-w-[1400px] mt-16">
-          <h2 className="text-[20px] font-semibold text-[#151310] text-center mb-6">
-            Про какой кейс мне рассказать?
-          </h2>
-          <div className="flex gap-6 overflow-x-auto py-4 px-10 no-scrollbar justify-start xl:justify-center">
-            {railItems.filter(item => item.kind === 'case').map((item) => {
-              const preview = getCasePreview(item.id);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onRailClick(item)}
-                  className="w-[320px] h-[330px] shrink-0 rounded-[28px] border border-[#e8e2d8] bg-white p-4 text-left shadow-[0_10px_28px_rgba(34,28,20,0.04)] transition hover:border-[#d7cdbe] hover:shadow-[0_16px_36px_rgba(34,28,20,0.07)] flex flex-col justify-between"
-                >
-                  <PortfolioPreviewSurface
-                    src={preview?.imageUrl}
-                    title={item.label}
-                    subtitle={preview?.subtitle}
-                    badge={preview?.badge}
-                    className="aspect-[1.25/1] w-full"
-                  />
-                  <div className="mt-4 text-[17px] font-semibold leading-6 text-[#1b1915] line-clamp-2">
-                    {preview?.title || item.label}
-                  </div>
-                </button>
-              );
-            })}
+          <p className="text-center text-[30px] leading-[36px] text-[#707795]">Продуктовый дизайнер</p>
+          <div className="mt-[2px] flex flex-wrap items-center justify-center gap-[14px]">
+            {metadataChips.map((chip) => (
+              <PortfolioMetadataChip key={chip.id} iconSrc={chip.iconSrc} label={chip.label} />
+            ))}
           </div>
-        </div>
+        </section>
 
-        <div className="w-full max-w-[980px] mt-auto pt-12">
+        <section className="mt-[64px] w-full max-w-[1584px]">
+          <div className="flex items-center">
+            <h2 className="text-[24px] font-semibold leading-[30px] text-[#171920]">Про какой кейс мне рассказать?</h2>
+            <div className="min-w-px flex-1" />
+            <div className="flex items-center gap-[10px]">
+              <PortfolioButton
+                tone="secondary"
+                size="icon-sm"
+                onClick={() => scrollProjects('left')}
+                aria-label="Прокрутить проекты влево"
+                icon={
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/entry/icon-chevron-left.svg" alt="" className="size-4" />
+                }
+              />
+              <PortfolioButton
+                tone="secondary"
+                size="icon-sm"
+                onClick={() => scrollProjects('right')}
+                aria-label="Прокрутить проекты вправо"
+                icon={
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/entry/icon-chevron-right.svg" alt="" className="size-4" />
+                }
+              />
+            </div>
+          </div>
+
+          <div
+            ref={carouselRef}
+            className="no-scrollbar mt-[18px] overflow-x-auto overflow-y-hidden"
+          >
+            <div className="flex w-max gap-6 pb-4">
+              {caseRailItems.map(({ item, card }) => {
+                return (
+                  <PortfolioProjectPromptCard
+                    key={item.id}
+                    title={card.title}
+                    imageSrc={card.imageSrc}
+                    onClick={() => onRailClick(item)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-[52px] flex w-full max-w-[980px] flex-col items-center gap-6">
           <PortfolioComposer
             input={input}
             onChangeInput={onChangeInput}
@@ -121,20 +180,14 @@ export function PortfolioEntryView({
             disabled={loading}
             textareaRef={textareaRef}
             placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
-            title="Задать вопрос"
+            variant="landing"
           />
-
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-[18px]">
             {chips.map((chip) => (
-              <PortfolioPromptChip
-                key={chip.id}
-                chip={chip}
-                onClick={onChipClick}
-                emphasis
-              />
+              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

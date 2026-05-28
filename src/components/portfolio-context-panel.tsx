@@ -1,6 +1,7 @@
 import type { AssistantEnvelope, UIAction } from '@/lib/portfolio/types';
 import { getCaseById } from '@/data/portfolio-content';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
+import { PortfolioButton } from './portfolio-button';
 
 function getCasePreview(caseId: string | null) {
   if (!caseId) {
@@ -27,7 +28,7 @@ export function PortfolioContextPanel({
   onAction,
 }: {
   envelope: AssistantEnvelope;
-  onAction: (action: UIAction, label?: string) => void;
+  onAction: (action: UIAction) => void;
 }) {
   const panel = envelope.contextPanel;
   const contextPreview =
@@ -66,7 +67,7 @@ export function PortfolioContextPanel({
             };
 
   return (
-    <aside className="rounded-[34px] border border-[#e8e1d7] bg-white p-5 shadow-[0_14px_36px_rgba(31,26,20,0.04)]">
+    <aside className="rounded-[34px] border border-[#EBEDF2] bg-white p-5 shadow-[0_14px_36px_rgba(31,26,20,0.04)]">
       <PortfolioPreviewSurface
         src={contextPreview.imageUrl}
         title={contextPreview.title}
@@ -85,7 +86,7 @@ export function PortfolioContextPanel({
           {panel.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-[#ece5da] bg-[#faf7f1] px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
+              className="rounded-full border border-[#EBEDF2] bg-[#faf7f1] px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
             >
               {tag}
             </span>
@@ -94,7 +95,7 @@ export function PortfolioContextPanel({
       ) : null}
 
       {panel.metrics?.length ? (
-        <div className="mt-5 space-y-3 border-t border-[#eee7dd] pt-5">
+        <div className="mt-5 space-y-3 border-t border-[#EBEDF2] pt-5">
           {panel.metrics.map((metric) => (
             <div key={`${metric.value}-${metric.label}`} className="flex items-start justify-between gap-3">
               <span className="text-[18px] font-semibold text-[#11110f]">{metric.value}</span>
@@ -105,7 +106,7 @@ export function PortfolioContextPanel({
       ) : null}
 
       {panel.role ? (
-        <div className="mt-5 border-t border-[#eee7dd] pt-5">
+        <div className="mt-5 border-t border-[#EBEDF2] pt-5">
           <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#9a9083]">Роль</div>
           <div className="mt-2 text-[16px] font-semibold text-[#11110f]">{panel.role}</div>
           {panel.roleDescription ? (
@@ -117,13 +118,13 @@ export function PortfolioContextPanel({
       {panel.note ? <div className="mt-5 text-[15px] leading-7 text-[#5e564d]">{panel.note}</div> : null}
 
       {panel.cta ? (
-        <button
-          type="button"
-          onClick={() => onAction(panel.cta!.action, panel.cta!.label)}
-          className="mt-6 w-full rounded-full bg-[#13110f] px-5 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#22201c]"
+        <PortfolioButton
+          className="mt-6 w-full"
+          size="lg"
+          onClick={() => onAction(panel.cta!.action)}
         >
           {panel.cta.label}
-        </button>
+        </PortfolioButton>
       ) : null}
     </aside>
   );

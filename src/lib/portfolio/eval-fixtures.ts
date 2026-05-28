@@ -357,6 +357,163 @@ export const batch2DirtyRussianFixtures: IntentEvalFixture[] = [
   },
 ];
 
+export const batch3ReleaseCoreFixtures: IntentEvalFixture[] = [
+  {
+    input: 'почему мне вообще тратить на него слот?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+  {
+    input: 'с чего ты взял что его надо звать?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+  {
+    input: 'где здесь senior сигнал?',
+    expectedIntent: 'role_fit_assessment',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'role_fit_assessment',
+  },
+  {
+    input: 'если мне нужен человек с продуктовым позвоночником, это про него?',
+    expectedIntent: 'role_fit_assessment',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'role_fit_assessment',
+  },
+  {
+    input: 'что у него есть кроме аккуратного ui?',
+    expectedIntent: 'decision_process',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'decision_process',
+  },
+  {
+    input: 'где видно что он влияет на продукт?',
+    expectedIntent: 'evidence_request',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'evidence_request',
+  },
+  {
+    input: 'какой кейс лучше открыть первым для оценки?',
+    expectedIntent: 'evidence_request',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'evidence_request',
+  },
+  {
+    input: 'что меня должно смутить как нанимающего?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+  {
+    input: 'где он может не вывезти?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+  {
+    input: 'какой риск если дать ему сложный b2b?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+];
+
+// Exploratory objection tail for skeptical hiring leads.
+// Useful for classifier hardening, but not part of release gating.
+export const batch3ExploratoryFixtures: IntentEvalFixture[] = [
+  {
+    input: 'чем он сильнее обычного продуктового дизайнера?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+  {
+    input: 'а если коротко, звать его или нет?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+  {
+    input: 'пока выглядит как нормальный мидл, почему это не так?',
+    expectedIntent: 'role_fit_assessment',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'role_fit_assessment',
+  },
+  {
+    input: 'какой у него потолок по роли?',
+    expectedIntent: 'role_fit_assessment',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'role_fit_assessment',
+  },
+  {
+    input: 'на какую команду он лучше зайдет?',
+    expectedIntent: 'role_fit_assessment',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'role_fit_assessment',
+  },
+  {
+    input: 'он умеет не только рисовать?',
+    expectedIntent: 'decision_process',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'decision_process',
+  },
+  {
+    input: 'на чем вообще основан вывод про senior?',
+    expectedIntent: 'evidence_request',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'evidence_request',
+  },
+  {
+    input: 'какой кейс лучше всего показывает мозги, а не пиксели?',
+    expectedIntent: 'evidence_request',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'evidence_request',
+  },
+  {
+    input: 'где смотреть если мне важен research?',
+    expectedIntent: 'evidence_request',
+    expectedPresentationVariant: 'sectioned_reply',
+    expectedViewType: 'evidence_request',
+  },
+  {
+    input: 'есть ощущение что он больше про execution, это так?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+  {
+    input: 'если сравнивать с сильным senior, где у него зазор?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+  {
+    input: 'куда его опасно сажать?',
+    expectedIntent: 'risk_objection',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'risk_objection',
+  },
+  {
+    input: 'почему его не отсеять после первого скрининга?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+  {
+    input: 'что в нем не банально?',
+    expectedIntent: 'strengths_assessment',
+    expectedPresentationVariant: 'bullet_reply',
+    expectedViewType: 'strengths_assessment',
+  },
+];
+
+export const batch3HiringLeadObjectionFixtures: IntentEvalFixture[] = [
+  ...batch3ReleaseCoreFixtures,
+  ...batch3ExploratoryFixtures,
+];
+
 export const intentEvalFixtures: IntentEvalFixture[] = [
   ...batch1CuratedFixtures,
   ...batch2DirtyRussianFixtures,
