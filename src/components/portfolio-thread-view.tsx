@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
+import { THREAD_EASE, WORKSPACE_EASE } from './portfolio-motion';
 import { PortfolioUserBubble } from './portfolio-user-bubble';
 import { PortfolioAssistantEnvelopeView } from './portfolio-assistant-envelope';
 import { PortfolioAssistantLoadingRow } from './portfolio-assistant-loading-row';
@@ -18,9 +19,6 @@ type ContextId =
   | 'mobile-experience'
   | 'additional-cases'
   | `case:${string}`;
-
-const EASE_OUT = [0.22, 1, 0.36, 1] as const;
-const SMOOTH_EASE = [0.16, 1, 0.3, 1] as const;
 
 export function PortfolioThreadView({
   items,
@@ -88,7 +86,7 @@ export function PortfolioThreadView({
       return {
         initial: { opacity: 0, y: 44 },
         animate: { opacity: 1, y: 0, scale: 1 },
-        transition: { duration: 0.48, delay: index * 0.08, ease: SMOOTH_EASE },
+        transition: { duration: 0.48, delay: index * 0.08, ease: WORKSPACE_EASE },
       };
     }
 
@@ -96,14 +94,14 @@ export function PortfolioThreadView({
       return {
         initial: { opacity: 0, y: 86, scale: 0.98 },
         animate: { opacity: 1, y: 0, scale: 1 },
-        transition: { duration: 0.54, ease: SMOOTH_EASE },
+        transition: { duration: 0.54, ease: WORKSPACE_EASE },
       };
     }
 
     return {
       initial: { opacity: 0, y: 54 },
       animate: { opacity: 1, y: 0, scale: 1 },
-      transition: { duration: 0.5, delay: 0.16 + index * 0.06, ease: SMOOTH_EASE },
+      transition: { duration: 0.5, delay: 0.16 + index * 0.06, ease: WORKSPACE_EASE },
     };
   }
 
@@ -111,7 +109,7 @@ export function PortfolioThreadView({
     <div
       ref={threadViewportRef}
       onScroll={handleScroll}
-      className="min-h-0 flex-1 space-y-7 overflow-y-auto"
+      className="min-h-0 flex-1 space-y-7 overflow-y-auto pb-3 pr-1"
     >
       {items.map((item, index) =>
         item.kind === 'user' ? (
@@ -136,7 +134,7 @@ export function PortfolioThreadView({
         <motion.div
           initial={animateThreadStart ? { opacity: 0, y: 40 } : false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.42, delay: animateThreadStart ? 0.22 : 0, ease: SMOOTH_EASE }}
+          transition={{ duration: 0.42, delay: animateThreadStart ? 0.22 : 0, ease: WORKSPACE_EASE }}
         >
           <PortfolioAssistantLoadingRow />
         </motion.div>
@@ -146,7 +144,7 @@ export function PortfolioThreadView({
         <motion.div
           initial={animateThreadStart ? { opacity: 0, y: 20 } : false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.24, ease: EASE_OUT }}
+          transition={{ duration: 0.24, ease: THREAD_EASE }}
           className="rounded-[28px] border border-red-200 bg-red-50 px-6 py-5 text-[15px] leading-7 text-red-700"
         >
           Ошибка: {error}

@@ -2,10 +2,9 @@
 
 import { motion } from 'framer-motion';
 
+import { WORKSPACE_EASE } from './portfolio-motion';
 import { PortfolioAvailabilityPill } from './portfolio-availability-pill';
 import { PortfolioButton } from './portfolio-button';
-
-const SOFT_EASE = [0.16, 1, 0.3, 1] as const;
 
 export function PortfolioDesktopHeader({
   onContactClick,
@@ -19,7 +18,7 @@ export function PortfolioDesktopHeader({
   return (
     <motion.header
       animate={{ borderColor: showDivider ? '#EBEDF2' : 'rgba(235,237,242,0)' }}
-      transition={{ duration: 0.4, ease: SOFT_EASE }}
+      transition={{ duration: 0.4, ease: WORKSPACE_EASE }}
       className="flex h-[84px] shrink-0 items-center justify-between border-b"
     >
       <div className="flex items-center gap-[10px] whitespace-nowrap">

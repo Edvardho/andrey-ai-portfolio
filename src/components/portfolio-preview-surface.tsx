@@ -23,7 +23,7 @@ export function PortfolioPreviewSurface({
 
   if (src && !broken) {
     return (
-      <div className={cx('overflow-hidden rounded-[24px] border border-[#e8e2d8] bg-[#f6f3ee]', className)}>
+      <div className={cx('overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
@@ -36,9 +36,9 @@ export function PortfolioPreviewSurface({
   }
 
   return (
-    <div
+      <div
       className={cx(
-        'overflow-hidden rounded-[24px] border border-[#e8e2d8] bg-[linear-gradient(160deg,#faf8f4_0%,#f0ece6_100%)]',
+        'overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[linear-gradient(160deg,#faf8f4_0%,#f0ece6_100%)]',
         className,
       )}
     >

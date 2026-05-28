@@ -67,7 +67,7 @@ export function PortfolioContextPanel({
             };
 
   return (
-    <aside className="rounded-[34px] border border-[#EBEDF2] bg-white p-5 shadow-[0_14px_36px_rgba(31,26,20,0.04)]">
+    <aside className="rounded-[32px] border border-[#EBEDF2] bg-white p-[18px] shadow-[0_12px_28px_rgba(31,26,20,0.035)]">
       <PortfolioPreviewSurface
         src={contextPreview.imageUrl}
         title={contextPreview.title}
@@ -76,17 +76,17 @@ export function PortfolioContextPanel({
         className="aspect-[1.25/1]"
       />
 
-      <div className="mt-5">
-        <div className="text-[28px] font-semibold tracking-[-0.03em] text-[#11110f]">{panel.title}</div>
-        <div className="mt-2 text-[15px] text-[#7c746a]">{panel.subtitle}</div>
+      <div className="mt-[18px]">
+        <div className="text-[26px] font-semibold tracking-[-0.03em] text-[#11110f]">{panel.title}</div>
+        <div className="mt-2 text-[15px] leading-[1.55] text-[#7c746a]">{panel.subtitle}</div>
       </div>
 
       {panel.tags.length ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-[10px]">
           {panel.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-[#EBEDF2] bg-[#faf7f1] px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
+              className="rounded-full border border-[#EBEDF2] bg-white px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
             >
               {tag}
             </span>
@@ -95,31 +95,31 @@ export function PortfolioContextPanel({
       ) : null}
 
       {panel.metrics?.length ? (
-        <div className="mt-5 space-y-3 border-t border-[#EBEDF2] pt-5">
+        <div className="mt-[18px] space-y-3 border-t border-[#EBEDF2] pt-[18px]">
           {panel.metrics.map((metric) => (
             <div key={`${metric.value}-${metric.label}`} className="flex items-start justify-between gap-3">
               <span className="text-[18px] font-semibold text-[#11110f]">{metric.value}</span>
-              <span className="text-right text-[14px] leading-6 text-[#726a60]">{metric.label}</span>
+              <span className="text-right text-[14px] leading-[1.55] text-[#726a60]">{metric.label}</span>
             </div>
           ))}
         </div>
       ) : null}
 
       {panel.role ? (
-        <div className="mt-5 border-t border-[#EBEDF2] pt-5">
+        <div className="mt-[18px] border-t border-[#EBEDF2] pt-[18px]">
           <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#9a9083]">Роль</div>
           <div className="mt-2 text-[16px] font-semibold text-[#11110f]">{panel.role}</div>
           {panel.roleDescription ? (
-            <div className="mt-2 text-[15px] leading-7 text-[#665f56]">{panel.roleDescription}</div>
+            <div className="mt-2 text-[15px] leading-[1.7] text-[#665f56]">{panel.roleDescription}</div>
           ) : null}
         </div>
       ) : null}
 
-      {panel.note ? <div className="mt-5 text-[15px] leading-7 text-[#5e564d]">{panel.note}</div> : null}
+      {panel.note ? <div className="mt-[18px] text-[15px] leading-[1.7] text-[#5e564d]">{panel.note}</div> : null}
 
       {panel.cta ? (
         <PortfolioButton
-          className="mt-6 w-full"
+          className="mt-5 w-full"
           size="lg"
           onClick={() => onAction(panel.cta!.action)}
         >

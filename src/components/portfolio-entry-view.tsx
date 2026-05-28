@@ -7,6 +7,7 @@ import type { RailItem, PromptChip } from '@/lib/portfolio/types';
 import { PortfolioButton } from './portfolio-button';
 import { PortfolioComposer } from './portfolio-composer';
 import { PortfolioMetadataChip } from './portfolio-metadata-chip';
+import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 import { PortfolioProjectPromptCard } from './portfolio-project-prompt-card';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 
@@ -50,14 +51,6 @@ const metadataChips = [
   { id: 'platform', label: 'Mobile & Web', iconSrc: '/entry/icon-platform.svg' },
   { id: 'ai', label: 'AI products', iconSrc: '/entry/icon-ai.svg' },
 ];
-
-const SOFT_EASE = [0.16, 1, 0.3, 1] as const;
-const COMPOSER_SPRING = {
-  type: 'spring' as const,
-  stiffness: 220,
-  damping: 28,
-  mass: 0.95,
-};
 
 export function PortfolioEntryView({
   railItems,
@@ -107,14 +100,14 @@ export function PortfolioEntryView({
       initial={{ opacity: 1 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.42, ease: SOFT_EASE }}
+      transition={STAGE_FADE}
     >
-      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[32px]">
+      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[34px]">
         <motion.section
           layout
           className="flex flex-col items-center gap-5"
           exit={{ y: -28, opacity: 0 }}
-          transition={{ duration: 0.48, ease: SOFT_EASE }}
+          transition={{ duration: 0.48, ease: WORKSPACE_EASE }}
         >
           <h1 className="text-center text-[78px] font-semibold leading-[84px] tracking-[-0.03em] text-[#11131a]">
             Макаревич Андрей
@@ -131,7 +124,7 @@ export function PortfolioEntryView({
           layout
           className="mt-[64px] w-full max-w-[1584px]"
           exit={{ y: -22, opacity: 0 }}
-          transition={{ duration: 0.44, ease: SOFT_EASE }}
+          transition={{ duration: 0.44, ease: WORKSPACE_EASE }}
         >
           <div className="flex items-center">
             <h2 className="text-[24px] font-semibold leading-[30px] text-[#171920]">Про какой кейс мне рассказать?</h2>
@@ -182,12 +175,12 @@ export function PortfolioEntryView({
         <motion.section
           layout
           className="mt-[52px] flex w-full max-w-[980px] flex-col items-center gap-6"
-          transition={COMPOSER_SPRING}
+          transition={COMPOSER_DOCK_SPRING}
         >
           <motion.div
             layoutId={composerLayoutId}
             className="w-full"
-            transition={COMPOSER_SPRING}
+            transition={COMPOSER_DOCK_SPRING}
           >
             <PortfolioComposer
               input={input}
@@ -202,7 +195,7 @@ export function PortfolioEntryView({
           <motion.div
             className="flex flex-wrap items-center justify-center gap-[18px]"
             exit={{ y: 108, opacity: 0 }}
-            transition={{ duration: 0.46, ease: SOFT_EASE }}
+            transition={{ duration: 0.46, ease: WORKSPACE_EASE }}
           >
             {chips.map((chip) => (
               <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />

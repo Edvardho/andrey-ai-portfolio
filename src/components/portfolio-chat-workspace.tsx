@@ -8,6 +8,7 @@ import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
 import { PortfolioContextPanel } from './portfolio-context-panel';
 import { PortfolioComposer } from './portfolio-composer';
+import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 
 interface ContextThread {
   contextId: ContextId;
@@ -16,14 +17,6 @@ interface ContextThread {
   initialized: boolean;
   updatedAt: string;
 }
-
-const SOFT_EASE = [0.16, 1, 0.3, 1] as const;
-const COMPOSER_SPRING = {
-  type: 'spring' as const,
-  stiffness: 220,
-  damping: 28,
-  mass: 0.95,
-};
 
 export function PortfolioChatWorkspace({
   railItems,
@@ -74,14 +67,14 @@ export function PortfolioChatWorkspace({
       initial={false}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      transition={STAGE_FADE}
     >
       <div className="grid h-full min-h-0 grid-cols-[298px_1px_980px_1px_304px] overflow-hidden">
         <motion.div
           className="min-h-0"
           initial={animateStageEntry ? { opacity: 0, x: -32 } : false}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.48, ease: SOFT_EASE, delay: 0.08 }}
+          transition={{ duration: 0.48, ease: WORKSPACE_EASE, delay: 0.08 }}
         >
           <PortfolioRailSidebar
             railItems={railItems}
@@ -94,10 +87,10 @@ export function PortfolioChatWorkspace({
         <div className="bg-[#EBEDF2]" aria-hidden="true" />
 
         <motion.div
-          className="flex min-h-0 flex-col px-6 pt-6"
+          className="flex min-h-0 flex-col px-6 pb-5 pt-6"
           initial={animateStageEntry ? { opacity: 0, y: 34 } : false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.56, ease: SOFT_EASE }}
+          transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
           <PortfolioThreadView
             items={currentThread.items}
@@ -113,8 +106,8 @@ export function PortfolioChatWorkspace({
 
           <motion.div
             layoutId={composerLayoutId}
-            className="mt-6"
-            transition={COMPOSER_SPRING}
+            className="mt-5"
+            transition={COMPOSER_DOCK_SPRING}
           >
             <PortfolioComposer
               input={input}
@@ -134,7 +127,7 @@ export function PortfolioChatWorkspace({
           className="min-h-0 pl-6 pt-6"
           initial={animateStageEntry ? { opacity: 0, x: 32 } : false}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.48, ease: SOFT_EASE, delay: 0.12 }}
+          transition={{ duration: 0.48, ease: WORKSPACE_EASE, delay: 0.12 }}
         >
           {currentEnvelope ? <PortfolioContextPanel envelope={currentEnvelope} onAction={onCta} /> : null}
         </motion.div>
