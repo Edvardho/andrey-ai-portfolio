@@ -5,8 +5,25 @@ import { z } from 'zod';
 import { getOpenAIKey, getOpenAIModel } from '@/lib/portfolio/config';
 import type { AssistantSession, UIAction } from '@/lib/portfolio/types';
 
-type DeterministicIntent = {
-  action: UIAction;
+export type MessageIntent =
+  | { type: 'navigation_action'; action: UIAction }
+  | { type: 'assistant_intro' }
+  | { type: 'identity_intro' }
+  | { type: 'experience_overview' }
+  | { type: 'strengths_assessment' }
+  | { type: 'role_fit_assessment' }
+  | { type: 'decision_process' }
+  | { type: 'evidence_request' }
+  | { type: 'risk_objection' }
+  | { type: 'missing_case_request'; requestedCase?: string }
+  | { type: 'ambiguous_question' }
+  | { type: 'unsupported_request' };
+
+export type IntentConfidence = 'high' | 'medium' | 'low';
+
+export type IntentClassification = {
+  intent: MessageIntent;
+  confidence: IntentConfidence;
 };
 
 const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
@@ -28,6 +45,8 @@ const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
   { caseId: 'ux-ui-wannabelike', patterns: [/wannabelike/i, /superapp/i, /миш/i, /структур/i, /ux\/ui/i] },
 ];
 
+const mobileCaseIds = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike', 'alfa-smart']);
+
 function findCaseId(text: string): string | null {
   const lowered = text.toLowerCase();
 
@@ -40,107 +59,295 @@ function findCaseId(text: string): string | null {
   return null;
 }
 
-export function classifyMessageDeterministically(
-  text: string,
-  session: AssistantSession,
-): DeterministicIntent | null {
+function normalizeRequestedCase(raw: string | undefined): string | undefined {
+  if (!raw) {
+    return undefined;
+  }
+
+  return raw
+    .replace(/^[«"'\s]+|[»"'?.!,\s]+$/g, '')
+    .replace(/^(про|о|по)\s+/i, '')
+    .trim();
+}
+
+function extractExplicitCaseRequest(text: string): string | undefined {
+  const trimmed = text.trim();
+  const explicitRequest = /(покажи|открой|есть ли|дай|хочу посмотреть|был(?:\s+ли)?)/i.test(trimmed);
+  const caseWord = /(кейс|case|проект)/i.test(trimmed);
+
+  if (!explicitRequest || !caseWord) {
+    return undefined;
+  }
+
+  const match = trimmed.match(/(?:кейс|case|проект)(?:\s+про|\s+о|\s+по)?\s+(.+)/i);
+  if (match?.[1]) {
+    return normalizeRequestedCase(match[1]);
+  }
+
+  return undefined;
+}
+
+function buildNavigationAction(
+  action: string,
+  caseId?: string,
+  source?: string,
+): UIAction | null {
+  switch (action) {
+    case 'open_entry':
+      return { type: 'open_entry' };
+    case 'open_case_summary':
+      return caseId ? { type: 'open_case_summary', caseId } : null;
+    case 'open_case_detail':
+      return caseId ? { type: 'open_case_detail', caseId } : null;
+    case 'open_case_route':
+      return caseId ? { type: 'open_case_route', caseId } : null;
+    case 'open_experience_summary':
+      return { type: 'open_experience_summary' };
+    case 'open_experience_detail':
+      return { type: 'open_experience_detail' };
+    case 'open_experience_route':
+      return caseId ? { type: 'open_experience_route', caseId } : null;
+    case 'open_mobile_experience_overview':
+      return { type: 'open_mobile_experience_overview' };
+    case 'open_mobile_case_summary':
+      return caseId ? { type: 'open_mobile_case_summary', caseId } : null;
+    case 'open_mobile_case_detail':
+      return caseId ? { type: 'open_mobile_case_detail', caseId } : null;
+    case 'open_additional_cases_overview':
+      return { type: 'open_additional_cases_overview' };
+    case 'open_contact_modal':
+      return { type: 'open_contact_modal', source: source || 'message' };
+    default:
+      return null;
+  }
+}
+
+function classifyMessageWithFallbackHeuristics(text: string): IntentClassification | null {
   const lowered = text.trim().toLowerCase();
 
   if (!lowered) {
     return null;
   }
 
-  if (/как(ой|ого).+опыт|где.+работал|опыт работы|career/i.test(lowered)) {
-    return { action: { type: 'open_experience_summary' } };
+  if (
+    /(?:а\s+)?ты.*кто|кто\s+ты(?:\s+такой)?|ну\s+ты\s+кто|что ты умеешь|что ты можешь|чем ты полезен|ты мне чем полезен|что умеет ассистент|что это за ассистент|что ты тут делаешь|ты зачем нужен|зачем ты тут/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'assistant_intro' }, confidence: 'high' };
   }
 
-  if (/подробн|по компани|траектор/i.test(lowered) && session.selectedContext.kind === 'experience') {
-    return { action: { type: 'open_experience_detail' } };
-  }
-
-  if (/мобил/i.test(lowered) || /mobile/i.test(lowered)) {
-    const caseId = findCaseId(lowered);
-    if (caseId && ['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike', 'alfa-smart'].includes(caseId)) {
-      return { action: { type: 'open_mobile_case_summary', caseId } };
-    }
-    return { action: { type: 'open_mobile_experience_overview' } };
-  }
-
-  if (/кроме|еще делал|шире|дополнительн/i.test(lowered)) {
-    return { action: { type: 'open_additional_cases_overview' } };
+  if (/расскажи о себе|представься|кратко о себе/i.test(lowered)) {
+    return { intent: { type: 'assistant_intro' }, confidence: 'medium' };
   }
 
   if (
-    (lowered.includes('кейс') && lowered.includes('сильн')) ||
-    lowered.includes('флагман')
+    /кто такой андрей|что это за кандидат|что за кандидат|расскажи про андрея|представ(ь|ьте).+андре|ну и кто такой андрей|что за чел|это вообще кто|короче кто он|что он за тип как спец/i.test(
+      lowered,
+    )
   ) {
-    return { action: { type: 'open_case_summary', caseId: 'alfa-smart' } };
+    return { intent: { type: 'identity_intro' }, confidence: 'high' };
   }
 
-  if (/контакт|связа|написа/i.test(lowered)) {
-    return { action: { type: 'open_contact_modal', source: 'message' } };
+  if (
+    /какой опыт работы|где он работал|с какими доменами работал|какие компании|где он успел поработать|что у него по опыту|в каких темах он вообще варился|по доменам что у него|что у него по карьере|какой у него бэкграунд/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'experience_overview' }, confidence: 'high' };
   }
 
-  const caseId = findCaseId(lowered);
-  if (caseId) {
-    if (/подробн|длинн|детал/i.test(lowered)) {
-      if (session.selectedContext.kind === 'experience') {
-        return { action: { type: 'open_experience_route', caseId } };
-      }
-
-      if (['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike'].includes(caseId)) {
-        return { action: { type: 'open_mobile_case_detail', caseId } };
-      }
-
-      return { action: { type: 'open_case_detail', caseId } };
-    }
-
-    if (/маршрут|почему этот кейс|стоит открыть|что это доказывает/i.test(lowered)) {
-      if (session.selectedContext.kind === 'experience') {
-        return { action: { type: 'open_experience_route', caseId } };
-      }
-      return { action: { type: 'open_case_route', caseId } };
-    }
-
-    if (['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike'].includes(caseId)) {
-      return { action: { type: 'open_mobile_case_summary', caseId } };
-    }
-
-    return { action: { type: 'open_case_summary', caseId } };
+  if (
+    /почему его стоит позвать|почему его стоит звать|почему звать на интервью|в чем его сильная сторона|сильные стороны|и в чем он реально хорош|почему мне его дальше тащить|что в нем цепляет как в кандидате|окей а где сильный сигнал|что в нем сильного/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'strengths_assessment' }, confidence: 'high' };
   }
 
-  if (/кто.+андрей|о себе|портфолио/i.test(lowered)) {
-    return { action: { type: 'open_entry' } };
+  if (
+    /на какой он уровень|на какие роли он подойдет|senior|middle|lead|куда его лучше приземлять|на какую роль он норм/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'role_fit_assessment' }, confidence: 'high' };
+  }
+
+  if (
+    /как он принимает решения|как он вообще решения принимает|как валидирует|как исследует|продуктовый подход|product thinking|он продуктом думает|пиксели красит|что у него с research|как он проверяет что не ерунду сделал/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'decision_process' }, confidence: 'high' };
+  }
+
+  if (
+    /где это подтверждается|где это видно|чем это доказывается|артефакт|доказательств|окей а пруфы где|на чем выводы основаны|чем это вообще подтверждается|где видно что это не слова/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'evidence_request' }, confidence: 'high' };
+  }
+
+  if (
+    /какие у него слабые стороны|какие есть риски|ограничения|anti-case|неудачи|а где у него слабое место|что тут смущает|а риск какой если брать|в чем он может просесть/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
+  if (
+    /что думаешь|биткоин|биток|битка|крипт|нефть|погода|новости|политика|сериал|кино/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'unsupported_request' }, confidence: 'high' };
+  }
+
+  if (/расскажи подробнее|интересно|подробней|а дальше/i.test(lowered)) {
+    return { intent: { type: 'ambiguous_question' }, confidence: 'low' };
   }
 
   return null;
 }
 
+export function classifyMessageDeterministically(
+  text: string,
+  session: AssistantSession,
+): IntentClassification | null {
+  const lowered = text.trim().toLowerCase();
+
+  if (!lowered) {
+    return null;
+  }
+
+  if (/контакт|связа|написа/i.test(lowered)) {
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_contact_modal', source: 'message' } },
+      confidence: 'high',
+    };
+  }
+
+  if (/(покажи|открой|перейди|дай|хочу посмотреть).*(мобил|mobile)/i.test(lowered)) {
+    const caseId = findCaseId(lowered);
+    if (caseId && mobileCaseIds.has(caseId)) {
+      return {
+        intent: { type: 'navigation_action', action: { type: 'open_mobile_case_summary', caseId } },
+        confidence: 'high',
+      };
+    }
+
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_mobile_experience_overview' } },
+      confidence: 'high',
+    };
+  }
+
+  if (/(что еще делал|еще кейсы|дополнительн(ые|ый)? кейс|кроме флагман|есть что-то кроме флагмана)/i.test(lowered)) {
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_additional_cases_overview' } },
+      confidence: 'high',
+    };
+  }
+
+  if (/(покажи|открой).*(опыт работы|career|компани|домены)/i.test(lowered)) {
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_experience_summary' } },
+      confidence: 'high',
+    };
+  }
+
+  const caseId = findCaseId(lowered);
+  if (caseId && /(покажи|открой|перейди|дай|хочу посмотреть|разверни|отведи)/i.test(lowered)) {
+    if (/подробн|длинн|детал/i.test(lowered)) {
+      if (session.selectedContext.kind === 'experience') {
+        return {
+          intent: { type: 'navigation_action', action: { type: 'open_experience_route', caseId } },
+          confidence: 'high',
+        };
+      }
+
+      return {
+        intent: { type: 'navigation_action', action: { type: 'open_case_detail', caseId } },
+        confidence: 'high',
+      };
+    }
+
+    if (/маршрут|почему этот кейс|стоит открыть|что это доказывает/i.test(lowered)) {
+      if (session.selectedContext.kind === 'experience') {
+        return {
+          intent: { type: 'navigation_action', action: { type: 'open_experience_route', caseId } },
+          confidence: 'high',
+        };
+      }
+
+      return {
+        intent: { type: 'navigation_action', action: { type: 'open_case_route', caseId } },
+        confidence: 'high',
+      };
+    }
+
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_case_summary', caseId } },
+      confidence: 'high',
+    };
+  }
+
+  const requestedCase = extractExplicitCaseRequest(text);
+  if (requestedCase) {
+    return {
+      intent: { type: 'missing_case_request', requestedCase },
+      confidence: 'high',
+    };
+  }
+
+  return null;
+}
+
+const classifierActionSchema = z.enum([
+  'open_entry',
+  'open_case_summary',
+  'open_case_detail',
+  'open_case_route',
+  'open_experience_summary',
+  'open_experience_detail',
+  'open_experience_route',
+  'open_mobile_experience_overview',
+  'open_mobile_case_summary',
+  'open_mobile_case_detail',
+  'open_additional_cases_overview',
+  'open_contact_modal',
+]);
+
 const classificationSchema = z.object({
-  action: z.enum([
-    'open_entry',
-    'open_case_summary',
-    'open_case_detail',
-    'open_case_route',
-    'open_experience_summary',
-    'open_experience_detail',
-    'open_experience_route',
-    'open_mobile_experience_overview',
-    'open_mobile_case_summary',
-    'open_mobile_case_detail',
-    'open_additional_cases_overview',
-    'open_contact_modal',
+  intent: z.enum([
+    'navigation_action',
+    'assistant_intro',
+    'identity_intro',
+    'experience_overview',
+    'strengths_assessment',
+    'role_fit_assessment',
+    'decision_process',
+    'evidence_request',
+    'risk_objection',
+    'missing_case_request',
     'ambiguous_question',
-    'no_matching_case',
+    'unsupported_request',
   ]),
+  confidence: z.enum(['high', 'medium', 'low']),
+  action: classifierActionSchema.optional(),
   caseId: z.string().optional(),
+  requestedCase: z.string().optional(),
   source: z.string().optional(),
 });
 
 const CLASSIFIER_PROMPT = `
-Ты — классификатор для backend AI portfolio assistant. 
-Тебе нельзя придумывать новые действия.
-Ты должен выбрать только одно action из списка и, если нужен caseId, вернуть один из:
+Ты классифицируешь сообщения для AI portfolio assistant про Андрея Макаревича.
+Главный пользователь — hiring lead, который решает, звать ли Андрея на интервью.
+Нельзя выдумывать кейсы, факты, роли, достижения и отсутствующие caseId.
+
+Разрешенные известные caseId:
 - alfa-smart
 - siebel
 - chatpoint
@@ -148,15 +355,59 @@ const CLASSIFIER_PROMPT = `
 - subscription-sharing
 - ux-ui-wannabelike
 
+Твоя задача — вернуть ровно один intent:
+- navigation_action
+- assistant_intro
+- identity_intro
+- experience_overview
+- strengths_assessment
+- role_fit_assessment
+- decision_process
+- evidence_request
+- risk_objection
+- missing_case_request
+- ambiguous_question
+- unsupported_request
+
 Правила:
-- Если запрос про опыт работы -> open_experience_summary или open_experience_detail.
-- Если запрос про мобильные кейсы в целом -> open_mobile_experience_overview.
-- Если запрос про конкретный кейс из мобильных -> open_mobile_case_summary или open_mobile_case_detail.
-- Если запрос про флагманский кейс Андрея -> alfa-smart.
-- Если запрос про breadth / другие кейсы -> open_additional_cases_overview.
-- Если запрос про контакт -> open_contact_modal.
-- Если нельзя уверенно понять, что хочет пользователь -> ambiguous_question.
-- Если кейса в базе нет -> no_matching_case.
+- Если пользователь явно хочет открыть известный кейс, опыт, breadth или контакт -> navigation_action.
+- Если пользователь спрашивает, кто такой сам ассистент, что он умеет, чем полезен -> assistant_intro.
+- Если пользователь спрашивает, кто такой Андрей, что это за кандидат, просит кратко представить -> identity_intro.
+- Если пользователь спрашивает про опыт, компании, домены -> experience_overview.
+- Если пользователь спрашивает про сильные стороны или почему стоит звать на интервью -> strengths_assessment.
+- Если пользователь спрашивает про уровень, seniority или fit для роли -> role_fit_assessment.
+- Если пользователь спрашивает, как Андрей принимает решения, исследует или валидирует -> decision_process.
+- Если пользователь просит доказательства, подтверждения, артефакты или спрашивает, где это видно -> evidence_request.
+- Если пользователь спрашивает про слабые стороны, ограничения, риски -> risk_objection.
+- Если пользователь просит конкретный кейс, которого нет в известном списке -> missing_case_request.
+- Если вопрос вне границ портфолио, требует внешнего мнения, world knowledge или не относится к оценке кандидата -> unsupported_request.
+- ambiguous_question только если запрос невозможно уверенно отнести ни к одному из классов выше.
+
+Confidence:
+- high: смысл запроса ясен, intent очевиден, риск ошибочного роутинга низкий.
+- medium: intent наиболее вероятен, но формулировка общая или допускает альтернативное чтение.
+- low: intent нельзя уверенно определить без догадки; в этом случае лучше ambiguous_question или осторожный fallback.
+
+Примеры:
+- "Кто ты такой?" -> assistant_intro, high
+- "Расскажи о себе" -> assistant_intro, medium
+- "ну ты кто" -> assistant_intro, high
+- "Кто такой Андрей?" -> identity_intro, high
+- "Что это за кандидат?" -> identity_intro, medium
+- "что за кандидат" -> identity_intro, medium
+- "где он успел поработать" -> experience_overview, high
+- "Почему его стоит позвать?" -> strengths_assessment, high
+- "он вообще на senior тянет?" -> role_fit_assessment, high
+- "он продуктом думает или только пиксели красит" -> decision_process, high
+- "окей а пруфы где" -> evidence_request, high
+- "а риск какой если брать" -> risk_objection, high
+- "что думаешь про нефть" -> unsupported_request, high
+- "Расскажи подробнее" -> ambiguous_question, low
+
+Если выбираешь navigation_action:
+- укажи action
+- если action про кейс, укажи caseId
+- source используй только для open_contact_modal
 
 Текущий выбранный контекст: {currentContext}
 Последнее сообщение пользователя: {message}
@@ -165,9 +416,9 @@ const CLASSIFIER_PROMPT = `
 export async function classifyMessageWithModel(
   text: string,
   session: AssistantSession,
-): Promise<DeterministicIntent | null> {
+): Promise<IntentClassification | null> {
   if (!getOpenAIKey()) {
-    return null;
+    return classifyMessageWithFallbackHeuristics(text);
   }
 
   const prompt = CLASSIFIER_PROMPT.replace(
@@ -183,35 +434,37 @@ export async function classifyMessageWithModel(
       prompt,
     });
 
-    switch (output.action) {
-      case 'open_entry':
-        return { action: { type: 'open_entry' } };
-      case 'open_case_summary':
-        return output.caseId ? { action: { type: 'open_case_summary', caseId: output.caseId } } : null;
-      case 'open_case_detail':
-        return output.caseId ? { action: { type: 'open_case_detail', caseId: output.caseId } } : null;
-      case 'open_case_route':
-        return output.caseId ? { action: { type: 'open_case_route', caseId: output.caseId } } : null;
-      case 'open_experience_summary':
-        return { action: { type: 'open_experience_summary' } };
-      case 'open_experience_detail':
-        return { action: { type: 'open_experience_detail' } };
-      case 'open_experience_route':
-        return output.caseId ? { action: { type: 'open_experience_route', caseId: output.caseId } } : null;
-      case 'open_mobile_experience_overview':
-        return { action: { type: 'open_mobile_experience_overview' } };
-      case 'open_mobile_case_summary':
-        return output.caseId ? { action: { type: 'open_mobile_case_summary', caseId: output.caseId } } : null;
-      case 'open_mobile_case_detail':
-        return output.caseId ? { action: { type: 'open_mobile_case_detail', caseId: output.caseId } } : null;
-      case 'open_additional_cases_overview':
-        return { action: { type: 'open_additional_cases_overview' } };
-      case 'open_contact_modal':
-        return { action: { type: 'open_contact_modal', source: output.source || 'message' } };
+    switch (output.intent) {
+      case 'navigation_action': {
+        if (!output.action) {
+          return null;
+        }
+
+        const action = buildNavigationAction(output.action, output.caseId, output.source);
+        return action
+          ? { intent: { type: 'navigation_action', action }, confidence: output.confidence }
+          : null;
+      }
+      case 'assistant_intro':
+      case 'identity_intro':
+      case 'experience_overview':
+      case 'strengths_assessment':
+      case 'role_fit_assessment':
+      case 'decision_process':
+      case 'evidence_request':
+      case 'risk_objection':
+      case 'ambiguous_question':
+      case 'unsupported_request':
+        return { intent: { type: output.intent }, confidence: output.confidence };
+      case 'missing_case_request':
+        return {
+          intent: { type: 'missing_case_request', requestedCase: normalizeRequestedCase(output.requestedCase) },
+          confidence: output.confidence,
+        };
       default:
         return null;
     }
   } catch {
-    return null;
+    return classifyMessageWithFallbackHeuristics(text);
   }
 }

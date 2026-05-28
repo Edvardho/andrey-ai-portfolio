@@ -1,27 +1,38 @@
 import { getCaseById } from '@/data/portfolio-content';
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
-import { classifyMessageDeterministically, classifyMessageWithModel } from '@/lib/portfolio/intent';
+import {
+  classifyMessageDeterministically,
+  classifyMessageWithModel,
+  type IntentClassification,
+  type MessageIntent,
+} from '@/lib/portfolio/intent';
 import {
   buildAdditionalCasesEnvelope,
   buildAmbiguousEnvelope,
+  buildAssistantIntroEnvelope,
   buildCaseEnvelope,
   buildCaseRouteEnvelope,
   buildContactModalEnvelope,
+  buildDecisionProcessEnvelope,
+  buildEvidenceEnvelope,
   buildEntryEnvelope,
   buildExperienceEnvelope,
   buildExperienceRouteEnvelope,
-  buildGeneralSynthesisEnvelope,
+  buildIdentityIntroEnvelope,
   buildImageModalEnvelope,
   buildLimitEnvelope,
   buildLoadingEnvelope,
   buildMobileCaseEnvelope,
   buildMobileOverviewEnvelope,
   buildNoMatchingEnvelope,
+  buildRiskEnvelope,
+  buildRoleFitEnvelope,
+  buildStrengthsEnvelope,
   buildSafetyEnvelope,
+  buildUnsupportedEnvelope,
 } from '@/lib/portfolio/presenters';
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
 import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
-import { detectSynthesisTopic, synthesizeGeneralAnswer } from '@/lib/portfolio/synthesis';
 import type {
   AnswerMode,
   AssistantEnvelope,
@@ -123,10 +134,20 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
       return session.selectedContext.kind === 'case'
         ? buildCaseRouteEnvelope(session, session.selectedContext.id)
         : buildEntryEnvelope(session);
-    case 'general_synthesis':
-      return session.lastSynthesis
-        ? buildGeneralSynthesisEnvelope(session, session.lastSynthesis)
-        : buildEntryEnvelope(session);
+    case 'assistant_intro':
+      return buildAssistantIntroEnvelope(session);
+    case 'identity_intro':
+      return buildIdentityIntroEnvelope(session);
+    case 'strengths_assessment':
+      return buildStrengthsEnvelope(session);
+    case 'role_fit_assessment':
+      return buildRoleFitEnvelope(session);
+    case 'decision_process':
+      return buildDecisionProcessEnvelope(session);
+    case 'evidence_request':
+      return buildEvidenceEnvelope(session);
+    case 'risk_objection':
+      return buildRiskEnvelope(session);
     case 'experience_summary':
       return buildExperienceEnvelope(session, 'summary');
     case 'experience_detail':
@@ -157,11 +178,71 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
       return buildAmbiguousEnvelope(session);
     case 'no_matching_case':
       return buildNoMatchingEnvelope(session);
+    case 'unsupported_request':
+      return buildUnsupportedEnvelope(session);
     case 'safety_refusal':
     case 'limit_reached':
+    case 'general_synthesis':
     default:
       return buildEntryEnvelope(session);
   }
+}
+
+async function resolveMessageIntent(
+  session: AssistantSession,
+  intent: MessageIntent,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  switch (intent.type) {
+    case 'navigation_action':
+      return resolveAction(session, intent.action);
+    case 'experience_overview':
+      return resolveAction(session, { type: 'open_experience_summary' });
+    case 'assistant_intro':
+      return { session, envelope: buildAssistantIntroEnvelope(session) };
+    case 'identity_intro':
+      return { session, envelope: buildIdentityIntroEnvelope(session) };
+    case 'strengths_assessment':
+      return { session, envelope: buildStrengthsEnvelope(session) };
+    case 'role_fit_assessment':
+      return { session, envelope: buildRoleFitEnvelope(session) };
+    case 'decision_process':
+      return { session, envelope: buildDecisionProcessEnvelope(session) };
+    case 'evidence_request':
+      return { session, envelope: buildEvidenceEnvelope(session) };
+    case 'risk_objection':
+      return { session, envelope: buildRiskEnvelope(session) };
+    case 'missing_case_request':
+      return { session, envelope: buildNoMatchingEnvelope(session, intent.requestedCase) };
+    case 'unsupported_request':
+      return { session, envelope: buildUnsupportedEnvelope(session) };
+    case 'ambiguous_question':
+    default:
+      return { session, envelope: buildAmbiguousEnvelope(session) };
+  }
+}
+
+async function resolveIntentClassification(
+  session: AssistantSession,
+  classification: IntentClassification,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const { intent, confidence } = classification;
+
+  if (intent.type === 'ambiguous_question') {
+    return { session, envelope: buildAmbiguousEnvelope(session) };
+  }
+
+  if (confidence === 'low') {
+    return { session, envelope: buildAmbiguousEnvelope(session) };
+  }
+
+  if (
+    confidence === 'medium' &&
+    (intent.type === 'navigation_action' || intent.type === 'missing_case_request')
+  ) {
+    return { session, envelope: buildAmbiguousEnvelope(session) };
+  }
+
+  return resolveMessageIntent(session, intent);
 }
 
 export async function resolveBootstrap(session: AssistantSession): Promise<AssistantEnvelope> {
@@ -261,31 +342,15 @@ export async function resolveMessage(
 
   const deterministic = classifyMessageDeterministically(text, nextSession);
   if (deterministic) {
-    return resolveAction(nextSession, deterministic.action);
-  }
-
-  const synthesisTopic = detectSynthesisTopic(text);
-  if (synthesisTopic) {
-    const synthesis = await synthesizeGeneralAnswer(text, nextSession, synthesisTopic);
-    const synthesisSession = await persistSession(nextSession, {
-      currentView: 'general_synthesis',
-      openModal: null,
-      lastSynthesis: synthesis,
-      recentHistory: appendHistory(nextSession, `synthesis:${synthesis.topic}`),
-    });
-
-    return {
-      session: synthesisSession,
-      envelope: buildGeneralSynthesisEnvelope(synthesisSession, synthesis),
-    };
+    return resolveIntentClassification(nextSession, deterministic);
   }
 
   const modelClassification = await classifyMessageWithModel(text, nextSession);
   if (modelClassification) {
-    return resolveAction(nextSession, modelClassification.action);
+    return resolveIntentClassification(nextSession, modelClassification);
   }
 
-  return { session: nextSession, envelope: buildNoMatchingEnvelope(nextSession) };
+  return { session: nextSession, envelope: buildAmbiguousEnvelope(nextSession) };
 }
 
 export async function resolveChatRequest(

@@ -31,13 +31,16 @@ async function main() {
   const { envelope: privateEnvelope } = await resolveMessage(alfaSession, 'Какая у Андрея зарплата и телефон?');
   assert.equal(privateEnvelope.safetyState, 'salary_or_private_data');
 
+  const { envelope: assistantIntroEnvelope } = await resolveMessage(bootstrapSession, 'Кто ты такой?');
+  assert.equal(assistantIntroEnvelope.viewType, 'assistant_intro');
+
   const nearLimitSession = await persistSession(alfaSession, { userMessageCount: 20 });
   const { envelope: limitEnvelope } = await resolveMessage(nearLimitSession, 'Расскажи еще про кейсы');
   assert.equal(limitEnvelope.viewType, 'limit_reached');
   assert.equal(limitEnvelope.safetyState, 'limit_reached');
 
-  const { envelope: noMatchEnvelope } = await resolveMessage(bootstrapSession, 'Расскажи про космический кейс, которого нет');
-  assert.equal(['no_matching_case', 'ambiguous_question'].includes(noMatchEnvelope.viewType), true);
+  const { envelope: noMatchEnvelope } = await resolveMessage(bootstrapSession, 'Покажи кейс про космический кейс, которого нет');
+  assert.equal(noMatchEnvelope.viewType, 'no_matching_case');
 
   console.log('Smoke test passed.');
 }

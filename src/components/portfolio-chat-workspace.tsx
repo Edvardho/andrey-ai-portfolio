@@ -7,6 +7,8 @@ import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
 import { PortfolioContextPanel } from './portfolio-context-panel';
 import { PortfolioComposer } from './portfolio-composer';
+import { PortfolioButton } from './portfolio-button';
+import { PortfolioAvailabilityPill } from './portfolio-availability-pill';
 
 interface ContextThread {
   contextId: ContextId;
@@ -24,6 +26,8 @@ export function PortfolioChatWorkspace({
   currentThread,
   loading,
   error,
+  expandedDisclosureIds,
+  onToggleDisclosure,
   onChipClick,
   onCta,
   onOpenArtifact,
@@ -40,9 +44,11 @@ export function PortfolioChatWorkspace({
   currentThread: ContextThread;
   loading: boolean;
   error: string | null;
+  expandedDisclosureIds: string[];
+  onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
-  onCta: (action: UIAction, label: string) => void;
-  onOpenArtifact: (artifactId: string, title: string) => void;
+  onCta: (action: UIAction) => void;
+  onOpenArtifact: (artifactId: string) => void;
   input: string;
   onChangeInput: (value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -50,45 +56,48 @@ export function PortfolioChatWorkspace({
   currentEnvelope: AssistantEnvelope | null;
 }) {
   return (
-    <div className="mx-auto grid h-full max-w-[1800px] grid-cols-[320px_minmax(0,1fr)] overflow-hidden rounded-[38px] border border-[#e6dfd4] bg-white shadow-[0_24px_80px_rgba(31,26,20,0.07)]">
-      <PortfolioRailSidebar
-        railItems={railItems}
-        selectedRailId={selectedRailId}
-        messagesRemaining={messagesRemaining}
-        onRailClick={onRailClick}
-      />
-
-      <section className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-        <header className="flex items-center justify-between border-b border-[#ece5da] px-9 py-6">
-          <div>
-            <div className="text-[22px] font-semibold tracking-[-0.03em] text-[#12110e]">
-              AI Portfolio Assistant
-            </div>
-            <div className="mt-1 text-[15px] text-[#7a7268]">
-              Desktop-first portfolio assistant с жёсткими границами и подтвержденным контентом.
-            </div>
+    <div className="flex h-full w-full justify-center overflow-hidden bg-white">
+      <div className="flex h-full w-[1584px] flex-col overflow-hidden bg-white">
+        <header className="flex h-[84px] shrink-0 items-center justify-between border-b border-[#EBEDF2]">
+          <div className="flex items-center gap-[10px] whitespace-nowrap">
+            <span className="text-[15px] font-semibold leading-5 text-[#1a1d23]">Андрей Макаревич</span>
+            <span className="text-[14px] leading-[18px] text-[#c6c8d0]">•</span>
+            <span className="text-[14px] leading-[18px] text-[#9da1ae]">Product Designer</span>
           </div>
-          <button
-            type="button"
-            onClick={() => onCta({ type: 'open_contact_modal', source: 'header' }, 'Написать Андрею')}
-            className="rounded-full bg-[#13110f] px-6 py-3.5 text-[15px] font-medium text-white transition hover:bg-[#22201c]"
-          >
-            Написать Андрею
-          </button>
+
+          <div className="flex items-center gap-3">
+            <PortfolioAvailabilityPill />
+            <PortfolioButton onClick={() => onCta({ type: 'open_contact_modal', source: 'header' })}>
+              Написать мне
+            </PortfolioButton>
+          </div>
         </header>
 
-        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-6 overflow-hidden px-6 py-6">
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-[36px] bg-[#faf8f4] p-6">
+        <div className="grid min-h-0 flex-1 grid-cols-[298px_1px_980px_1px_304px] overflow-hidden">
+          <div className="min-h-0">
+            <PortfolioRailSidebar
+              railItems={railItems}
+              selectedRailId={selectedRailId}
+              messagesRemaining={messagesRemaining}
+              onRailClick={onRailClick}
+            />
+          </div>
+
+          <div className="bg-[#EBEDF2]" aria-hidden="true" />
+
+          <div className="flex min-h-0 flex-col px-6 pt-6">
             <PortfolioThreadView
               items={currentThread.items}
               loading={loading}
               error={error}
+              expandedDisclosureIds={expandedDisclosureIds}
+              onToggleDisclosure={onToggleDisclosure}
               onChipClick={onChipClick}
               onCta={onCta}
               onOpenArtifact={onOpenArtifact}
             />
 
-            <div className="mt-6 border-t border-transparent bg-[#faf8f4] pt-1">
+            <div className="mt-6">
               <PortfolioComposer
                 input={input}
                 onChangeInput={onChangeInput}
@@ -101,14 +110,13 @@ export function PortfolioChatWorkspace({
             </div>
           </div>
 
-          {currentEnvelope ? (
-            <PortfolioContextPanel
-              envelope={currentEnvelope}
-              onAction={(action, label) => onCta(action, label ?? '')}
-            />
-          ) : null}
+          <div className="bg-[#EBEDF2]" aria-hidden="true" />
+
+          <div className="min-h-0 pl-6 pt-6">
+            {currentEnvelope ? <PortfolioContextPanel envelope={currentEnvelope} onAction={onCta} /> : null}
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   getContactContent,
   getEntryPrompts,
   getExperienceRoute,
+  getHiringGuide,
   getRailItems,
   portfolioContent,
 } from '@/data/portfolio-content';
@@ -15,6 +16,7 @@ import type {
   ContactOption,
   ContentBlock,
   ModalPayload,
+  PresentationVariant,
   PromptChip,
   ResponseSource,
   SafetyState,
@@ -28,6 +30,7 @@ import type {
 type BaseEnvelopeOptions = {
   session: AssistantSession;
   viewType: ViewType;
+  presentationVariant: PresentationVariant;
   uiState?: UIState;
   answerMode?: AnswerMode | null;
   selectedContext?: SelectedContext;
@@ -40,9 +43,14 @@ type BaseEnvelopeOptions = {
   responseSource?: ResponseSource;
 };
 
+function getPromptChipActions(chips: PromptChip[]): UIAction[] {
+  return chips.flatMap((chip) => (chip.action ? [chip.action] : []));
+}
+
 function createEnvelope({
   session,
   viewType,
+  presentationVariant,
   uiState = 'ready',
   answerMode = null,
   selectedContext = session.selectedContext,
@@ -58,6 +66,7 @@ function createEnvelope({
     sessionId: session.id,
     uiState,
     viewType,
+    presentationVariant,
     selectedContext,
     answerMode,
     railItems: getRailItems(),
@@ -76,9 +85,12 @@ function createEnvelope({
 }
 
 export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips = getEntryPrompts();
+
   return createEnvelope({
     session,
     viewType: 'entry',
+    presentationVariant: 'plain_text_reply',
     selectedContext: { kind: 'none', id: null, label: null },
     contentBlocks: [
       {
@@ -87,9 +99,9 @@ export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope
         body: [portfolioContent.entry.subtitle],
       },
     ],
-    chips: getEntryPrompts(),
+    chips,
     contextPanel: portfolioContent.entry.contextPanel,
-    nextActions: getEntryPrompts().map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
@@ -106,6 +118,7 @@ export function buildCaseEnvelope(
   return createEnvelope({
     session,
     viewType: mode === 'summary' ? 'case_summary' : 'case_detail',
+    presentationVariant: mode === 'summary' ? 'case_summary' : 'sectioned_reply',
     answerMode: mode,
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: mode === 'summary' ? caseContent.summaryBlocks : caseContent.detailBlocks,
@@ -122,6 +135,7 @@ export function buildCaseRouteEnvelope(session: AssistantSession, caseId: string
   return createEnvelope({
     session,
     viewType: 'case_route',
+    presentationVariant: 'sectioned_reply',
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: caseContent.routeBlocks,
     contextPanel: caseContent.contextPanel,
@@ -167,23 +181,27 @@ export function buildGeneralSynthesisEnvelope(
   return createEnvelope({
     session,
     viewType: 'general_synthesis',
+    presentationVariant: synthesis.bullets.length ? 'bullet_reply' : 'plain_text_reply',
     contentBlocks,
     chips: config.chips,
     contextPanel,
-    nextActions: config.chips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(config.chips),
     responseSource: 'facts_constrained_synthesis',
   });
 }
 
 export function buildMobileOverviewEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips = portfolioContent.mobileOverview.followUpChips;
+
   return createEnvelope({
     session,
     viewType: 'mobile_experience_overview',
+    presentationVariant: 'sectioned_reply',
     selectedContext: { kind: 'overview', id: 'mobile-experience', label: 'Мобильный опыт' },
     contentBlocks: portfolioContent.mobileOverview.summaryBlocks,
-    chips: portfolioContent.mobileOverview.followUpChips,
+    chips,
     contextPanel: portfolioContent.mobileOverview.contextPanel,
-    nextActions: portfolioContent.mobileOverview.followUpChips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
@@ -200,6 +218,7 @@ export function buildMobileCaseEnvelope(
   return createEnvelope({
     session,
     viewType: mode === 'summary' ? 'mobile_case_summary' : 'mobile_case_detail',
+    presentationVariant: mode === 'summary' ? 'case_summary' : 'sectioned_reply',
     answerMode: mode,
     selectedContext: { kind: 'case', id: caseId, label: caseContent.shortTitle },
     contentBlocks: mode === 'summary' ? caseContent.summaryBlocks : caseContent.detailBlocks,
@@ -211,15 +230,18 @@ export function buildExperienceEnvelope(
   session: AssistantSession,
   mode: AnswerMode,
 ): AssistantEnvelope {
+  const chips = portfolioContent.experience.followUpChips;
+
   return createEnvelope({
     session,
     viewType: mode === 'summary' ? 'experience_summary' : 'experience_detail',
+    presentationVariant: mode === 'summary' ? 'experience_summary' : 'sectioned_reply',
     answerMode: mode,
     selectedContext: { kind: 'experience', id: 'experience', label: 'Опыт работы' },
     contentBlocks: mode === 'summary' ? portfolioContent.experience.summaryBlocks : portfolioContent.experience.detailBlocks,
-    chips: portfolioContent.experience.followUpChips,
+    chips,
     contextPanel: portfolioContent.experience.contextPanel,
-    nextActions: portfolioContent.experience.followUpChips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
@@ -235,6 +257,7 @@ export function buildExperienceRouteEnvelope(
   return createEnvelope({
     session,
     viewType: 'experience_route',
+    presentationVariant: 'sectioned_reply',
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     contentBlocks: getExperienceRoute(caseId),
     contextPanel: caseContent.contextPanel,
@@ -246,15 +269,64 @@ export function buildExperienceRouteEnvelope(
 }
 
 export function buildAdditionalCasesEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips = portfolioContent.additionalCases.followUpChips;
+
   return createEnvelope({
     session,
     viewType: 'additional_cases_overview',
+    presentationVariant: 'sectioned_reply',
     selectedContext: { kind: 'overview', id: 'additional-cases', label: 'Дополнительные кейсы' },
     contentBlocks: portfolioContent.additionalCases.summaryBlocks,
-    chips: portfolioContent.additionalCases.followUpChips,
+    chips,
     contextPanel: portfolioContent.additionalCases.contextPanel,
-    nextActions: portfolioContent.additionalCases.followUpChips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
+}
+
+function buildHiringGuideEnvelope(
+  session: AssistantSession,
+  guideKey: Parameters<typeof getHiringGuide>[0],
+): AssistantEnvelope {
+  const guide = getHiringGuide(guideKey);
+
+  return createEnvelope({
+    session,
+    viewType: guide.viewType,
+    presentationVariant: guide.presentationVariant,
+    selectedContext: session.selectedContext,
+    contentBlocks: guide.contentBlocks,
+    chips: guide.chips,
+    contextPanel: guide.contextPanel,
+    nextActions: getPromptChipActions(guide.chips),
+  });
+}
+
+export function buildIdentityIntroEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'identityProfile');
+}
+
+export function buildAssistantIntroEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'assistantProfile');
+}
+
+export function buildStrengthsEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'strengthsMap');
+}
+
+export function buildRoleFitEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'roleFit');
+}
+
+export function buildDecisionProcessEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'decisionMakingPatterns');
+}
+
+export function buildEvidenceEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'evidenceIndex');
+}
+
+export function buildRiskEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'risksAndLimits');
 }
 
 export function buildContactModalEnvelope(session: AssistantSession, source?: string): AssistantEnvelope {
@@ -263,6 +335,7 @@ export function buildContactModalEnvelope(session: AssistantSession, source?: st
   return createEnvelope({
     session,
     viewType: 'contact_modal',
+    presentationVariant: 'plain_text_reply',
     uiState: 'modal',
     selectedContext: session.selectedContext,
     modal: {
@@ -295,6 +368,7 @@ export function buildImageModalEnvelope(
   return createEnvelope({
     session,
     viewType: 'image_modal',
+    presentationVariant: 'plain_text_reply',
     uiState: 'modal',
     selectedContext: { kind: 'case', id: caseContent.id, label: caseContent.shortTitle },
     modal: {
@@ -320,6 +394,7 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
     session,
     uiState: 'limit_reached',
     viewType: 'limit_reached',
+    presentationVariant: 'refusal_reply',
     safetyState: 'limit_reached',
     contentBlocks: [
       {
@@ -329,7 +404,7 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
           'На V1 ассистент держит границы жестко: после 20 пользовательских сообщений пора переходить к прямому контакту.',
           'Если интерес не декоративный, дальше логичнее не мучить чат, а написать Андрею напрямую.',
         ],
-      },
+    },
     ],
     chips,
     contextPanel: {
@@ -339,39 +414,44 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
       note: 'Это осознанное ограничение MVP: ассистент не превращается в бесконечный чат и быстро выводит на живой контакт.',
       cta: { label: 'Открыть контакты', action: { type: 'open_contact_modal', source: 'limit' } },
     },
-    nextActions: chips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
 export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'ambiguous-alfa', label: 'Самый сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+    { id: 'ambiguous-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
+    { id: 'ambiguous-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
     { id: 'ambiguous-exp', label: 'Опыт работы', action: { type: 'open_experience_summary' } },
-    { id: 'ambiguous-mobile', label: 'Мобильные кейсы', action: { type: 'open_mobile_experience_overview' } },
+    { id: 'ambiguous-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
   ];
 
   return createEnvelope({
     session,
     uiState: 'fallback',
     viewType: 'ambiguous_question',
+    presentationVariant: 'refusal_reply',
     safetyState: 'ambiguous_question',
     contentBlocks: [
       {
         type: 'lead',
         title: 'Запрос слишком расплывчатый',
         body: [
-          'Сейчас ассистент отвечает только про опыт, кейсы и продуктовый подход Андрея.',
-          'Сформулируй вопрос конкретнее или выбери один из быстрых входов ниже.',
+          'Я могу быстро представить Андрея, показать опыт, сильный кейс, ограничения или доказательства. Но гадать вместо тебя — плохая идея.',
+          'Выбери один из нормальных входов ниже или задай вопрос так, чтобы из него было понятно, что именно ты хочешь оценить.',
         ],
       },
     ],
     chips,
     contextPanel: portfolioContent.entry.contextPanel,
-    nextActions: chips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
-export function buildNoMatchingEnvelope(session: AssistantSession): AssistantEnvelope {
+export function buildNoMatchingEnvelope(
+  session: AssistantSession,
+  requestedCase?: string,
+): AssistantEnvelope {
   const chips: PromptChip[] = [
     { id: 'nomatch-alfa', label: 'Покажи Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
     { id: 'nomatch-exp', label: 'Покажи опыт работы', action: { type: 'open_experience_summary' } },
@@ -382,20 +462,51 @@ export function buildNoMatchingEnvelope(session: AssistantSession): AssistantEnv
     session,
     uiState: 'fallback',
     viewType: 'no_matching_case',
+    presentationVariant: 'refusal_reply',
     safetyState: 'no_matching_case',
     contentBlocks: [
       {
         type: 'lead',
-        title: 'В базе нет такого кейса',
+        title: requestedCase ? `Кейса «${requestedCase}» в портфолио нет` : 'В базе нет такого кейса',
         body: [
-          'Ассистент не выдумывает опыт и не притворяется, что знает больше, чем есть в портфолио.',
+          'Ассистент не выдумывает кейсы и не притворяется, что знает больше, чем реально есть в портфолио.',
           'Лучше перейти к одному из подтвержденных кейсов или к общему опыту работы.',
         ],
       },
     ],
     chips,
     contextPanel: portfolioContent.entry.contextPanel,
-    nextActions: chips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
+  });
+}
+
+export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips: PromptChip[] = [
+    { id: 'unsupported-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
+    { id: 'unsupported-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
+    { id: 'unsupported-exp', label: 'Какой опыт работы?', action: { type: 'open_experience_summary' } },
+    { id: 'unsupported-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+  ];
+
+  return createEnvelope({
+    session,
+    uiState: 'fallback',
+    viewType: 'unsupported_request',
+    presentationVariant: 'refusal_reply',
+    safetyState: 'unsupported_request',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: 'Этот вопрос вне границ ассистента',
+        body: [
+          'Я не изображаю всезнающий чат обо всем на свете. Моя работа уже: помочь быстро оценить Андрея по опыту, кейсам, сильным сторонам, ограничениям и доказательствам.',
+          'Если тебе нужен реальный hiring signal, лучше вернуться в эти границы, а не устраивать мне викторину по биткоину или погоде.',
+        ],
+      },
+    ],
+    chips,
+    contextPanel: portfolioContent.entry.contextPanel,
+    nextActions: getPromptChipActions(chips),
   });
 }
 
@@ -410,6 +521,7 @@ export function buildSafetyEnvelope(
     session,
     uiState: 'fallback',
     viewType: 'safety_refusal',
+    presentationVariant: 'refusal_reply',
     safetyState,
     contentBlocks: [{ type: 'lead', title, body }],
     chips,
@@ -420,7 +532,7 @@ export function buildSafetyEnvelope(
       note: 'Ассистент держит узкий scope специально: так меньше шума и выше доверие к ответам.',
       cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
     },
-    nextActions: chips.map((chip) => chip.action),
+    nextActions: getPromptChipActions(chips),
   });
 }
 
@@ -429,6 +541,7 @@ export function buildLoadingEnvelope(session: AssistantSession): AssistantEnvelo
     session,
     uiState: 'fallback',
     viewType: 'loading',
+    presentationVariant: 'loading_row',
     contentBlocks: [
       {
         type: 'lead',

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "smoke": "tsx scripts/smoke-test.ts",
+    "eval:intents": "tsx scripts/eval-intents.ts",
     "verify": "npm run typecheck && npm run smoke"
   },
   "dependencies": {

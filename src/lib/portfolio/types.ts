@@ -11,6 +11,13 @@ export type ViewType =
   | 'case_detail'
   | 'case_route'
   | 'general_synthesis'
+  | 'assistant_intro'
+  | 'identity_intro'
+  | 'strengths_assessment'
+  | 'role_fit_assessment'
+  | 'decision_process'
+  | 'evidence_request'
+  | 'risk_objection'
   | 'experience_summary'
   | 'experience_detail'
   | 'experience_route'
@@ -23,6 +30,7 @@ export type ViewType =
   | 'loading'
   | 'ambiguous_question'
   | 'no_matching_case'
+  | 'unsupported_request'
   | 'safety_refusal'
   | 'limit_reached';
 
@@ -41,6 +49,15 @@ export type SafetyState =
 export type AnswerMode = 'summary' | 'detail';
 
 export type ResponseSource = 'authored' | 'facts_constrained_synthesis';
+
+export type PresentationVariant =
+  | 'case_summary'
+  | 'experience_summary'
+  | 'plain_text_reply'
+  | 'bullet_reply'
+  | 'sectioned_reply'
+  | 'refusal_reply'
+  | 'loading_row';
 
 export type SynthesisTopic =
   | 'strengths'
@@ -62,11 +79,19 @@ export type Metric = {
   label: string;
 };
 
-export type PromptChip = {
-  id: string;
-  label: string;
-  action: UIAction;
-};
+export type PromptChip =
+  | {
+      id: string;
+      label: string;
+      action: UIAction;
+      message?: never;
+    }
+  | {
+      id: string;
+      label: string;
+      message: string;
+      action?: never;
+    };
 
 export type RailItem = {
   id: string;
@@ -224,6 +249,36 @@ export type ContactContent = {
   options: ContactOption[];
 };
 
+export type HiringGuideContent = {
+  title: string;
+  viewType:
+    | 'assistant_intro'
+    | 'identity_intro'
+    | 'strengths_assessment'
+    | 'role_fit_assessment'
+    | 'decision_process'
+    | 'evidence_request'
+    | 'risk_objection';
+  presentationVariant: Extract<
+    PresentationVariant,
+    'plain_text_reply' | 'bullet_reply' | 'sectioned_reply'
+  >;
+  contentBlocks: ContentBlock[];
+  chips: PromptChip[];
+  contextPanel: ContextPanelData;
+};
+
+export type HiringGuidesContent = {
+  assistantProfile: HiringGuideContent;
+  identityProfile: HiringGuideContent;
+  careerSummary: HiringGuideContent;
+  strengthsMap: HiringGuideContent;
+  roleFit: HiringGuideContent;
+  decisionMakingPatterns: HiringGuideContent;
+  risksAndLimits: HiringGuideContent;
+  evidenceIndex: HiringGuideContent;
+};
+
 export type EntryContent = {
   title: string;
   subtitle: string;
@@ -239,6 +294,7 @@ export type PortfolioContent = {
   additionalCases: AdditionalCasesContent;
   mobileOverview: MobileOverviewContent;
   contact: ContactContent;
+  hiringGuides: HiringGuidesContent;
 };
 
 export type ModalPayload =
@@ -277,6 +333,7 @@ export type AssistantEnvelope = {
   sessionId: string;
   uiState: UIState;
   viewType: ViewType;
+  presentationVariant: PresentationVariant;
   selectedContext: SelectedContext;
   answerMode: AnswerMode | null;
   railItems: RailItem[];

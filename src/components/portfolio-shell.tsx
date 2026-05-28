@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getCaseById, getContactContent, getRailItems, getEntryPrompts } from '@/data/portfolio-content';
+import { buildClientEnvelopeForAction } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
   Artifact,
@@ -39,10 +40,17 @@ type ContextThread = {
 
 type ThreadStore = Record<string, ContextThread>;
 
+type ContextUiState = {
+  expandedDisclosureIds: string[];
+};
+
+type ContextUiStateStore = Record<string, ContextUiState>;
+
 type PersistedThreadState = {
   sessionId: string | null;
   activeContextId: ContextId;
   threadsByContextId: ThreadStore;
+  contextUiStateByContextId: ContextUiStateStore;
   sessionMeta: {
     used: number;
     remaining: number;
@@ -53,6 +61,9 @@ const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v1';
 const DEFAULT_SESSION_META = {
   used: 0,
   remaining: MAX_USER_MESSAGES_PER_SESSION,
+};
+const DEFAULT_CONTEXT_UI_STATE: ContextUiState = {
+  expandedDisclosureIds: [],
 };
 const MOBILE_CASE_IDS = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike']);
 
@@ -215,30 +226,11 @@ function getArtifact(caseId: string, artifactId: string): Artifact | undefined {
   return getCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
 }
 
-function getCasePreview(caseId: string | null) {
-  if (!caseId) {
-    return null;
-  }
-
-  const caseContent = getCaseById(caseId);
-  if (!caseContent) {
-    return null;
-  }
-
-  const heroArtifact = caseContent.artifacts[0];
-
-  return {
-    title: caseContent.title,
-    subtitle: caseContent.shortDescription,
-    imageUrl: heroArtifact?.imageUrl,
-    badge: caseContent.tags[0] ?? caseContent.category,
-  };
-}
-
 export function PortfolioShell() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<ContextId>('entry');
   const [threadsByContextId, setThreadsByContextId] = useState<ThreadStore>({});
+  const [contextUiStateByContextId, setContextUiStateByContextId] = useState<ContextUiStateStore>({});
   const [modalPayload, setModalPayload] = useState<ModalPayload | null>(null);
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
@@ -248,11 +240,14 @@ export function PortfolioShell() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
+  const activeContextIdRef = useRef<ContextId>('entry');
   const threadsRef = useRef<ThreadStore>({});
+  const contextUiStateRef = useRef<ContextUiStateStore>({});
 
   const railItems = getRailItems();
   const messagesRemaining = sessionMeta.remaining;
   const currentThread = threadsByContextId[activeContextId] ?? createContextThread(activeContextId);
+  const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentEnvelope = currentThread.lastEnvelope;
   const currentCaseId = currentEnvelope?.selectedContext.kind === 'case' ? currentEnvelope.selectedContext.id : null;
 
@@ -261,8 +256,16 @@ export function PortfolioShell() {
   }, [sessionId]);
 
   useEffect(() => {
+    activeContextIdRef.current = activeContextId;
+  }, [activeContextId]);
+
+  useEffect(() => {
     threadsRef.current = threadsByContextId;
   }, [threadsByContextId]);
+
+  useEffect(() => {
+    contextUiStateRef.current = contextUiStateByContextId;
+  }, [contextUiStateByContextId]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -273,11 +276,12 @@ export function PortfolioShell() {
       sessionId,
       activeContextId,
       threadsByContextId,
+      contextUiStateByContextId,
       sessionMeta,
     };
 
     globalThis.sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
-  }, [activeContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId]);
+  }, [activeContextId, contextUiStateByContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId]);
 
   function setServerContextId(contextId: ContextId | null) {
     serverContextIdRef.current = contextId;
@@ -293,6 +297,29 @@ export function PortfolioShell() {
   function upsertThread(contextId: ContextId, recipe: (thread: ContextThread) => ContextThread) {
     setThreadsByContextId((current) => {
       const existing = current[contextId] ?? createContextThread(contextId);
+      return {
+        ...current,
+        [contextId]: recipe(existing),
+      };
+    });
+  }
+
+  function ensureContextUiState(contextId: ContextId) {
+    setContextUiStateByContextId((current) => {
+      if (current[contextId]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [contextId]: DEFAULT_CONTEXT_UI_STATE,
+      };
+    });
+  }
+
+  function upsertContextUiState(contextId: ContextId, recipe: (state: ContextUiState) => ContextUiState) {
+    setContextUiStateByContextId((current) => {
+      const existing = current[contextId] ?? DEFAULT_CONTEXT_UI_STATE;
       return {
         ...current,
         [contextId]: recipe(existing),
@@ -323,6 +350,18 @@ export function PortfolioShell() {
       ...current,
       [contextId]: createContextThread(contextId, envelope),
     }));
+  }
+
+  function toggleDisclosure(contextId: ContextId, disclosureId: string) {
+    upsertContextUiState(contextId, (state) => {
+      const expanded = state.expandedDisclosureIds.includes(disclosureId);
+      return {
+        ...state,
+        expandedDisclosureIds: expanded
+          ? state.expandedDisclosureIds.filter((id) => id !== disclosureId)
+          : [...state.expandedDisclosureIds, disclosureId],
+      };
+    });
   }
 
   async function fetchChatEnvelope(body: ChatRequestBody): Promise<AssistantEnvelope> {
@@ -372,6 +411,72 @@ export function PortfolioShell() {
     setServerContextId(getContextIdFromEnvelope(envelope));
   }
 
+  async function syncKnownContextInBackground(action: UIAction) {
+    try {
+      const envelope = await fetchChatEnvelope({
+        sessionId: sessionIdRef.current ?? undefined,
+        input: { type: 'action', action },
+      });
+      const nextContextId = getContextIdFromEnvelope(envelope);
+
+      setSessionId(envelope.sessionId);
+      updateSessionMeta(envelope);
+
+      if (activeContextIdRef.current === nextContextId) {
+        setServerContextId(nextContextId);
+      }
+    } catch (caughtError) {
+      console.error('Silent context sync failed', caughtError);
+    }
+  }
+
+  function openKnownContextLocally(
+    action: UIAction,
+    options?: { userLabel?: string; appendUserBubble?: boolean },
+  ): boolean {
+    const localEnvelope = buildClientEnvelopeForAction(action, sessionIdRef.current, sessionMeta.used);
+    if (!localEnvelope) {
+      return false;
+    }
+
+    const targetContextId = getContextIdFromEnvelope(localEnvelope);
+    const userLabel = options?.userLabel;
+    const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
+
+    setModalPayload(null);
+    setError(null);
+
+    if (targetContextId !== activeContextId) {
+      const items: ThreadItem[] = [];
+      if (shouldAppendUserBubble && userLabel) {
+        items.push({ kind: 'user', text: userLabel });
+      }
+      items.push({ kind: 'assistant', envelope: localEnvelope });
+
+      setThreadsByContextId((current) => ({
+        ...current,
+        [targetContextId]: {
+          contextId: targetContextId,
+          items,
+          lastEnvelope: localEnvelope,
+          initialized: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+      ensureContextUiState(targetContextId);
+      setActiveContextId(targetContextId);
+    } else {
+      if (shouldAppendUserBubble && userLabel) {
+        appendUserToThread(targetContextId, userLabel);
+      }
+      appendAssistantToThread(targetContextId, localEnvelope);
+      ensureContextUiState(targetContextId);
+    }
+
+    void syncKnownContextInBackground(action);
+    return true;
+  }
+
   async function openFreshContext(
     targetContextId: ContextId,
     action: UIAction,
@@ -384,6 +489,7 @@ export function PortfolioShell() {
     setActiveContextId(targetContextId);
     setLoadingContextId(targetContextId);
     setError(null);
+    ensureContextUiState(targetContextId);
 
     if (shouldAppendUserBubble && userLabel) {
       appendUserToThread(targetContextId, userLabel);
@@ -456,12 +562,14 @@ export function PortfolioShell() {
           if (persistedRaw) {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
             const persistedThreads = persisted.threadsByContextId ?? {};
+            const persistedContextUiState = persisted.contextUiStateByContextId ?? {};
             const persistedActiveContext = persisted.activeContextId ?? 'entry';
 
             if (persisted.sessionId && Object.keys(persistedThreads).length) {
               if (!cancelled) {
                 setSessionId(persisted.sessionId);
                 setThreadsByContextId(persistedThreads);
+                setContextUiStateByContextId(persistedContextUiState);
                 setActiveContextId(persistedActiveContext);
                 setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
                 setServerContextId(null);
@@ -484,6 +592,7 @@ export function PortfolioShell() {
         setSessionId(envelope.sessionId);
         updateSessionMeta(envelope);
         replaceThreadWithEnvelope(contextId, envelope);
+        ensureContextUiState(contextId);
         setActiveContextId(contextId);
         setServerContextId(contextId);
         setHasHydrated(true);
@@ -523,17 +632,29 @@ export function PortfolioShell() {
   }, [input]);
 
   function handleChipClick(chip: PromptChip) {
+    if (chip.message) {
+      void appendAssistantResponse(
+        activeContextId,
+        {
+          sessionId: sessionIdRef.current ?? undefined,
+          input: { type: 'message', text: chip.message },
+        },
+        { userText: chip.label },
+      );
+      return;
+    }
+
+    if (!chip.action) {
+      return;
+    }
+
     const targetContextId = getContextIdFromAction(chip.action);
     if (targetContextId && targetContextId !== activeContextId && threadsRef.current[targetContextId]?.initialized) {
       restoreExistingContext(targetContextId);
       return;
     }
 
-    if (targetContextId && targetContextId !== activeContextId) {
-      void openFreshContext(targetContextId, chip.action, {
-        userLabel: chip.label,
-        appendUserBubble: true,
-      });
+    if (openKnownContextLocally(chip.action, { userLabel: chip.label, appendUserBubble: true })) {
       return;
     }
 
@@ -565,6 +686,10 @@ export function PortfolioShell() {
         ? ({ type: 'open_experience_summary' } as UIAction)
         : getCanonicalActionForCase(item.id);
 
+    if (openKnownContextLocally(action, { appendUserBubble: false })) {
+      return;
+    }
+
     void openFreshContext(targetContextId, action, { appendUserBubble: false });
   }
 
@@ -589,8 +714,7 @@ export function PortfolioShell() {
       return;
     }
 
-    if (targetContextId && targetContextId !== activeContextId) {
-      void openFreshContext(targetContextId, action, { appendUserBubble: false });
+    if (openKnownContextLocally(action, { appendUserBubble: false })) {
       return;
     }
 
@@ -600,8 +724,7 @@ export function PortfolioShell() {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function handleOpenArtifact(artifactId: string, title?: string) {
+  function handleOpenArtifact(artifactId: string) {
     if (!currentCaseId) {
       return;
     }
@@ -648,7 +771,7 @@ export function PortfolioShell() {
 
   return (
     <>
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f4ee] p-5 lg:hidden">
+      <div className="flex min-h-screen items-center justify-center bg-white p-5 lg:hidden">
         <div className="max-w-md rounded-[32px] border border-[#e6dfd4] bg-white p-8 text-center shadow-[0_18px_44px_rgba(31,26,20,0.06)]">
           <div className="text-[26px] font-semibold tracking-[-0.03em] text-[#11110f]">Desktop-only V1</div>
           <p className="mt-4 text-[16px] leading-8 text-[#605950]">
@@ -657,11 +780,10 @@ export function PortfolioShell() {
         </div>
       </div>
 
-      <div className="hidden h-screen overflow-hidden bg-[#f6f4ee] px-6 py-7 lg:block">
+      <div className="hidden h-screen overflow-hidden bg-white lg:block">
         {activeContextId === 'entry' ? (
           <PortfolioEntryView
             railItems={railItems}
-            getCasePreview={getCasePreview}
             onRailClick={handleRailClick}
             input={input}
             onChangeInput={setInput}
@@ -681,6 +803,8 @@ export function PortfolioShell() {
             currentThread={currentThread}
             loading={loadingContextId === activeContextId}
             error={error}
+            expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
+            onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
             onChipClick={handleChipClick}
             onCta={handleCta}
             onOpenArtifact={handleOpenArtifact}
