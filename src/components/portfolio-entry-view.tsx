@@ -2,8 +2,8 @@
 
 import type { RefObject } from 'react';
 import { useRef } from 'react';
-import type { RailItem, PromptChip, UIAction } from '@/lib/portfolio/types';
-import { PortfolioAvailabilityPill } from './portfolio-availability-pill';
+import { motion } from 'framer-motion';
+import type { RailItem, PromptChip } from '@/lib/portfolio/types';
 import { PortfolioButton } from './portfolio-button';
 import { PortfolioComposer } from './portfolio-composer';
 import { PortfolioMetadataChip } from './portfolio-metadata-chip';
@@ -51,6 +51,14 @@ const metadataChips = [
   { id: 'ai', label: 'AI products', iconSrc: '/entry/icon-ai.svg' },
 ];
 
+const SOFT_EASE = [0.16, 1, 0.3, 1] as const;
+const COMPOSER_SPRING = {
+  type: 'spring' as const,
+  stiffness: 220,
+  damping: 28,
+  mass: 0.95,
+};
+
 export function PortfolioEntryView({
   railItems,
   onRailClick,
@@ -61,7 +69,7 @@ export function PortfolioEntryView({
   textareaRef,
   chips,
   onChipClick,
-  onCta,
+  composerLayoutId,
 }: {
   railItems: RailItem[];
   onRailClick: (item: RailItem) => void;
@@ -72,7 +80,7 @@ export function PortfolioEntryView({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   chips: PromptChip[];
   onChipClick: (chip: PromptChip) => void;
-  onCta: (action: UIAction) => void;
+  composerLayoutId: string;
 }) {
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
@@ -94,26 +102,20 @@ export function PortfolioEntryView({
     .filter((entry): entry is { card: EntryProjectCard; item: RailItem } => Boolean(entry.item));
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-white">
-      <header className="mx-auto flex h-[84px] w-full max-w-[1548px] items-center py-[18px]">
-        <div className="flex min-w-0 flex-1 items-center">
-          <div className="flex items-center gap-[10px] whitespace-nowrap">
-            <span className="text-[15px] font-semibold leading-5 text-[#1a1d23]">Андрей Макаревич</span>
-            <span className="text-[14px] leading-[18px] text-[#c6c8d0]">•</span>
-            <span className="text-[14px] leading-[18px] text-[#9da1ae]">Product Designer</span>
-          </div>
-          <div className="min-w-px flex-1" />
-          <div className="flex items-center gap-3">
-            <PortfolioAvailabilityPill />
-            <PortfolioButton onClick={() => onCta({ type: 'open_contact_modal', source: 'entry' })}>
-              Написать мне
-            </PortfolioButton>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto flex w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[32px]">
-        <section className="flex flex-col items-center gap-5">
+    <motion.div
+      className="absolute inset-0 overflow-hidden bg-white"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.42, ease: SOFT_EASE }}
+    >
+      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[32px]">
+        <motion.section
+          layout
+          className="flex flex-col items-center gap-5"
+          exit={{ y: -28, opacity: 0 }}
+          transition={{ duration: 0.48, ease: SOFT_EASE }}
+        >
           <h1 className="text-center text-[78px] font-semibold leading-[84px] tracking-[-0.03em] text-[#11131a]">
             Макаревич Андрей
           </h1>
@@ -123,9 +125,14 @@ export function PortfolioEntryView({
               <PortfolioMetadataChip key={chip.id} iconSrc={chip.iconSrc} label={chip.label} />
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="mt-[64px] w-full max-w-[1584px]">
+        <motion.section
+          layout
+          className="mt-[64px] w-full max-w-[1584px]"
+          exit={{ y: -22, opacity: 0 }}
+          transition={{ duration: 0.44, ease: SOFT_EASE }}
+        >
           <div className="flex items-center">
             <h2 className="text-[24px] font-semibold leading-[30px] text-[#171920]">Про какой кейс мне рассказать?</h2>
             <div className="min-w-px flex-1" />
@@ -170,25 +177,39 @@ export function PortfolioEntryView({
               })}
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="mt-[52px] flex w-full max-w-[980px] flex-col items-center gap-6">
-          <PortfolioComposer
-            input={input}
-            onChangeInput={onChangeInput}
-            onSubmit={onSubmit}
-            disabled={loading}
-            textareaRef={textareaRef}
-            placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
-            variant="landing"
-          />
-          <div className="flex flex-wrap items-center justify-center gap-[18px]">
+        <motion.section
+          layout
+          className="mt-[52px] flex w-full max-w-[980px] flex-col items-center gap-6"
+          transition={COMPOSER_SPRING}
+        >
+          <motion.div
+            layoutId={composerLayoutId}
+            className="w-full"
+            transition={COMPOSER_SPRING}
+          >
+            <PortfolioComposer
+              input={input}
+              onChangeInput={onChangeInput}
+              onSubmit={onSubmit}
+              disabled={loading}
+              textareaRef={textareaRef}
+              placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
+              variant="landing"
+            />
+          </motion.div>
+          <motion.div
+            className="flex flex-wrap items-center justify-center gap-[18px]"
+            exit={{ y: 108, opacity: 0 }}
+            transition={{ duration: 0.46, ease: SOFT_EASE }}
+          >
             {chips.map((chip) => (
               <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
             ))}
-          </div>
-        </section>
+          </motion.div>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   );
 }

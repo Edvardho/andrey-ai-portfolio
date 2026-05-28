@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getCaseById, getContactContent, getRailItems, getEntryPrompts } from '@/data/portfolio-content';
@@ -18,6 +19,7 @@ import type {
 import { PortfolioEntryView } from './portfolio-entry-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
+import { PortfolioDesktopHeader } from './portfolio-desktop-header';
 
 type ThreadItem =
   | { kind: 'user'; text: string }
@@ -46,18 +48,23 @@ type ContextUiState = {
 
 type ContextUiStateStore = Record<string, ContextUiState>;
 
+type WorkspaceMode = 'landing' | 'chat';
+type TransitionSource = 'submit' | 'chip' | 'case' | null;
+
 type PersistedThreadState = {
   sessionId: string | null;
   activeContextId: ContextId;
   threadsByContextId: ThreadStore;
   contextUiStateByContextId: ContextUiStateStore;
+  workspaceMode: WorkspaceMode;
   sessionMeta: {
     used: number;
     remaining: number;
   };
 };
 
-const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v1';
+const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v2';
+const LEGACY_THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v1';
 const DEFAULT_SESSION_META = {
   used: 0,
   remaining: MAX_USER_MESSAGES_PER_SESSION,
@@ -226,23 +233,71 @@ function getArtifact(caseId: string, artifactId: string): Artifact | undefined {
   return getCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
 }
 
+function isBootstrapEntryThread(thread: ContextThread | undefined): boolean {
+  if (!thread || thread.contextId !== 'entry') {
+    return false;
+  }
+
+  return (
+    thread.items.length === 1 &&
+    thread.items[0]?.kind === 'assistant' &&
+    thread.items[0].envelope.viewType === 'entry'
+  );
+}
+
+function inferWorkspaceMode(
+  persisted: Partial<PersistedThreadState>,
+  persistedThreads: ThreadStore,
+  persistedActiveContext: ContextId,
+): WorkspaceMode {
+  if (persisted.workspaceMode === 'landing' || persisted.workspaceMode === 'chat') {
+    return persisted.workspaceMode;
+  }
+
+  if (!Object.keys(persistedThreads).length) {
+    return 'landing';
+  }
+
+  if (persistedActiveContext !== 'entry') {
+    return 'chat';
+  }
+
+  const hasConversationItems = Object.values(persistedThreads).some((thread) =>
+    thread.items.some((item) => item.kind === 'user'),
+  );
+
+  if (hasConversationItems) {
+    return 'chat';
+  }
+
+  const onlyEntryBootstrap =
+    Object.keys(persistedThreads).length === 1 &&
+    isBootstrapEntryThread(persistedThreads.entry);
+
+  return onlyEntryBootstrap ? 'landing' : 'chat';
+}
+
 export function PortfolioShell() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<ContextId>('entry');
   const [threadsByContextId, setThreadsByContextId] = useState<ThreadStore>({});
   const [contextUiStateByContextId, setContextUiStateByContextId] = useState<ContextUiStateStore>({});
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
   const [modalPayload, setModalPayload] = useState<ModalPayload | null>(null);
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
   const [error, setError] = useState<string | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [transitionSource, setTransitionSource] = useState<TransitionSource>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
   const activeContextIdRef = useRef<ContextId>('entry');
+  const workspaceModeRef = useRef<WorkspaceMode>('landing');
   const threadsRef = useRef<ThreadStore>({});
   const contextUiStateRef = useRef<ContextUiStateStore>({});
+  const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
   const railItems = getRailItems();
   const messagesRemaining = sessionMeta.remaining;
@@ -250,6 +305,8 @@ export function PortfolioShell() {
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentEnvelope = currentThread.lastEnvelope;
   const currentCaseId = currentEnvelope?.selectedContext.kind === 'case' ? currentEnvelope.selectedContext.id : null;
+  const showLandingStage = hasHydrated && workspaceMode === 'landing';
+  const showChatStage = hasHydrated && workspaceMode === 'chat';
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -258,6 +315,10 @@ export function PortfolioShell() {
   useEffect(() => {
     activeContextIdRef.current = activeContextId;
   }, [activeContextId]);
+
+  useEffect(() => {
+    workspaceModeRef.current = workspaceMode;
+  }, [workspaceMode]);
 
   useEffect(() => {
     threadsRef.current = threadsByContextId;
@@ -277,11 +338,12 @@ export function PortfolioShell() {
       activeContextId,
       threadsByContextId,
       contextUiStateByContextId,
+      workspaceMode,
       sessionMeta,
     };
 
-    globalThis.sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
-  }, [activeContextId, contextUiStateByContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId]);
+    globalThis.localStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
+  }, [activeContextId, contextUiStateByContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId, workspaceMode]);
 
   function setServerContextId(contextId: ContextId | null) {
     serverContextIdRef.current = contextId;
@@ -315,6 +377,39 @@ export function PortfolioShell() {
         [contextId]: DEFAULT_CONTEXT_UI_STATE,
       };
     });
+  }
+
+  function prepareLandingConversationStart() {
+    if (workspaceModeRef.current !== 'landing') {
+      return;
+    }
+
+    setThreadsByContextId((current) => {
+      if (!isBootstrapEntryThread(current.entry)) {
+        return current;
+      }
+
+      return {
+        ...current,
+        entry: createContextThread('entry'),
+      };
+    });
+  }
+
+  function startWorkspaceTransition(source: Exclude<TransitionSource, null>) {
+    if (workspaceModeRef.current === 'landing') {
+      setWorkspaceMode('chat');
+    }
+
+    if (transitionTimeoutRef.current) {
+      globalThis.clearTimeout(transitionTimeoutRef.current);
+    }
+
+    setTransitionSource(source);
+    transitionTimeoutRef.current = globalThis.setTimeout(() => {
+      setTransitionSource(null);
+      transitionTimeoutRef.current = null;
+    }, 720);
   }
 
   function upsertContextUiState(contextId: ContextId, recipe: (state: ContextUiState) => ContextUiState) {
@@ -558,12 +653,16 @@ export function PortfolioShell() {
 
       try {
         try {
-          const persistedRaw = globalThis.sessionStorage.getItem(THREAD_STORAGE_KEY);
+          const persistedRaw =
+            globalThis.localStorage.getItem(THREAD_STORAGE_KEY) ??
+            globalThis.localStorage.getItem(LEGACY_THREAD_STORAGE_KEY) ??
+            globalThis.sessionStorage.getItem(LEGACY_THREAD_STORAGE_KEY);
           if (persistedRaw) {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
             const persistedThreads = persisted.threadsByContextId ?? {};
             const persistedContextUiState = persisted.contextUiStateByContextId ?? {};
             const persistedActiveContext = persisted.activeContextId ?? 'entry';
+            const persistedWorkspaceMode = inferWorkspaceMode(persisted, persistedThreads, persistedActiveContext);
 
             if (persisted.sessionId && Object.keys(persistedThreads).length) {
               if (!cancelled) {
@@ -571,6 +670,7 @@ export function PortfolioShell() {
                 setThreadsByContextId(persistedThreads);
                 setContextUiStateByContextId(persistedContextUiState);
                 setActiveContextId(persistedActiveContext);
+                setWorkspaceMode(persistedWorkspaceMode);
                 setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
                 setServerContextId(null);
                 setLoadingContextId(null);
@@ -580,7 +680,9 @@ export function PortfolioShell() {
             }
           }
         } catch {
-          globalThis.sessionStorage.removeItem(THREAD_STORAGE_KEY);
+          globalThis.localStorage.removeItem(THREAD_STORAGE_KEY);
+          globalThis.localStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
+          globalThis.sessionStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
         }
 
         const envelope = await fetchBootstrapEnvelope();
@@ -594,6 +696,7 @@ export function PortfolioShell() {
         replaceThreadWithEnvelope(contextId, envelope);
         ensureContextUiState(contextId);
         setActiveContextId(contextId);
+        setWorkspaceMode('landing');
         setServerContextId(contextId);
         setHasHydrated(true);
       } catch (caughtError) {
@@ -611,6 +714,9 @@ export function PortfolioShell() {
 
     return () => {
       cancelled = true;
+      if (transitionTimeoutRef.current) {
+        globalThis.clearTimeout(transitionTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -632,7 +738,12 @@ export function PortfolioShell() {
   }, [input]);
 
   function handleChipClick(chip: PromptChip) {
+    if (workspaceModeRef.current === 'landing') {
+      startWorkspaceTransition('chip');
+    }
+
     if (chip.message) {
+      prepareLandingConversationStart();
       void appendAssistantResponse(
         activeContextId,
         {
@@ -669,6 +780,10 @@ export function PortfolioShell() {
   }
 
   function handleRailClick(item: RailItem) {
+    if (workspaceModeRef.current === 'landing') {
+      startWorkspaceTransition('case');
+    }
+
     const targetContextId: ContextId =
       item.kind === 'experience' ? 'experience' : makeCaseContextId(item.id);
 
@@ -743,6 +858,11 @@ export function PortfolioShell() {
     }
 
     setInput('');
+    if (workspaceModeRef.current === 'landing') {
+      prepareLandingConversationStart();
+      startWorkspaceTransition('submit');
+    }
+
     try {
       await ensureServerContextSynced(activeContextId);
     } catch (caughtError) {
@@ -781,40 +901,64 @@ export function PortfolioShell() {
       </div>
 
       <div className="hidden h-screen overflow-hidden bg-white lg:block">
-        {activeContextId === 'entry' ? (
-          <PortfolioEntryView
-            railItems={railItems}
-            onRailClick={handleRailClick}
-            input={input}
-            onChangeInput={setInput}
-            onSubmit={handleSubmit}
-            loading={Boolean(loadingContextId)}
-            textareaRef={textareaRef}
-            chips={getEntryPrompts()}
-            onChipClick={handleChipClick}
-            onCta={handleCta}
-          />
-        ) : (
-          <PortfolioChatWorkspace
-            railItems={railItems}
-            selectedRailId={selectedRailId}
-            messagesRemaining={messagesRemaining}
-            onRailClick={handleRailClick}
-            currentThread={currentThread}
-            loading={loadingContextId === activeContextId}
-            error={error}
-            expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
-            onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
-            onChipClick={handleChipClick}
-            onCta={handleCta}
-            onOpenArtifact={handleOpenArtifact}
-            input={input}
-            onChangeInput={setInput}
-            onSubmit={handleSubmit}
-            textareaRef={textareaRef}
-            currentEnvelope={currentEnvelope}
-          />
-        )}
+        <div className="flex h-full w-full justify-center overflow-hidden bg-white">
+          <div className="flex h-full w-[1584px] flex-col overflow-hidden bg-white">
+            <PortfolioDesktopHeader
+              onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
+              ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}
+              showDivider={showChatStage}
+            />
+
+            <div className="relative min-h-0 flex-1 overflow-hidden">
+              <LayoutGroup id="portfolio-workspace">
+                <AnimatePresence initial={false} mode="sync">
+                  {showLandingStage ? (
+                    <PortfolioEntryView
+                      key="landing"
+                      railItems={railItems}
+                      onRailClick={handleRailClick}
+                      input={input}
+                      onChangeInput={setInput}
+                      onSubmit={handleSubmit}
+                      loading={Boolean(loadingContextId)}
+                      textareaRef={textareaRef}
+                      chips={getEntryPrompts()}
+                      onChipClick={handleChipClick}
+                      composerLayoutId="portfolio-composer-shell"
+                    />
+                  ) : null}
+
+                  {showChatStage ? (
+                    <PortfolioChatWorkspace
+                      key="chat"
+                      railItems={railItems}
+                      selectedRailId={selectedRailId}
+                      messagesRemaining={messagesRemaining}
+                      onRailClick={handleRailClick}
+                      currentThread={currentThread}
+                      loading={loadingContextId === activeContextId}
+                      error={error}
+                      expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
+                      onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
+                      onChipClick={handleChipClick}
+                      onCta={handleCta}
+                      onOpenArtifact={handleOpenArtifact}
+                      input={input}
+                      onChangeInput={setInput}
+                      onSubmit={handleSubmit}
+                      textareaRef={textareaRef}
+                      currentEnvelope={currentEnvelope}
+                      composerLayoutId="portfolio-composer-shell"
+                      startTransitionSource={transitionSource}
+                    />
+                  ) : null}
+                </AnimatePresence>
+
+                {!hasHydrated ? <div className="absolute inset-0 bg-white" aria-hidden="true" /> : null}
+              </LayoutGroup>
+            </div>
+          </div>
+        </div>
       </div>
 
       {modalPayload ? (
