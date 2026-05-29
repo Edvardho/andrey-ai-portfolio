@@ -13,39 +13,39 @@ import type {
   PortfolioContent,
   PromptChip,
   RailItem,
+  StructuredCaseSummaryData,
 } from '@/lib/portfolio/types';
 
 const railItems: RailItem[] = [
-  { id: 'alfa-smart', label: 'Альфа-Смарт', subtitle: 'Флагманский кейс', kind: 'case' },
-  { id: 'chatpoint', label: 'ChatPoint', subtitle: 'B2B anti-case', kind: 'case' },
-  { id: 'siebel', label: 'SIEBEL', subtitle: 'Enterprise workflow', kind: 'case' },
-  { id: 'expenses-card-holders', label: 'Расходы держателей', subtitle: 'Mobile case', kind: 'case' },
-  { id: 'subscription-sharing', label: 'Шаринг подписки', subtitle: 'Mobile case', kind: 'case' },
-  { id: 'ux-ui-wannabelike', label: 'UX/UI WannabeLike', subtitle: 'Systemic mobile UX/UI', kind: 'case' },
-  { id: 'experience', label: 'Опыт работы', subtitle: 'Компании и траектория', kind: 'experience' },
+  { id: 'alfa-smart', label: 'Альфа-Смарт', subtitle: 'Подписка на банковские продукты', kind: 'case' },
+  { id: 'chatpoint', label: 'ChatPoint', subtitle: 'Платформа для коммуникации', kind: 'case' },
+  { id: 'siebel', label: 'SIEBEL', subtitle: 'CRM для службы поддержки', kind: 'case' },
+  { id: 'expenses-card-holders', label: 'Расходы держателей', subtitle: 'Добавление точки входа', kind: 'case' },
+  { id: 'subscription-sharing', label: 'Шаринг подписки', subtitle: 'Улучшение флоу добавления участников', kind: 'case' },
+  { id: 'ux-ui-wannabelike', label: 'UX/UI WannabeLike', subtitle: 'Прохождение курса Миши Розова по UI', kind: 'case' },
+  { id: 'experience', label: 'Опыт работы', subtitle: 'Где работал Андрей и какие были результаты', kind: 'experience' },
 ];
 
 const contactOptions: ContactContent = {
-  title: 'Связаться с Андреем',
-  helper:
-    'Если нужен быстрый контакт по вакансии или кейсам, лучше не тянуть — здесь прямые каналы связи.',
+  title: 'Выберите удобный способ связи с Андреем',
+  helper: '',
   options: [
     {
       id: 'telegram',
-      label: 'Telegram',
-      helper: 'Быстрее всего отвечает здесь',
+      label: 'Написать в Telegram',
+      helper: 'Ответит в течении 1 минуты',
       href: 'https://t.me/Edvardho',
     },
     {
       id: 'linkedin',
-      label: 'LinkedIn',
-      helper: 'Если удобнее официальный контекст',
+      label: 'Написать в LinkedIn',
+      helper: 'Ответит в течении дня, лучше пиши в Telegram',
       href: 'https://www.linkedin.com/in/edvardho/',
     },
     {
       id: 'email',
-      label: 'e-mail',
-      helper: 'Если нужен длинный контекст письмом',
+      label: 'Написать на e-mail',
+      helper: 'Может быть ответит, а может и нет 😅',
       href: 'mailto:Edvardho@list.ru',
     },
   ],
@@ -112,6 +112,230 @@ const alfaDisclosures: DisclosureRow[] = [
     artifactIds: ['alfa-ui'],
   },
 ];
+
+const alfaStructuredSummary: StructuredCaseSummaryData = {
+  intro: {
+    title: 'О продукте',
+    body: 'Альфа-Смарт — семейная подписка Альфа-Банка на банковские продукты. Это сильный кейс не из-за количества экранов, а потому что здесь видно продуктовую логику: сложный сценарий был разобран, проверен и доведен до релиза с измеримым результатом.',
+    preview: {
+      src: '/structured-summary/alfa-smart/intro-preview.png',
+      backgroundColor: '#D1D7E3',
+      imageClassName: 'absolute left-0 top-0 h-[184.11%] w-full max-w-none',
+    },
+  },
+  sections: [
+    {
+      title: 'Что это был за продукт',
+      body: 'Семейная подписка, встроенная в мобильное приложение, web-версию и приложение Восход.\nОна должна была дать владельцу понятный способ подключать близких к преимуществам и удерживать не только текущих клиентов, но и новых пользователей через семейный сценарий.',
+    },
+    {
+      title: 'Роль Андрея',
+      body: 'Product Designer: разобрал требования, собрал User Flow и первые макеты, подготовил гипотезы, прототип для теста, прошёл дизайн-чек и передал решение в разработку.',
+    },
+  ],
+  disclosureTitle: 'Что делал Андрей',
+  disclosures: [
+    {
+      id: 'alfa-structured-requirements',
+      label: 'Разбирался в требованиях заказчика',
+      body: 'Получил структуру продукта в Miro, выделил роли и конфликтные сценарии до детальной отрисовки экранов.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'alfa-structured-requirements-card',
+          artifactId: 'alfa-requirements-map',
+          width: 462,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-requirements.png',
+            backgroundColor: '#F7F8FC',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'alfa-structured-user-flow',
+      label: 'Собирал User Flow, драфты макетов, чтобы быстро синхронизироваться с бизнесом',
+      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'alfa-structured-user-flow-card-1',
+          artifactId: 'alfa-user-flow',
+          title: 'User-Flow первого входа в продукт',
+          description: 'На основе анализа конкурентов и особенностей приложения вместе с продактами солгасовали примерный путь пользователя',
+          width: 389,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-userflow-1.png',
+            backgroundColor: '#505050',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+        {
+          id: 'alfa-structured-user-flow-card-2',
+          artifactId: 'alfa-first-designs',
+          title: 'Первые варианты дизайна подписки',
+          description: 'Из-за особенностей дизайн системы, дизайн подписки для Web версии оставлял желать лучшего',
+          width: 389,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-userflow-2.png',
+            backgroundColor: '#F7F8FC',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute left-[-3px] top-[-3px] h-[calc(100%+6px)] w-[calc(100%+6px)] max-w-none object-cover object-top',
+          },
+        },
+      ],
+    },
+    {
+      id: 'alfa-structured-testing',
+      label: 'Готовил гипотезы и прототипы для юзабилити тестирования',
+      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'alfa-structured-testing-card-1',
+          artifactId: 'alfa-test-hypotheses',
+          title: 'Гипотезы для тестирования',
+          description: 'Совместно с продакт менеджером составили список гипотез для тестирования и согласовали их с комантой UX лаборатории',
+          width: 389,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-testing-1.png',
+            backgroundColor: '#E7EBF6',
+            borderColor: '#D1D7E3',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+        {
+          id: 'alfa-structured-testing-card-2',
+          artifactId: 'alfa-test-prototypes',
+          title: 'Прототипы для тестирования',
+          description: 'Чтобы приготовить прототип пришлось перевести все экраны в изображения, т.к. из-за компонентов прототип оказался очень тяжелым и не хотел открываться на телефоне',
+          width: 389,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-testing-2.png',
+            backgroundColor: '#000000',
+            borderColor: '#000000',
+            imageClassName: 'absolute left-0 top-[1.66%] h-[98.34%] w-[124.11%] max-w-none',
+          },
+        },
+      ],
+    },
+    {
+      id: 'alfa-structured-delivery',
+      label: 'Прошел дизайн-чек, передал макеты в разработку, провел дизайн-ревью',
+      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      layoutType: 'three_cards_scroll',
+      cards: [
+        {
+          id: 'alfa-structured-delivery-card-1',
+          artifactId: 'alfa-design-check',
+          title: 'Дизайн-чек',
+          description: 'Перед тем как передать макеты разработчикам, я должен был получить как минимум 2 аппрува от других дизайнеров и внести правки в макеты.',
+          width: 370,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-delivery-1.png',
+            overlaySrc: '/structured-summary/alfa-smart/disclosure-delivery-1-overlay.png',
+            overlayImageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+            backgroundColor: '#505050',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+        {
+          id: 'alfa-structured-delivery-card-2',
+          artifactId: 'alfa-dev-handoff',
+          title: 'Передача макетов разработчикам',
+          description: 'Макеты были структурированы по пути пользователя т.к. такой подход помогал команде самостоятельно пройти путь пользователя и не запутаться в корнер кейсах',
+          width: 370,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-delivery-2.png',
+            backgroundColor: '#E5E5E5',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+        {
+          id: 'alfa-structured-delivery-card-3',
+          artifactId: 'alfa-design-review',
+          title: 'Дизайн-ревью макетов',
+          description: 'После того, как разработчики сверстали макеты я проводил дизайн ревью',
+          width: 370,
+          preview: {
+            src: '/structured-summary/alfa-smart/disclosure-delivery-3.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#D1D7E3',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+      ],
+    },
+  ],
+  showcaseTitle: 'Примеры интерфейсных решений',
+  showcaseItems: [
+    {
+      id: 'alfa-structured-landing',
+      artifactId: 'alfa-landing',
+      title: 'Лендинг подписки',
+      description: 'Когда пользователь переходит к подписке он видит лендинг со всеми преимуществами',
+      preview: {
+        src: '/structured-summary/alfa-smart/showcase-landing.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+      },
+    },
+    {
+      id: 'alfa-structured-manage',
+      artifactId: 'alfa-manage',
+      title: 'Экран управления',
+      description: 'После того, как клиент подключил подписку, он видит экран управления',
+      preview: {
+        src: '/structured-summary/alfa-smart/showcase-manage.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute left-[-5.05%] top-[12.69%] h-[74.61%] w-[110.09%] max-w-none',
+      },
+    },
+    {
+      id: 'alfa-structured-invite',
+      artifactId: 'alfa-invite',
+      title: 'Приглашение участников',
+      description: 'Чтобы добавить участника владельцу, нужно ввести номер телефона',
+      preview: {
+        src: '/structured-summary/alfa-smart/showcase-invite.png',
+        backgroundColor: '#E7EBF6',
+        borderColor: '#D1D7E3',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+      },
+    },
+    {
+      id: 'alfa-structured-members',
+      artifactId: 'alfa-members',
+      title: 'Управление участниками',
+      description: 'Владелец подписки может удалять и добавлять новых участников',
+      preview: {
+        src: '/structured-summary/alfa-smart/showcase-members.png',
+        backgroundColor: '#E7EBF6',
+        borderColor: '#D1D7E3',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+      },
+    },
+  ],
+  resultsTitle: 'Результаты',
+  resultsBody:
+    'Решение запустили на iOS, Android и web. Важны не просто цифры, а то, что кейс показывает переход от сложного продуктового сценария к рабочему релизу с понятным влиянием на активацию и monetization.',
+  resultMetrics: [
+    { value: '32 111', label: 'активных подписчиков' },
+    { value: '30%', label: 'владельцы с участниками' },
+    { value: '1,1 млн ₽', label: 'доход' },
+  ],
+  footerAction: {
+    label: 'Написать Андрею',
+    action: { type: 'open_contact_modal', source: 'alfa-smart-summary' },
+  },
+};
 
 const alfaCase: CaseContent = {
   id: 'alfa-smart',
@@ -212,10 +436,18 @@ const alfaCase: CaseContent = {
     { id: 'alfa-miro', title: 'Miro-структура', caption: 'Каркас продукта и роли до начала экранов.', imageUrl: '/projects/alfa-smart/miro.png', sourceLabel: 'Miro' },
     { id: 'alfa-prototype', title: 'Прототип для тестов', caption: 'Основа для проверки ключевых гипотез.', imageUrl: '/projects/alfa-smart/prototype.png', sourceLabel: 'Figma' },
     { id: 'alfa-ui', title: 'UI flows', caption: 'Итоговые сценарии, дошедшие до реализации.', imageUrl: '/projects/alfa-smart/ui.png', sourceLabel: 'Figma' },
-    { id: 'alfa-landing', title: 'Лендинг подписки', caption: 'Вход в кейс.', imageUrl: '/projects/alfa-smart/screen-1.png' },
-    { id: 'alfa-manage', title: 'Экран управления', caption: 'Управление подпиской.', imageUrl: '/projects/alfa-smart/screen-2.png' },
-    { id: 'alfa-invite', title: 'Приглашение участников', caption: 'Подключение близких.', imageUrl: '/projects/alfa-smart/screen-3.png' },
-    { id: 'alfa-members', title: 'Управление участниками', caption: 'Изменение состава подписки.', imageUrl: '/projects/alfa-smart/screen-4.png' },
+    { id: 'alfa-requirements-map', title: 'Структура продукта в Miro', caption: 'Роли, сценарии и конфликтные точки до отрисовки экранов.', imageUrl: '/structured-summary/alfa-smart/disclosure-requirements.png' },
+    { id: 'alfa-user-flow', title: 'User-Flow первого входа в продукт', caption: 'Согласованный путь пользователя на входе в семейный сценарий.', imageUrl: '/structured-summary/alfa-smart/disclosure-userflow-1.png' },
+    { id: 'alfa-first-designs', title: 'Первые варианты дизайна подписки', caption: 'Ранние драфты подписки до перехода в mobile-first решение.', imageUrl: '/structured-summary/alfa-smart/disclosure-userflow-2.png' },
+    { id: 'alfa-test-hypotheses', title: 'Гипотезы для тестирования', caption: 'Список гипотез для UX-лаборатории перед тестами.', imageUrl: '/structured-summary/alfa-smart/disclosure-testing-1.png' },
+    { id: 'alfa-test-prototypes', title: 'Прототипы для тестирования', caption: 'Тяжелые компоненты переведены в изображения ради мобильного теста.', imageUrl: '/structured-summary/alfa-smart/disclosure-testing-2.png' },
+    { id: 'alfa-design-check', title: 'Дизайн-чек', caption: 'Два аппрува и правки до передачи в разработку.', imageUrl: '/structured-summary/alfa-smart/disclosure-delivery-1.png' },
+    { id: 'alfa-dev-handoff', title: 'Передача макетов разработчикам', caption: 'Макеты структурированы по пути пользователя.', imageUrl: '/structured-summary/alfa-smart/disclosure-delivery-2.png' },
+    { id: 'alfa-design-review', title: 'Дизайн-ревью макетов', caption: 'Проверка сверстанных экранов после реализации.', imageUrl: '/structured-summary/alfa-smart/disclosure-delivery-3.png' },
+    { id: 'alfa-landing', title: 'Лендинг подписки', caption: 'Когда пользователь переходит к подписке он видит лендинг со всеми преимуществами', imageUrl: '/structured-summary/alfa-smart/showcase-landing.png' },
+    { id: 'alfa-manage', title: 'Экран управления', caption: 'После того, как клиент подключил подписку, он видит экран управления', imageUrl: '/structured-summary/alfa-smart/showcase-manage.png' },
+    { id: 'alfa-invite', title: 'Приглашение участников', caption: 'Чтобы добавить участника владельцу, нужно ввести номер телефона', imageUrl: '/structured-summary/alfa-smart/showcase-invite.png' },
+    { id: 'alfa-members', title: 'Управление участниками', caption: 'Владелец подписки может удалять и добавлять новых участников', imageUrl: '/structured-summary/alfa-smart/showcase-members.png' },
   ],
   gallery: makeGallery([
     { id: 'alfa-landing', title: 'Лендинг подписки', description: 'Показывает преимущества до действия.' },
@@ -224,18 +456,29 @@ const alfaCase: CaseContent = {
     { id: 'alfa-members', title: 'Управление участниками', description: 'Закрывает lifecycle после подключения.' },
   ]),
   contextPanel: {
+    headerLabel: 'Контекст проекта',
     title: 'Альфа-Смарт',
     subtitle: 'Mobile · Web · B2C',
-    tags: ['Финтех', 'Подписка', 'Платежи', 'Личные финансы'],
+    tags: ['Финтех', 'Платежи', 'Личные финансы', 'Подписка'],
+    metricsTitle: 'Ключевые метрики',
     metrics: [
       { value: '32 111', label: 'подписчиков' },
       { value: '30%', label: 'владельцы с участниками' },
-      { value: '1,1 млн ₽', label: 'доход' },
+      { value: '1,1 млн', label: '₽ доход' },
+      { value: '15 июля', label: 'доступно массовым клиентам' },
     ],
     role: 'Product Designer',
-    roleDescription: 'UX/UI, User Flow, прототипы, тесты, дизайн-чек, handoff',
-    cta: { label: 'Открыть полный кейс', action: { type: 'open_case_detail', caseId: 'alfa-smart' } },
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'UX/UI, User Flow, прототип, тестирование, дизайн-чек, передача в разработку',
+    preview: {
+      src: '/context-panel/alfa-smart.png',
+      backgroundColor: '#D1D7E3',
+      imageClassName: 'absolute max-w-none object-contain rounded-[24px] size-full',
+      frameRadius: 24,
+      bordered: false,
+    },
   },
+  structuredSummary: alfaStructuredSummary,
   followUpChips: [],
 };
 
@@ -382,16 +625,27 @@ const siebelCase: CaseContent = {
     { id: 'siebel-templates', title: 'Шаблоны', description: 'Ускоряют повторяющиеся ответы.' },
   ]),
   contextPanel: {
+    headerLabel: 'Контекст проекта',
     title: 'SIEBEL',
     subtitle: 'Web · Enterprise · Support Ops',
     tags: ['Enterprise', 'Research', 'Workflow', 'A/B test'],
+    metricsTitle: 'Что важно',
     metrics: [
-      { value: '900 → 580 сек', label: 'время на диалог' },
-      { value: '1 000 → 2 000', label: 'диалогов после' },
+      { value: '12', label: 'записей работы операторов' },
+      { value: '-320s', label: 'на один диалог после релиза' },
+      { value: 'x2', label: 'обрабатываемых диалогов' },
+      { value: 'Ship', label: 'все ключевые фичи в релизе' },
     ],
     role: 'Product Designer',
-    roleDescription: 'Research, hypotheses, redesign, validation, handoff',
-    cta: { label: 'Открыть полный кейс', action: { type: 'open_case_detail', caseId: 'siebel' } },
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'Research, hypotheses, workflow redesign, A/B validation, handoff',
+    preview: {
+      src: '/context-panel/siebel.png',
+      backgroundColor: '#D1D7E3',
+      imageClassName: 'absolute h-[127.72%] w-[193.52%] max-w-none left-[-75.94%] top-[-1.28%]',
+      frameRadius: 24,
+      bordered: true,
+    },
   },
   followUpChips: [],
 };
@@ -437,6 +691,173 @@ const chatpointDisclosures: DisclosureRow[] = [
     ],
   },
 ];
+
+const chatpointStructuredSummary: StructuredCaseSummaryData = {
+  intro: {
+    title: 'О кейсе',
+    body: 'ChatPoint — B2B платформа для коммуникации, которая полезна не как success-story, а как anti-case. Здесь хорошо видно сложный onboarding, плотные enterprise-сценарии и момент, где delivery уехал дальше реальной продуктовой ценности.',
+    preview: {
+      src: '/context-panel/chatpoint.png',
+      backgroundColor: '#D1D7E3',
+      imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+    },
+  },
+  sections: [
+    {
+      title: 'Почему кейс полезен',
+      body: 'ChatPoint не взлетел как продукт, но полезен как proof of judgment: здесь видно не только UX-работу, но и трезвый вывод о том, что хороший интерфейс не спасает сценарий без нормальной product value.',
+    },
+    {
+      title: 'Сильная часть работы',
+      body: 'Андрей проектировал onboarding подключения каналов, работал с routing и системными сценариями, инициировал usability testing и спорил не только за UI, но и за ценность решений.',
+    },
+  ],
+  disclosureTitle: 'Что важно',
+  disclosures: [
+    {
+      id: 'chatpoint-structured-onboarding',
+      label: 'Упростил подключение Apple Messages for Business',
+      body: 'Вместо длинной технической инструкции появился step-by-step сценарий, который должен был доводить пользователя до сложного подключения без менеджера рядом.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'chatpoint-structured-onboarding-card',
+          artifactId: 'chatpoint-apple-onboarding',
+          width: 462,
+          preview: {
+            src: '/context-panel/chatpoint.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'chatpoint-structured-routing',
+      label: 'Работал с routing и системными сценариями',
+      body: 'Здесь кейс выходит за пределы onboarding: появляются правила распределения обращений, плотные настройки и реальная enterprise-сложность, а не просто еще один wizard.',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'chatpoint-structured-routing-card',
+          artifactId: 'chatpoint-routing',
+          title: 'Routing',
+          description: 'Системная логика распределения обращений внутри B2B-сценария.',
+          width: 389,
+          preview: {
+            src: '/context-panel/chatpoint.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+          },
+        },
+        {
+          id: 'chatpoint-structured-settings-card',
+          artifactId: 'chatpoint-system-settings',
+          title: 'System settings',
+          description: 'Плотный административный слой, где и проявляется enterprise-характер продукта.',
+          width: 389,
+          preview: {
+            src: '/entry/card-chatpoint.png',
+            backgroundColor: '#F7F8FC',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+      ],
+    },
+    {
+      id: 'chatpoint-structured-anti',
+      label: 'Anti-case: Form Messages',
+      body: 'Сценарий был удобно спроектирован, но продуктово слаб: команда делала delivery под внешнее требование, не доказав, что функция действительно нужна клиентам.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'chatpoint-structured-anti-card',
+          artifactId: 'chatpoint-form-messages',
+          width: 462,
+          preview: {
+            src: '/entry/card-chatpoint.png',
+            backgroundColor: '#F7F8FC',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+          },
+        },
+      ],
+    },
+    {
+      id: 'chatpoint-structured-what-i-would-change',
+      label: 'Что бы я сделал иначе сегодня',
+      body: 'Сначала разобрался бы с product value и activation, а потом накачивал backlog. Этот кейс полезен именно как сигнал зрелости: не все нужно доводить до delivery, если ценность не доказана.',
+      layoutType: 'text_only',
+    },
+  ],
+  showcaseTitle: 'Артефакты',
+  showcaseItems: [
+    {
+      id: 'chatpoint-structured-showcase-onboarding',
+      artifactId: 'chatpoint-apple-onboarding',
+      title: 'Apple onboarding',
+      description: 'Step-by-step сценарий вместо длинной технической инструкции.',
+      preview: {
+        src: '/context-panel/chatpoint.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+      },
+    },
+    {
+      id: 'chatpoint-structured-showcase-routing',
+      artifactId: 'chatpoint-routing',
+      title: 'Routing',
+      description: 'Системная логика и продуктовая сложность beyond onboarding.',
+      preview: {
+        src: '/context-panel/chatpoint.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+      },
+    },
+    {
+      id: 'chatpoint-structured-showcase-settings',
+      artifactId: 'chatpoint-system-settings',
+      title: 'System settings',
+      description: 'High-density B2B-настройки, которые показывают зрелость сценариев.',
+      preview: {
+        src: '/entry/card-chatpoint.png',
+        backgroundColor: '#F7F8FC',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+      },
+    },
+    {
+      id: 'chatpoint-structured-showcase-anti',
+      artifactId: 'chatpoint-form-messages',
+      title: 'Form Messages',
+      description: 'Anti-case про удобный UX без доказанной product value.',
+      preview: {
+        src: '/entry/card-chatpoint.png',
+        backgroundColor: '#F7F8FC',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+      },
+    },
+  ],
+  resultsTitle: 'Что важно в этом кейсе',
+  resultsBody:
+    'Здесь ценен не outcome бизнеса, а product judgment. Кейс показывает, что Андрей умеет работать со сложным onboarding, enterprise-логикой и одновременно трезво признавать, когда delivery уехал дальше реальной ценности продукта.',
+  resultMetrics: [
+    { value: 'B2B', label: 'сложная операторская система' },
+    { value: 'MVP', label: 'быстрый запуск без ясного PMF' },
+    { value: 'UX', label: 'onboarding, routing, high-density UI' },
+    { value: 'Learn', label: 'anti-case про product thinking' },
+  ],
+  footerAction: {
+    label: 'Связаться по этому кейсу',
+    action: { type: 'open_contact_modal', source: 'chatpoint-summary' },
+  },
+};
 
 const chatpointCase: CaseContent = {
   id: 'chatpoint',
@@ -518,12 +939,12 @@ const chatpointCase: CaseContent = {
   ],
   disclosures: chatpointDisclosures,
   artifacts: [
-    { id: 'chatpoint-apple-onboarding', title: 'Apple Messages for Business', caption: 'Step-by-step guide для сложного подключения.', imageUrl: '/projects/chatpoint/apple-onboarding.png', sourceLabel: 'Figma' },
-    { id: 'chatpoint-viber', title: 'Подключение Viber', caption: 'Повторяемый onboarding pattern.', imageUrl: '/projects/chatpoint/viber-onboarding.png', sourceLabel: 'Figma' },
-    { id: 'chatpoint-routing', title: 'Маршрутизация диалогов', caption: 'Логика распределения внутри системы.', imageUrl: '/projects/chatpoint/routing.png', sourceLabel: 'Figma' },
-    { id: 'chatpoint-system-settings', title: 'Настройка сценариев системы', caption: 'High-density B2B настройка.', imageUrl: '/projects/chatpoint/system-settings.png', sourceLabel: 'Figma' },
-    { id: 'chatpoint-form-messages', title: 'Form Messages', caption: 'Удобно спроектировано, но не доказало ценность.', imageUrl: '/projects/chatpoint/form-messages.png', sourceLabel: 'Figma' },
-    { id: 'chatpoint-purchase-path', title: 'Путь пользователя', caption: 'Попытка понять момент покупки слишком поздно.', imageUrl: '/projects/chatpoint/purchase-path.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-apple-onboarding', title: 'Apple Messages for Business', caption: 'Step-by-step guide для сложного подключения.', imageUrl: '/context-panel/chatpoint.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-viber', title: 'Подключение Viber', caption: 'Повторяемый onboarding pattern.', imageUrl: '/entry/card-chatpoint.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-routing', title: 'Маршрутизация диалогов', caption: 'Логика распределения внутри системы.', imageUrl: '/context-panel/chatpoint.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-system-settings', title: 'Настройка сценариев системы', caption: 'High-density B2B настройка.', imageUrl: '/entry/card-chatpoint.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-form-messages', title: 'Form Messages', caption: 'Удобно спроектировано, но не доказало ценность.', imageUrl: '/entry/card-chatpoint.png', sourceLabel: 'Figma' },
+    { id: 'chatpoint-purchase-path', title: 'Путь пользователя', caption: 'Попытка понять момент покупки слишком поздно.', imageUrl: '/context-panel/chatpoint.png', sourceLabel: 'Figma' },
   ],
   gallery: makeGallery([
     { id: 'chatpoint-apple-onboarding', title: 'Apple onboarding', description: 'Step-by-step вместо длинной инструкции.' },
@@ -532,15 +953,29 @@ const chatpointCase: CaseContent = {
     { id: 'chatpoint-form-messages', title: 'Form Messages', description: 'Anti-case про ценность.' },
   ]),
   contextPanel: {
+    headerLabel: 'Контекст проекта',
     title: 'ChatPoint',
     subtitle: 'Web · B2B · SaaS',
-    tags: ['B2B', 'Onboarding', 'Routing', 'Anti-case'],
-    note:
-      'Продукт не вышел в полноценный рынок. Ценность кейса — onboarding clarity, routing complexity и зрелый продуктовый вывод.',
+    tags: ['B2B', 'Onboarding', 'Routing', 'Research'],
+    metricsTitle: 'Что важно',
+    metrics: [
+      { value: 'B2B', label: 'сложная операторская система' },
+      { value: 'MVP', label: 'быстрый запуск без ясного PMF' },
+      { value: 'UX', label: 'onboarding, routing, high-density UI' },
+      { value: 'Learn', label: 'anti-case про product thinking' },
+    ],
     role: 'Product Designer',
-    roleDescription: 'Onboarding, enterprise scenarios, research, design review',
-    cta: { label: 'Открыть полный разбор', action: { type: 'open_case_detail', caseId: 'chatpoint' } },
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'Onboarding, UX flows, enterprise scenarios, testing, design review',
+    preview: {
+      src: '/context-panel/chatpoint.png',
+      backgroundColor: '#D1D7E3',
+      imageClassName: 'absolute h-[120.17%] w-[186.45%] max-w-none left-[-25.8%] top-[6.99%]',
+      frameRadius: 24,
+      bordered: true,
+    },
   },
+  structuredSummary: chatpointStructuredSummary,
   followUpChips: [],
 };
 
@@ -621,12 +1056,27 @@ const expensesCase: CaseContent = {
     { id: 'expenses-filters', title: 'Фильтры', description: 'Работа с деталями.' },
   ]),
   contextPanel: {
+    headerLabel: 'Контекст кейса',
     title: 'Расходы держателей карт',
     subtitle: 'Mobile · Cards · B2C',
     tags: ['Финтех', 'Карты', 'История', 'Исследование'],
+    metricsTitle: 'Что важно',
+    metrics: [
+      { value: '2 команды', label: 'межкомандная зависимость' },
+      { value: 'research', label: 'доказал потребность' },
+      { value: 'mobile', label: 'сценарий расходов' },
+      { value: 'ship', label: 'согласовал и довел' },
+    ],
     role: 'Product Designer',
-    roleDescription: 'Research, alignment, UX flow, UI, handoff',
-    note: 'Сильная часть кейса — не “еще один экран”, а межкомандное согласование через доказанную потребность.',
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'Research, alignment, UX flow, UI, передача в разработку.',
+    preview: {
+      src: '/context-panel/expenses-card-holders.png',
+      backgroundImage: 'linear-gradient(133.594deg, rgb(227, 210, 209) 0%, rgb(157, 180, 225) 96.702%)',
+      imageClassName: 'absolute max-w-none object-contain rounded-[24px] size-full',
+      frameRadius: 24,
+      bordered: false,
+    },
   },
   followUpChips: [],
 };
@@ -682,11 +1132,27 @@ const sharingCase: CaseContent = {
   ],
   gallery: makeGallery([{ id: 'sharing-flow', title: 'Путь пользователя', description: 'Новый link-based сценарий.' }]),
   contextPanel: {
+    headerLabel: 'Контекст кейса',
     title: 'Шаринг подписки',
-    subtitle: 'Mobile · Subscription · B2C',
-    tags: ['Подписка', 'Friction', 'Branching', 'Mobile'],
+    subtitle: 'Mobile · Flow · B2C',
+    tags: ['Финтех', 'Подписка', 'Link flow', 'Onboarding'],
+    metricsTitle: 'Что важно',
+    metrics: [
+      { value: 'link', label: 'новая точка входа' },
+      { value: '2 пути', label: 'клиент и не-клиент' },
+      { value: 'growth', label: 'продуктовый onboarding' },
+      { value: 'flow', label: 'упростил активацию' },
+    ],
     role: 'Product Designer',
-    roleDescription: 'Flow redesign, branching logic, UX/UI',
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'User flow, branching logic, UX/UI, синхронизация с продуктом.',
+    preview: {
+      src: '/context-panel/subscription-sharing.png',
+      backgroundImage: 'linear-gradient(133.594deg, rgb(227, 210, 209) 0%, rgb(225, 157, 158) 96.702%)',
+      imageClassName: 'absolute max-w-none object-contain rounded-[16px] size-full',
+      frameRadius: 16,
+      bordered: true,
+    },
   },
   followUpChips: [],
 };
@@ -744,11 +1210,27 @@ const superappCase: CaseContent = {
     { id: 'superapp-ui', title: 'UI', description: 'Концепт интерфейса.' },
   ]),
   contextPanel: {
+    headerLabel: 'Контекст кейса',
     title: 'UX/UI WannabeLike',
-    subtitle: 'Mobile · Systemic UX/UI',
-    tags: ['Research', 'IA', 'Flows', 'UI'],
+    subtitle: 'Mobile · Concept · Family',
+    tags: ['Research', 'IA', 'Family', 'UI concept'],
+    metricsTitle: 'Что важно',
+    metrics: [
+      { value: 'research', label: 'понимание сценариев' },
+      { value: 'IA', label: 'структура приложения' },
+      { value: 'flows', label: 'семейные пути' },
+      { value: 'UI', label: 'mobile-концепт' },
+    ],
     role: 'Product Designer',
-    roleDescription: 'Research, IA, flows, UI concept',
+    roleTitle: 'Моя роль: Product Designer',
+    roleDescription: 'Research synthesis, IA, user flows, UX/UI concept.',
+    preview: {
+      src: '/context-panel/ux-ui-wannabelike.png',
+      backgroundImage: 'linear-gradient(133.594deg, rgb(211, 227, 209) 0%, rgb(32, 40, 56) 96.702%)',
+      imageClassName: 'absolute h-[107.49%] w-[58.55%] max-w-none left-[21.8%] top-[-1.76%]',
+      frameRadius: 16,
+      bordered: false,
+    },
   },
   followUpChips: [],
 };
@@ -787,6 +1269,7 @@ const experience: ExperienceContent = {
     tags: ['MTS Digital', 'Альфа-Банк', 'Positive Technologies', 'Research → release'],
     note: 'Сильная часть траектории — ширина доменов без потери продуктовой дисциплины.',
     cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'experience' } },
+    hidden: true,
   },
   followUpChips: [],
 };

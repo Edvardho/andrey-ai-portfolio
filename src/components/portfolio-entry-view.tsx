@@ -189,7 +189,6 @@ export function PortfolioEntryView({
               disabled={loading}
               textareaRef={textareaRef}
               placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
-              variant="landing"
             />
           </motion.div>
           <motion.div

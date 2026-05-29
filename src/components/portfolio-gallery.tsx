@@ -25,7 +25,7 @@ export function PortfolioGallery({
             key={item.id}
             type="button"
             onClick={() => onOpenArtifact(item.artifactId)}
-            className="rounded-[28px] border border-[#e8e2d8] bg-white p-4 text-left shadow-[0_10px_28px_rgba(34,28,20,0.04)] transition hover:border-[#d7cdbe] hover:shadow-[0_16px_36px_rgba(34,28,20,0.07)]"
+            className="cursor-pointer rounded-[28px] border border-[#e8e2d8] bg-white p-4 text-left shadow-[0_10px_28px_rgba(34,28,20,0.04)] transition hover:border-[#d7cdbe] hover:shadow-[0_16px_36px_rgba(34,28,20,0.07)]"
           >
             <PortfolioPreviewSurface
               src={artifact?.imageUrl}

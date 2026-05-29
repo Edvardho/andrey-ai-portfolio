@@ -1,9 +1,11 @@
 'use client';
 
+import { getCaseById } from '@/data/portfolio-content';
 import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { renderCanonicalSummaryBlock } from './portfolio-assistant-block-renderers';
+import { PortfolioStructuredCaseSummary } from './portfolio-structured-case-summary';
 
 type Props = {
   envelope: AssistantEnvelope;
@@ -23,6 +25,19 @@ export function PortfolioAssistantCaseSummary({
   onOpenArtifact,
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
+  const activeCase = activeCaseId ? getCaseById(activeCaseId) : null;
+
+  if (activeCase?.structuredSummary) {
+    return (
+      <PortfolioStructuredCaseSummary
+        caseContent={activeCase}
+        expandedDisclosureIds={expandedDisclosureIds}
+        onToggleDisclosure={onToggleDisclosure}
+        onOpenArtifact={onOpenArtifact}
+        onCta={onCta}
+      />
+    );
+  }
 
   return (
     <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>

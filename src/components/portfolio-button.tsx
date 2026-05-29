@@ -23,7 +23,7 @@ export function PortfolioButton({
     <button
       type={type}
       className={clsx(
-        'inline-flex shrink-0 items-center justify-center rounded-[999px] border transition-colors duration-150',
+        'inline-flex shrink-0 cursor-pointer items-center justify-center rounded-[999px] border transition-colors duration-150',
         tone === 'primary'
           ? 'border-[#1a1c22] bg-[#1a1c22] text-white hover:bg-[#242832] hover:border-[#242832] disabled:border-[#a6a9b3] disabled:bg-[#a6a9b3]'
           : 'border-[#ececf1] bg-white text-[#5f6474] hover:border-[#d7dbe5] hover:bg-[#fafbff] disabled:border-[#ececf1] disabled:bg-white disabled:text-[#b5b8c2]',

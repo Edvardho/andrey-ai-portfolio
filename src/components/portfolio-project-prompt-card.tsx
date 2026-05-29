@@ -18,7 +18,7 @@ export function PortfolioProjectPromptCard({
       type="button"
       onClick={onClick}
       className={clsx(
-        'group flex h-[322px] w-[320px] shrink-0 flex-col overflow-hidden rounded-[28px] bg-white text-left shadow-[0px_6px_16px_0px_rgba(0,0,0,0.06)] transition-transform duration-150 hover:-translate-y-0.5',
+        'group flex h-[322px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-[28px] bg-white text-left shadow-[0px_6px_16px_0px_rgba(0,0,0,0.06)] transition-transform duration-150 hover:-translate-y-0.5',
         className,
       )}
     >

@@ -124,6 +124,69 @@ export type GalleryItem = {
   description: string;
 };
 
+export type SummaryPreviewConfig = {
+  src: string;
+  backgroundColor: string;
+  borderColor?: string;
+  imageClassName: string;
+  overlaySrc?: string;
+  overlayImageClassName?: string;
+};
+
+export type StructuredSummaryDisclosureCard = {
+  id: string;
+  artifactId?: string;
+  title?: string;
+  description?: string;
+  width: number;
+  preview: SummaryPreviewConfig;
+};
+
+export type StructuredSummaryDisclosureLayoutType =
+  | 'single_preview'
+  | 'two_cards'
+  | 'three_cards_scroll'
+  | 'text_only';
+
+export type StructuredSummaryDisclosureItem = {
+  id: string;
+  label: string;
+  body: string;
+  layoutType: StructuredSummaryDisclosureLayoutType;
+  cards?: StructuredSummaryDisclosureCard[];
+};
+
+export type StructuredSummaryShowcaseItem = {
+  id: string;
+  artifactId: string;
+  title: string;
+  description: string;
+  preview: SummaryPreviewConfig;
+};
+
+export type StructuredCaseSummaryData = {
+  intro: {
+    title: string;
+    body: string;
+    preview: SummaryPreviewConfig;
+  };
+  sections: Array<{
+    title: string;
+    body: string;
+  }>;
+  disclosureTitle: string;
+  disclosures: StructuredSummaryDisclosureItem[];
+  showcaseTitle: string;
+  showcaseItems: StructuredSummaryShowcaseItem[];
+  resultsTitle: string;
+  resultsBody: string;
+  resultMetrics: Metric[];
+  footerAction: {
+    label: string;
+    action: UIAction;
+  };
+};
+
 export type ContactOption = {
   id: 'telegram' | 'linkedin' | 'email';
   label: string;
@@ -175,17 +238,29 @@ export type ContentBlock =
     };
 
 export type ContextPanelData = {
+  headerLabel?: string;
   title: string;
   subtitle: string;
   tags: string[];
+  metricsTitle?: string;
   metrics?: Metric[];
   role?: string;
+  roleTitle?: string;
   roleDescription?: string;
   note?: string;
   cta?: {
     label: string;
     action: UIAction;
   };
+  preview?: {
+    src?: string;
+    backgroundColor?: string;
+    backgroundImage?: string;
+    imageClassName?: string;
+    frameRadius?: 16 | 24;
+    bordered?: boolean;
+  };
+  hidden?: boolean;
 };
 
 export type SelectedContext =
@@ -219,6 +294,7 @@ export type CaseContent = {
   disclosures: DisclosureRow[];
   artifacts: Artifact[];
   gallery: GalleryItem[];
+  structuredSummary?: StructuredCaseSummaryData;
   contextPanel: ContextPanelData;
   followUpChips: PromptChip[];
 };

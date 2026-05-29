@@ -1,7 +1,7 @@
-import type { AssistantEnvelope, UIAction } from '@/lib/portfolio/types';
+import type { AssistantEnvelope } from '@/lib/portfolio/types';
 import { getCaseById } from '@/data/portfolio-content';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
-import { PortfolioButton } from './portfolio-button';
+import { PortfolioMetricRow } from './portfolio-metric-row';
 
 function getCasePreview(caseId: string | null) {
   if (!caseId) {
@@ -23,14 +23,23 @@ function getCasePreview(caseId: string | null) {
   };
 }
 
+function splitTagsIntoRows(tags: string[]) {
+  const rows: string[][] = [];
+
+  for (let index = 0; index < tags.length; index += 2) {
+    rows.push(tags.slice(index, index + 2));
+  }
+
+  return rows;
+}
+
 export function PortfolioContextPanel({
   envelope,
-  onAction,
 }: {
   envelope: AssistantEnvelope;
-  onAction: (action: UIAction) => void;
 }) {
   const panel = envelope.contextPanel;
+  const tagRows = splitTagsIntoRows(panel.tags);
   const contextPreview =
     envelope.selectedContext.kind === 'case'
       ? getCasePreview(envelope.selectedContext.id) ?? {
@@ -66,66 +75,99 @@ export function PortfolioContextPanel({
               badge: 'Desktop',
             };
 
-  return (
-    <aside className="rounded-[32px] border border-[#EBEDF2] bg-white p-[18px] shadow-[0_12px_28px_rgba(31,26,20,0.035)]">
-      <PortfolioPreviewSurface
-        src={contextPreview.imageUrl}
-        title={contextPreview.title}
-        subtitle={contextPreview.subtitle}
-        badge={contextPreview.badge}
-        className="aspect-[1.25/1]"
-      />
+  if (panel.hidden) {
+    return null;
+  }
 
-      <div className="mt-[18px]">
-        <div className="text-[26px] font-semibold tracking-[-0.03em] text-[#11110f]">{panel.title}</div>
-        <div className="mt-2 text-[15px] leading-[1.55] text-[#7c746a]">{panel.subtitle}</div>
+  return (
+    <aside className="overflow-hidden bg-white">
+      {panel.headerLabel ? (
+        <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">{panel.headerLabel}</div>
+      ) : null}
+
+      {panel.preview ? (
+        <div
+          className="relative mt-4 h-[240px] w-full shrink-0 overflow-hidden"
+          style={{ borderRadius: panel.preview.frameRadius ?? 24 }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              borderRadius: panel.preview.frameRadius ?? 24,
+              backgroundColor: panel.preview.backgroundColor,
+              backgroundImage: panel.preview.backgroundImage,
+              border: panel.preview.bordered ? '1px solid #EBEDF2' : undefined,
+            }}
+          />
+          {panel.preview.src ? (
+            <div
+              className="absolute inset-0 overflow-hidden"
+              style={{ borderRadius: panel.preview.frameRadius ?? 24 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={panel.preview.src}
+                alt={panel.title}
+                className={panel.preview.imageClassName ?? 'absolute inset-0 h-full w-full object-cover'}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <PortfolioPreviewSurface
+          src={contextPreview.imageUrl}
+          title={contextPreview.title}
+          subtitle={contextPreview.subtitle}
+          badge={contextPreview.badge}
+          className="mt-4 aspect-[1.25/1]"
+        />
+      )}
+
+      <div className="mt-4 flex flex-col gap-2">
+        <div className="text-[18px] font-medium leading-[1.45] text-[#202129]">{panel.title}</div>
+        <div className="text-[15px] leading-[1.45] text-[#30313A]">{panel.subtitle}</div>
       </div>
 
       {panel.tags.length ? (
-        <div className="mt-4 flex flex-wrap gap-[10px]">
-          {panel.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full border border-[#EBEDF2] bg-white px-3 py-1.5 text-[12px] font-medium text-[#665e54]"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      {panel.metrics?.length ? (
-        <div className="mt-[18px] space-y-3 border-t border-[#EBEDF2] pt-[18px]">
-          {panel.metrics.map((metric) => (
-            <div key={`${metric.value}-${metric.label}`} className="flex items-start justify-between gap-3">
-              <span className="text-[18px] font-semibold text-[#11110f]">{metric.value}</span>
-              <span className="text-right text-[14px] leading-[1.55] text-[#726a60]">{metric.label}</span>
+        <div className="mt-4 flex flex-col gap-2">
+          {tagRows.map((row, rowIndex) => (
+            <div key={`${row.join('-')}-${rowIndex}`} className="flex flex-wrap gap-2">
+              {row.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-[14px] bg-[#F2F4FF] px-3 py-[7px] text-[12px] font-medium leading-[1.45] text-[#50525A]"
+                >
+                  {tag}
+                </span>
+              ))}
             </div>
           ))}
         </div>
       ) : null}
 
+      {panel.metrics?.length ? (
+        <div className="mt-4 flex flex-col gap-3">
+          <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">
+            {panel.metricsTitle ?? 'Ключевые метрики'}
+          </div>
+          {panel.metrics.map((metric) => (
+            <PortfolioMetricRow key={`${metric.value}-${metric.label}`} value={metric.value} label={metric.label} />
+          ))}
+        </div>
+      ) : null}
+
       {panel.role ? (
-        <div className="mt-[18px] border-t border-[#EBEDF2] pt-[18px]">
-          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#9a9083]">Роль</div>
-          <div className="mt-2 text-[16px] font-semibold text-[#11110f]">{panel.role}</div>
+        <div className="mt-4 flex flex-col gap-2">
+          <div className="text-[16px] font-medium leading-[1.45] text-[#202129]">
+            {panel.roleTitle ?? `Моя роль: ${panel.role}`}
+          </div>
           {panel.roleDescription ? (
-            <div className="mt-2 text-[15px] leading-[1.7] text-[#665f56]">{panel.roleDescription}</div>
+            <div className="text-[13px] leading-[1.45] text-[#8B8D9B]">{panel.roleDescription}</div>
           ) : null}
         </div>
       ) : null}
 
-      {panel.note ? <div className="mt-[18px] text-[15px] leading-[1.7] text-[#5e564d]">{panel.note}</div> : null}
-
-      {panel.cta ? (
-        <PortfolioButton
-          className="mt-5 w-full"
-          size="lg"
-          onClick={() => onAction(panel.cta!.action)}
-        >
-          {panel.cta.label}
-        </PortfolioButton>
-      ) : null}
+      {panel.note ? <div className="mt-4 text-[13px] leading-[1.45] text-[#8B8D9B]">{panel.note}</div> : null}
     </aside>
   );
 }

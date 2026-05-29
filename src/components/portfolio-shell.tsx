@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
-import { getCaseById, getContactContent, getRailItems, getEntryPrompts } from '@/data/portfolio-content';
+import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
 import { buildClientEnvelopeForAction } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
@@ -277,6 +277,55 @@ function inferWorkspaceMode(
   return onlyEntryBootstrap ? 'landing' : 'chat';
 }
 
+function getCurrentContextPanel(envelope: AssistantEnvelope): AssistantEnvelope['contextPanel'] {
+  if (envelope.selectedContext.kind === 'case') {
+    return getCaseById(envelope.selectedContext.id)?.contextPanel ?? envelope.contextPanel;
+  }
+
+  if (envelope.selectedContext.kind === 'experience') {
+    return portfolioContent.experience.contextPanel;
+  }
+
+  if (envelope.selectedContext.kind === 'overview') {
+    return envelope.selectedContext.id === 'mobile-experience'
+      ? portfolioContent.mobileOverview.contextPanel
+      : portfolioContent.additionalCases.contextPanel;
+  }
+
+  return portfolioContent.entry.contextPanel;
+}
+
+function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
+  return {
+    ...envelope,
+    contextPanel: getCurrentContextPanel(envelope),
+  };
+}
+
+function normalizePersistedThreads(threads: ThreadStore): ThreadStore {
+  return Object.fromEntries(
+    Object.entries(threads).map(([contextId, thread]) => {
+      const items = thread.items.map((item) =>
+        item.kind === 'assistant'
+          ? {
+              kind: 'assistant' as const,
+              envelope: normalizeEnvelope(item.envelope),
+            }
+          : item,
+      );
+
+      return [
+        contextId,
+        {
+          ...thread,
+          items,
+          lastEnvelope: thread.lastEnvelope ? normalizeEnvelope(thread.lastEnvelope) : null,
+        },
+      ];
+    }),
+  );
+}
+
 export function PortfolioShell() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<ContextId>('entry');
@@ -300,8 +349,12 @@ export function PortfolioShell() {
   const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
   const railItems = getRailItems();
+  const normalizedThreadsByContextId = useMemo(
+    () => normalizePersistedThreads(threadsByContextId),
+    [threadsByContextId],
+  );
   const messagesRemaining = sessionMeta.remaining;
-  const currentThread = threadsByContextId[activeContextId] ?? createContextThread(activeContextId);
+  const currentThread = normalizedThreadsByContextId[activeContextId] ?? createContextThread(activeContextId);
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentEnvelope = currentThread.lastEnvelope;
   const currentCaseId = currentEnvelope?.selectedContext.kind === 'case' ? currentEnvelope.selectedContext.id : null;
@@ -321,8 +374,8 @@ export function PortfolioShell() {
   }, [workspaceMode]);
 
   useEffect(() => {
-    threadsRef.current = threadsByContextId;
-  }, [threadsByContextId]);
+    threadsRef.current = normalizedThreadsByContextId;
+  }, [normalizedThreadsByContextId]);
 
   useEffect(() => {
     contextUiStateRef.current = contextUiStateByContextId;
@@ -336,14 +389,22 @@ export function PortfolioShell() {
     const payload: PersistedThreadState = {
       sessionId,
       activeContextId,
-      threadsByContextId,
+      threadsByContextId: normalizedThreadsByContextId,
       contextUiStateByContextId,
       workspaceMode,
       sessionMeta,
     };
 
     globalThis.localStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
-  }, [activeContextId, contextUiStateByContextId, hasHydrated, sessionId, sessionMeta, threadsByContextId, workspaceMode]);
+  }, [
+    activeContextId,
+    contextUiStateByContextId,
+    hasHydrated,
+    normalizedThreadsByContextId,
+    sessionId,
+    sessionMeta,
+    workspaceMode,
+  ]);
 
   function setServerContextId(contextId: ContextId | null) {
     serverContextIdRef.current = contextId;
@@ -659,7 +720,7 @@ export function PortfolioShell() {
             globalThis.sessionStorage.getItem(LEGACY_THREAD_STORAGE_KEY);
           if (persistedRaw) {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
-            const persistedThreads = persisted.threadsByContextId ?? {};
+            const persistedThreads = normalizePersistedThreads(persisted.threadsByContextId ?? {});
             const persistedContextUiState = persisted.contextUiStateByContextId ?? {};
             const persistedActiveContext = persisted.activeContextId ?? 'entry';
             const persistedWorkspaceMode = inferWorkspaceMode(persisted, persistedThreads, persistedActiveContext);

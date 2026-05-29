@@ -60,6 +60,7 @@ export function PortfolioChatWorkspace({
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
 }) {
   const animateStageEntry = Boolean(startTransitionSource);
+  const showContextPanel = Boolean(currentEnvelope && !currentEnvelope.contextPanel.hidden);
 
   return (
     <motion.div
@@ -69,7 +70,13 @@ export function PortfolioChatWorkspace({
       exit={{ opacity: 0 }}
       transition={STAGE_FADE}
     >
-      <div className="grid h-full min-h-0 grid-cols-[298px_1px_980px_1px_304px] overflow-hidden">
+      <div
+        className={`grid h-full min-h-0 overflow-hidden ${
+          showContextPanel
+            ? 'grid-cols-[298px_1px_980px_1px_304px]'
+            : 'grid-cols-[298px_1px_minmax(0,1fr)]'
+        }`}
+      >
         <motion.div
           className="min-h-0"
           initial={animateStageEntry ? { opacity: 0, x: -32 } : false}
@@ -87,7 +94,7 @@ export function PortfolioChatWorkspace({
         <div className="bg-[#EBEDF2]" aria-hidden="true" />
 
         <motion.div
-          className="flex min-h-0 flex-col px-6 pb-5 pt-6"
+          className="flex min-h-0 flex-col px-6"
           initial={animateStageEntry ? { opacity: 0, y: 34 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
@@ -105,32 +112,40 @@ export function PortfolioChatWorkspace({
           />
 
           <motion.div
-            layoutId={composerLayoutId}
-            className="mt-5"
-            transition={COMPOSER_DOCK_SPRING}
+            className="flex w-full flex-col items-center gap-2 pb-4"
           >
-            <PortfolioComposer
-              input={input}
-              onChangeInput={onChangeInput}
-              onSubmit={onSubmit}
-              disabled={loading}
-              textareaRef={textareaRef}
-              placeholder="Спроси про опыт, кейсы, продуктовый подход или попроси открыть конкретный сценарий."
-              title="Задать вопрос"
-            />
+            <motion.div
+              layoutId={composerLayoutId}
+              className="w-full"
+              transition={COMPOSER_DOCK_SPRING}
+            >
+              <PortfolioComposer
+                input={input}
+                onChangeInput={onChangeInput}
+                onSubmit={onSubmit}
+                disabled={loading}
+                textareaRef={textareaRef}
+                placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
+              />
+            </motion.div>
+            <p className="text-center text-[14px] font-normal leading-[1.45] text-[#909090]">
+              Ассистент может шутить, огрызаться и допускать ошибки, а вот Андрей – нет
+            </p>
           </motion.div>
         </motion.div>
 
-        <div className="bg-[#EBEDF2]" aria-hidden="true" />
+        {showContextPanel ? <div className="bg-[#EBEDF2]" aria-hidden="true" /> : null}
 
-        <motion.div
-          className="min-h-0 pl-6 pt-6"
-          initial={animateStageEntry ? { opacity: 0, x: 32 } : false}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.48, ease: WORKSPACE_EASE, delay: 0.12 }}
-        >
-          {currentEnvelope ? <PortfolioContextPanel envelope={currentEnvelope} onAction={onCta} /> : null}
-        </motion.div>
+        {showContextPanel ? (
+          <motion.div
+            className="min-h-0 pl-6 pt-6"
+            initial={animateStageEntry ? { opacity: 0, x: 32 } : false}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.48, ease: WORKSPACE_EASE, delay: 0.12 }}
+          >
+            {currentEnvelope ? <PortfolioContextPanel envelope={currentEnvelope} /> : null}
+          </motion.div>
+        ) : null}
       </div>
     </motion.div>
   );
