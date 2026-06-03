@@ -1,6 +1,12 @@
 'use client';
 
-import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
+import type {
+  ArtifactOpenTarget,
+  AssistantEnvelope,
+  AssistantRenderMode,
+  PromptChip,
+  UIAction,
+} from '@/lib/portfolio/types';
 import { PortfolioAssistantBulletReply } from './portfolio-assistant-bullet-reply';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
@@ -15,13 +21,15 @@ export function PortfolioAssistantEnvelopeView({
   onChipClick,
   onCta,
   onOpenArtifact,
+  renderMode = 'instant',
 }: {
   envelope: AssistantEnvelope;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
-  onOpenArtifact: (artifactId: string) => void;
+  onOpenArtifact: (target: ArtifactOpenTarget) => void;
+  renderMode?: AssistantRenderMode;
 }) {
   switch (envelope.presentationVariant) {
     case 'case_summary':
@@ -33,6 +41,7 @@ export function PortfolioAssistantEnvelopeView({
           onChipClick={onChipClick}
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
+          renderMode={renderMode}
         />
       );
     case 'experience_summary':
@@ -44,6 +53,7 @@ export function PortfolioAssistantEnvelopeView({
           onChipClick={onChipClick}
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
+          renderMode={renderMode}
         />
       );
     case 'bullet_reply':
@@ -53,6 +63,7 @@ export function PortfolioAssistantEnvelopeView({
           onChipClick={onChipClick}
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
+          renderMode={renderMode}
         />
       );
     case 'sectioned_reply':
@@ -64,12 +75,26 @@ export function PortfolioAssistantEnvelopeView({
           onChipClick={onChipClick}
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
+          renderMode={renderMode}
         />
       );
     case 'refusal_reply':
-      return <PortfolioAssistantRefusalReply envelope={envelope} onChipClick={onChipClick} onCta={onCta} />;
+      return (
+        <PortfolioAssistantRefusalReply
+          envelope={envelope}
+          onChipClick={onChipClick}
+          onCta={onCta}
+        />
+      );
     case 'plain_text_reply':
     default:
-      return <PortfolioAssistantPlainTextReply envelope={envelope} onChipClick={onChipClick} onCta={onCta} />;
+      return (
+        <PortfolioAssistantPlainTextReply
+          envelope={envelope}
+          onChipClick={onChipClick}
+          onCta={onCta}
+          renderMode={renderMode}
+        />
+      );
   }
 }

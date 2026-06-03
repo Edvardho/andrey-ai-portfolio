@@ -1,4 +1,7 @@
-import type { AssistantEnvelope } from '@/lib/portfolio/types';
+'use client';
+
+import type { ContextPanelData, SelectedContext } from '@/lib/portfolio/types';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getCaseById } from '@/data/portfolio-content';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 import { PortfolioMetricRow } from './portfolio-metric-row';
@@ -34,35 +37,39 @@ function splitTagsIntoRows(tags: string[]) {
 }
 
 export function PortfolioContextPanel({
-  envelope,
+  contextPanel,
+  selectedContext,
 }: {
-  envelope: AssistantEnvelope;
+  contextPanel: ContextPanelData;
+  selectedContext: SelectedContext;
 }) {
-  const panel = envelope.contextPanel;
-  const tagRows = splitTagsIntoRows(panel.tags);
+  const tagRows = splitTagsIntoRows(contextPanel.tags);
+  const previewKey = contextPanel.preview?.src
+    ? `${selectedContext.kind}:${selectedContext.id ?? 'none'}:${contextPanel.preview.src}:${contextPanel.preview.imageClassName ?? 'default'}`
+    : `${selectedContext.kind}:${selectedContext.id ?? 'none'}:fallback`;
   const contextPreview =
-    envelope.selectedContext.kind === 'case'
-      ? getCasePreview(envelope.selectedContext.id) ?? {
-          title: envelope.selectedContext.label,
+    selectedContext.kind === 'case'
+      ? getCasePreview(selectedContext.id) ?? {
+          title: selectedContext.label,
           subtitle: 'Подтвержденный кейс из портфолио.',
           imageUrl: undefined,
           badge: 'Case',
         }
-      : envelope.selectedContext.kind === 'experience'
+      : selectedContext.kind === 'experience'
         ? {
             title: 'Опыт работы',
             subtitle: 'Компании, домены и траектория роста.',
             imageUrl: undefined,
             badge: 'Career',
           }
-        : envelope.selectedContext.kind === 'overview'
+        : selectedContext.kind === 'overview'
           ? {
               title:
-                envelope.selectedContext.id === 'mobile-experience'
+                selectedContext.id === 'mobile-experience'
                   ? 'Мобильный опыт'
                   : 'Дополнительные кейсы',
               subtitle:
-                envelope.selectedContext.id === 'mobile-experience'
+                selectedContext.id === 'mobile-experience'
                   ? 'Ширина mobile signal за пределами флагмана.'
                   : 'Не остатки, а breadth с нормальным сигналом.',
               imageUrl: undefined,
@@ -75,43 +82,54 @@ export function PortfolioContextPanel({
               badge: 'Desktop',
             };
 
-  if (panel.hidden) {
+  if (contextPanel.hidden) {
     return null;
   }
 
   return (
     <aside className="overflow-hidden bg-white">
-      {panel.headerLabel ? (
-        <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">{panel.headerLabel}</div>
+      {contextPanel.headerLabel ? (
+        <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">{contextPanel.headerLabel}</div>
       ) : null}
 
-      {panel.preview ? (
+      {contextPanel.preview ? (
         <div
           className="relative mt-4 h-[240px] w-full shrink-0 overflow-hidden"
-          style={{ borderRadius: panel.preview.frameRadius ?? 24 }}
+          style={{ borderRadius: contextPanel.preview.frameRadius ?? 24 }}
         >
           <div
             className="absolute inset-0"
             style={{
-              borderRadius: panel.preview.frameRadius ?? 24,
-              backgroundColor: panel.preview.backgroundColor,
-              backgroundImage: panel.preview.backgroundImage,
-              border: panel.preview.bordered ? '1px solid #EBEDF2' : undefined,
+              borderRadius: contextPanel.preview.frameRadius ?? 24,
+              backgroundColor: contextPanel.preview.backgroundColor,
+              backgroundImage: contextPanel.preview.backgroundImage,
+              border: contextPanel.preview.bordered ? '1px solid #EBEDF2' : undefined,
             }}
           />
-          {panel.preview.src ? (
-            <div
-              className="absolute inset-0 overflow-hidden"
-              style={{ borderRadius: panel.preview.frameRadius ?? 24 }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={panel.preview.src}
-                alt={panel.title}
-                className={panel.preview.imageClassName ?? 'absolute inset-0 h-full w-full object-cover'}
-              />
-            </div>
-          ) : null}
+          <AnimatePresence initial={false} mode="wait">
+            {contextPanel.preview.src ? (
+              <motion.div
+                key={previewKey}
+                className="absolute inset-0 overflow-hidden"
+                style={{ borderRadius: contextPanel.preview.frameRadius ?? 24 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18, ease: 'easeInOut' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={contextPanel.preview.src}
+                  alt={contextPanel.title}
+                  decoding="async"
+                  draggable={false}
+                  className={
+                    contextPanel.preview.imageClassName ?? 'absolute inset-0 h-full w-full object-cover'
+                  }
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       ) : (
         <PortfolioPreviewSurface
@@ -124,11 +142,11 @@ export function PortfolioContextPanel({
       )}
 
       <div className="mt-4 flex flex-col gap-2">
-        <div className="text-[18px] font-medium leading-[1.45] text-[#202129]">{panel.title}</div>
-        <div className="text-[15px] leading-[1.45] text-[#30313A]">{panel.subtitle}</div>
+        <div className="text-[18px] font-medium leading-[1.45] text-[#202129]">{contextPanel.title}</div>
+        <div className="text-[15px] leading-[1.45] text-[#30313A]">{contextPanel.subtitle}</div>
       </div>
 
-      {panel.tags.length ? (
+      {contextPanel.tags.length ? (
         <div className="mt-4 flex flex-col gap-2">
           {tagRows.map((row, rowIndex) => (
             <div key={`${row.join('-')}-${rowIndex}`} className="flex flex-wrap gap-2">
@@ -145,29 +163,31 @@ export function PortfolioContextPanel({
         </div>
       ) : null}
 
-      {panel.metrics?.length ? (
+      {contextPanel.metrics?.length ? (
         <div className="mt-4 flex flex-col gap-3">
           <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">
-            {panel.metricsTitle ?? 'Ключевые метрики'}
+            {contextPanel.metricsTitle ?? 'Ключевые метрики'}
           </div>
-          {panel.metrics.map((metric) => (
+          {contextPanel.metrics.map((metric) => (
             <PortfolioMetricRow key={`${metric.value}-${metric.label}`} value={metric.value} label={metric.label} />
           ))}
         </div>
       ) : null}
 
-      {panel.role ? (
+      {contextPanel.role ? (
         <div className="mt-4 flex flex-col gap-2">
           <div className="text-[16px] font-medium leading-[1.45] text-[#202129]">
-            {panel.roleTitle ?? `Моя роль: ${panel.role}`}
+            {contextPanel.roleTitle ?? `Моя роль: ${contextPanel.role}`}
           </div>
-          {panel.roleDescription ? (
-            <div className="text-[13px] leading-[1.45] text-[#8B8D9B]">{panel.roleDescription}</div>
+          {contextPanel.roleDescription ? (
+            <div className="text-[13px] leading-[1.45] text-[#8B8D9B]">{contextPanel.roleDescription}</div>
           ) : null}
         </div>
       ) : null}
 
-      {panel.note ? <div className="mt-4 text-[13px] leading-[1.45] text-[#8B8D9B]">{panel.note}</div> : null}
+      {contextPanel.note ? (
+        <div className="mt-4 text-[13px] leading-[1.45] text-[#8B8D9B]">{contextPanel.note}</div>
+      ) : null}
     </aside>
   );
 }

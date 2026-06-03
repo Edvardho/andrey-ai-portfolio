@@ -8,13 +8,17 @@ import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfoli
 import { buildClientEnvelopeForAction } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
+  ArtifactOpenTarget,
   Artifact,
   ChatRequestBody,
+  ContextPanelData,
   ModalPayload,
   PromptChip,
   RailItem,
+  SelectedContext,
   UIAction,
 } from '@/lib/portfolio/types';
+import { getLastAnimatedAssistantMessageId } from '@/lib/portfolio/response-animation-policy';
 
 import { PortfolioEntryView } from './portfolio-entry-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
@@ -22,8 +26,8 @@ import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
 
 type ThreadItem =
-  | { kind: 'user'; text: string }
-  | { kind: 'assistant'; envelope: AssistantEnvelope };
+  | { id: string; kind: 'user'; text: string; hasAnimated: boolean }
+  | { id: string; kind: 'assistant'; envelope: AssistantEnvelope; hasAnimated: boolean };
 
 type ContextId =
   | 'entry'
@@ -37,6 +41,9 @@ type ContextThread = {
   items: ThreadItem[];
   lastEnvelope: AssistantEnvelope | null;
   initialized: boolean;
+  hasPlayedInitialReveal: boolean;
+  restoredFromStorage: boolean;
+  lastAnimatedAssistantMessageId: string | null;
   updatedAt: string;
 };
 
@@ -62,6 +69,26 @@ type PersistedThreadState = {
     remaining: number;
   };
 };
+
+type ContextPanelPayload = {
+  contextPanel: ContextPanelData;
+  selectedContext: SelectedContext;
+};
+
+type LastFailedRequest =
+  | {
+      kind: 'chat';
+      contextId: ContextId;
+      body: ChatRequestBody;
+      syncBeforeRequest: boolean;
+      clearInputOnSuccess: boolean;
+      forceThreadContextId?: ContextId;
+    }
+  | {
+      kind: 'fresh-context';
+      targetContextId: ContextId;
+      action: UIAction;
+    };
 
 const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v2';
 const LEGACY_THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v1';
@@ -96,6 +123,50 @@ function getContextIdFromEnvelope(envelope: AssistantEnvelope): ContextId {
   }
 
   return 'entry';
+}
+
+function resolveReplyThreadContextId(
+  currentContextId: ContextId,
+  body: ChatRequestBody,
+  envelope: AssistantEnvelope,
+): ContextId {
+  const nextContextId = getContextIdFromEnvelope(envelope);
+
+  if (
+    body.input.type === 'message' &&
+    currentContextId !== 'entry' &&
+    envelope.selectedContext.kind === 'none'
+  ) {
+    return currentContextId;
+  }
+
+  return nextContextId;
+}
+
+function createThreadItemId(prefix: 'user' | 'assistant') {
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
+    return `${prefix}:${globalThis.crypto.randomUUID()}`;
+  }
+
+  return `${prefix}:${Date.now()}:${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createUserThreadItem(text: string): ThreadItem {
+  return {
+    id: createThreadItemId('user'),
+    kind: 'user',
+    text,
+    hasAnimated: false,
+  };
+}
+
+function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
+  return {
+    id: createThreadItemId('assistant'),
+    kind: 'assistant',
+    envelope,
+    hasAnimated: false,
+  };
 }
 
 function getContextIdFromAction(action: UIAction): ContextId | null {
@@ -194,9 +265,12 @@ function createContextThread(contextId: ContextId, envelope?: AssistantEnvelope)
 
   return {
     contextId,
-    items: envelope ? [{ kind: 'assistant', envelope }] : [],
+    items: envelope ? [createAssistantThreadItem(envelope)] : [],
     lastEnvelope: envelope ?? null,
     initialized: Boolean(envelope),
+    hasPlayedInitialReveal: false,
+    restoredFromStorage: false,
+    lastAnimatedAssistantMessageId: null,
     updatedAt: now,
   };
 }
@@ -292,7 +366,13 @@ function getCurrentContextPanel(envelope: AssistantEnvelope): AssistantEnvelope[
       : portfolioContent.additionalCases.contextPanel;
   }
 
-  return portfolioContent.entry.contextPanel;
+  return envelope.contextPanel;
+}
+
+function clearPersistedThreadState() {
+  globalThis.localStorage.removeItem(THREAD_STORAGE_KEY);
+  globalThis.localStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
+  globalThis.sessionStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
 }
 
 function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
@@ -302,17 +382,96 @@ function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
   };
 }
 
-function normalizePersistedThreads(threads: ThreadStore): ThreadStore {
+function getContextPanelPayloadFromContextId(contextId: ContextId): ContextPanelPayload | null {
+  if (contextId === 'entry') {
+    return null;
+  }
+
+  if (contextId === 'experience') {
+    return {
+      contextPanel: portfolioContent.experience.contextPanel,
+      selectedContext: {
+        kind: 'experience',
+        id: 'experience',
+        label: 'Опыт работы',
+      },
+    };
+  }
+
+  if (contextId === 'mobile-experience') {
+    return {
+      contextPanel: portfolioContent.mobileOverview.contextPanel,
+      selectedContext: {
+        kind: 'overview',
+        id: 'mobile-experience',
+        label: 'Мобильный опыт',
+      },
+    };
+  }
+
+  if (contextId === 'additional-cases') {
+    return {
+      contextPanel: portfolioContent.additionalCases.contextPanel,
+      selectedContext: {
+        kind: 'overview',
+        id: 'additional-cases',
+        label: 'Дополнительные кейсы',
+      },
+    };
+  }
+
+  if (!isCaseContextId(contextId)) {
+    return null;
+  }
+
+  const caseId = contextId.replace(/^case:/, '');
+  const caseContent = getCaseById(caseId);
+
+  if (!caseContent) {
+    return null;
+  }
+
+  return {
+    contextPanel: caseContent.contextPanel,
+    selectedContext: {
+      kind: 'case',
+      id: caseId,
+      label: caseContent.title,
+    },
+  };
+}
+
+function normalizeRuntimeThreads(threads: ThreadStore): ThreadStore {
   return Object.fromEntries(
     Object.entries(threads).map(([contextId, thread]) => {
-      const items = thread.items.map((item) =>
-        item.kind === 'assistant'
-          ? {
-              kind: 'assistant' as const,
-              envelope: normalizeEnvelope(item.envelope),
-            }
-          : item,
-      );
+      const items = thread.items.map((item, index) => {
+        if (item.kind === 'assistant') {
+          return {
+            id: 'id' in item && typeof item.id === 'string' ? item.id : `persisted:${contextId}:assistant:${index}`,
+            kind: 'assistant' as const,
+            envelope: normalizeEnvelope(item.envelope),
+            hasAnimated:
+              'hasAnimated' in item && typeof item.hasAnimated === 'boolean'
+                ? item.hasAnimated
+                : false,
+          };
+        }
+
+        return {
+          id: 'id' in item && typeof item.id === 'string' ? item.id : `persisted:${contextId}:user:${index}`,
+          kind: 'user' as const,
+          text: item.text,
+          hasAnimated:
+            'hasAnimated' in item && typeof item.hasAnimated === 'boolean'
+              ? item.hasAnimated
+              : false,
+        };
+      });
+
+      const lastAnimatedAssistantMessageId =
+        ('lastAnimatedAssistantMessageId' in thread && typeof thread.lastAnimatedAssistantMessageId === 'string'
+          ? thread.lastAnimatedAssistantMessageId
+          : getLastAnimatedAssistantMessageId(items)) ?? null;
 
       return [
         contextId,
@@ -320,6 +479,37 @@ function normalizePersistedThreads(threads: ThreadStore): ThreadStore {
           ...thread,
           items,
           lastEnvelope: thread.lastEnvelope ? normalizeEnvelope(thread.lastEnvelope) : null,
+          hasPlayedInitialReveal:
+            'hasPlayedInitialReveal' in thread && typeof thread.hasPlayedInitialReveal === 'boolean'
+              ? thread.hasPlayedInitialReveal
+              : false,
+          restoredFromStorage:
+            'restoredFromStorage' in thread && typeof thread.restoredFromStorage === 'boolean'
+              ? thread.restoredFromStorage
+              : false,
+          lastAnimatedAssistantMessageId,
+        },
+      ];
+    }),
+  );
+}
+
+function hydratePersistedThreads(threads: ThreadStore): ThreadStore {
+  const normalized = normalizeRuntimeThreads(threads);
+
+  return Object.fromEntries(
+    Object.entries(normalized).map(([contextId, thread]) => {
+      const items = thread.items.map((item) => ({ ...item, hasAnimated: true }));
+      const lastAnimatedAssistantMessageId = getLastAnimatedAssistantMessageId(items);
+
+      return [
+        contextId,
+        {
+          ...thread,
+          items,
+          hasPlayedInitialReveal: true,
+          restoredFromStorage: true,
+          lastAnimatedAssistantMessageId,
         },
       ];
     }),
@@ -337,8 +527,10 @@ export function PortfolioShell() {
   const [input, setInput] = useState('');
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
   const [error, setError] = useState<string | null>(null);
+  const [lastFailedRequest, setLastFailedRequest] = useState<LastFailedRequest | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [transitionSource, setTransitionSource] = useState<TransitionSource>(null);
+  const [stickToBottomSignal, setStickToBottomSignal] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
@@ -350,14 +542,17 @@ export function PortfolioShell() {
 
   const railItems = getRailItems();
   const normalizedThreadsByContextId = useMemo(
-    () => normalizePersistedThreads(threadsByContextId),
+    () => normalizeRuntimeThreads(threadsByContextId),
     [threadsByContextId],
   );
   const messagesRemaining = sessionMeta.remaining;
   const currentThread = normalizedThreadsByContextId[activeContextId] ?? createContextThread(activeContextId);
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
-  const currentEnvelope = currentThread.lastEnvelope;
-  const currentCaseId = currentEnvelope?.selectedContext.kind === 'case' ? currentEnvelope.selectedContext.id : null;
+  const currentCaseId = isCaseContextId(activeContextId) ? activeContextId.replace(/^case:/, '') : null;
+  const currentContextPanelPayload = useMemo(
+    () => getContextPanelPayloadFromContextId(activeContextId),
+    [activeContextId],
+  );
   const showLandingStage = hasHydrated && workspaceMode === 'landing';
   const showChatStage = hasHydrated && workspaceMode === 'chat';
 
@@ -408,6 +603,15 @@ export function PortfolioShell() {
 
   function setServerContextId(contextId: ContextId | null) {
     serverContextIdRef.current = contextId;
+  }
+
+  function requestStickyScroll() {
+    setStickToBottomSignal((current) => current + 1);
+  }
+
+  function clearChatError() {
+    setError(null);
+    setLastFailedRequest(null);
   }
 
   function updateSessionMeta(envelope: AssistantEnvelope) {
@@ -486,7 +690,7 @@ export function PortfolioShell() {
   function appendUserToThread(contextId: ContextId, text: string) {
     upsertThread(contextId, (thread) => ({
       ...thread,
-      items: [...thread.items, { kind: 'user', text }],
+      items: [...thread.items, createUserThreadItem(text)],
       updatedAt: new Date().toISOString(),
     }));
   }
@@ -494,9 +698,10 @@ export function PortfolioShell() {
   function appendAssistantToThread(contextId: ContextId, envelope: AssistantEnvelope) {
     upsertThread(contextId, (thread) => ({
       ...thread,
-      items: [...thread.items, { kind: 'assistant', envelope }],
+      items: [...thread.items, createAssistantThreadItem(envelope)],
       lastEnvelope: envelope,
       initialized: true,
+      restoredFromStorage: false,
       updatedAt: new Date().toISOString(),
     }));
   }
@@ -506,6 +711,44 @@ export function PortfolioShell() {
       ...current,
       [contextId]: createContextThread(contextId, envelope),
     }));
+  }
+
+  function markThreadItemsAnimated(
+    contextId: ContextId,
+    itemIds: string[],
+    options?: { markInitialRevealPlayed?: boolean },
+  ) {
+    if (!itemIds.length) {
+      return;
+    }
+
+    upsertThread(contextId, (thread) => {
+      let lastAnimatedAssistantMessageId = thread.lastAnimatedAssistantMessageId;
+
+      const items = thread.items.map((item) => {
+        if (!itemIds.includes(item.id)) {
+          return item;
+        }
+
+        if (item.kind === 'assistant') {
+          lastAnimatedAssistantMessageId = item.id;
+        }
+
+        return {
+          ...item,
+          hasAnimated: true,
+        };
+      });
+
+      return {
+        ...thread,
+        items,
+        hasPlayedInitialReveal:
+          thread.hasPlayedInitialReveal || Boolean(options?.markInitialRevealPlayed),
+        lastAnimatedAssistantMessageId,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   function toggleDisclosure(contextId: ContextId, disclosureId: string) {
@@ -601,13 +844,14 @@ export function PortfolioShell() {
 
     setModalPayload(null);
     setError(null);
+    setLastFailedRequest(null);
 
     if (targetContextId !== activeContextId) {
       const items: ThreadItem[] = [];
       if (shouldAppendUserBubble && userLabel) {
-        items.push({ kind: 'user', text: userLabel });
+        items.push(createUserThreadItem(userLabel));
       }
-      items.push({ kind: 'assistant', envelope: localEnvelope });
+      items.push(createAssistantThreadItem(localEnvelope));
 
       setThreadsByContextId((current) => ({
         ...current,
@@ -616,6 +860,9 @@ export function PortfolioShell() {
           items,
           lastEnvelope: localEnvelope,
           initialized: true,
+          hasPlayedInitialReveal: false,
+          restoredFromStorage: false,
+          lastAnimatedAssistantMessageId: null,
           updatedAt: new Date().toISOString(),
         },
       }));
@@ -645,7 +892,9 @@ export function PortfolioShell() {
     setActiveContextId(targetContextId);
     setLoadingContextId(targetContextId);
     setError(null);
+    setLastFailedRequest(null);
     ensureContextUiState(targetContextId);
+    requestStickyScroll();
 
     if (shouldAppendUserBubble && userLabel) {
       appendUserToThread(targetContextId, userLabel);
@@ -664,6 +913,11 @@ export function PortfolioShell() {
       setActiveContextId(nextContextId);
       setServerContextId(nextContextId);
     } catch (caughtError) {
+      setLastFailedRequest({
+        kind: 'fresh-context',
+        targetContextId,
+        action,
+      });
       setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
     } finally {
       setLoadingContextId(null);
@@ -673,7 +927,12 @@ export function PortfolioShell() {
   async function appendAssistantResponse(
     contextId: ContextId,
     body: ChatRequestBody,
-    options?: { userText?: string },
+    options?: {
+      userText?: string;
+      syncBeforeRequest?: boolean;
+      clearInputOnSuccess?: boolean;
+      forceThreadContextId?: ContextId;
+    },
   ) {
     if (options?.userText) {
       appendUserToThread(contextId, options.userText);
@@ -682,17 +941,36 @@ export function PortfolioShell() {
     setModalPayload(null);
     setLoadingContextId(contextId);
     setError(null);
+    setLastFailedRequest(null);
+    requestStickyScroll();
 
     try {
+      if (options?.syncBeforeRequest) {
+        await ensureServerContextSynced(contextId);
+      }
+
       const envelope = await fetchChatEnvelope(body);
       const nextContextId = getContextIdFromEnvelope(envelope);
+      const targetContextId = options?.forceThreadContextId ?? resolveReplyThreadContextId(contextId, body, envelope);
 
       setSessionId(envelope.sessionId);
       updateSessionMeta(envelope);
-      appendAssistantToThread(nextContextId, envelope);
-      setActiveContextId(nextContextId);
+      appendAssistantToThread(targetContextId, envelope);
+      setActiveContextId(targetContextId);
       setServerContextId(nextContextId);
+      if (options?.clearInputOnSuccess) {
+        setInput('');
+      }
+      setLastFailedRequest(null);
     } catch (caughtError) {
+      setLastFailedRequest({
+        kind: 'chat',
+        contextId,
+        body,
+        syncBeforeRequest: Boolean(options?.syncBeforeRequest),
+        clearInputOnSuccess: Boolean(options?.clearInputOnSuccess),
+        forceThreadContextId: options?.forceThreadContextId,
+      });
       setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
     } finally {
       setLoadingContextId(null);
@@ -702,7 +980,30 @@ export function PortfolioShell() {
   function restoreExistingContext(contextId: ContextId) {
     setModalPayload(null);
     setError(null);
+    setLastFailedRequest(null);
     setActiveContextId(contextId);
+  }
+
+  function retryLastFailedRequest() {
+    if (!lastFailedRequest || loadingContextId) {
+      return;
+    }
+
+    setError(null);
+    requestStickyScroll();
+
+    if (lastFailedRequest.kind === 'fresh-context') {
+      void openFreshContext(lastFailedRequest.targetContextId, lastFailedRequest.action, {
+        appendUserBubble: false,
+      });
+      return;
+    }
+
+    void appendAssistantResponse(lastFailedRequest.contextId, lastFailedRequest.body, {
+      syncBeforeRequest: lastFailedRequest.syncBeforeRequest,
+      clearInputOnSuccess: lastFailedRequest.clearInputOnSuccess,
+      forceThreadContextId: lastFailedRequest.forceThreadContextId,
+    });
   }
 
   useEffect(() => {
@@ -713,6 +1014,15 @@ export function PortfolioShell() {
       setError(null);
 
       try {
+        const searchParams = new URLSearchParams(globalThis.location.search);
+        if (searchParams.get('reset') === '1') {
+          clearPersistedThreadState();
+          searchParams.delete('reset');
+          const nextQuery = searchParams.toString();
+          const nextUrl = `${globalThis.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${globalThis.location.hash}`;
+          globalThis.history.replaceState(null, '', nextUrl);
+        }
+
         try {
           const persistedRaw =
             globalThis.localStorage.getItem(THREAD_STORAGE_KEY) ??
@@ -720,14 +1030,17 @@ export function PortfolioShell() {
             globalThis.sessionStorage.getItem(LEGACY_THREAD_STORAGE_KEY);
           if (persistedRaw) {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
-            const persistedThreads = normalizePersistedThreads(persisted.threadsByContextId ?? {});
+            const persistedThreads = hydratePersistedThreads(persisted.threadsByContextId ?? {});
             const persistedContextUiState = persisted.contextUiStateByContextId ?? {};
             const persistedActiveContext = persisted.activeContextId ?? 'entry';
             const persistedWorkspaceMode = inferWorkspaceMode(persisted, persistedThreads, persistedActiveContext);
+            const shouldHydratePersistedState =
+              Boolean(persisted.sessionId && Object.keys(persistedThreads).length) ||
+              persistedWorkspaceMode === 'chat';
 
-            if (persisted.sessionId && Object.keys(persistedThreads).length) {
+            if (shouldHydratePersistedState) {
               if (!cancelled) {
-                setSessionId(persisted.sessionId);
+                setSessionId(persisted.sessionId ?? null);
                 setThreadsByContextId(persistedThreads);
                 setContextUiStateByContextId(persistedContextUiState);
                 setActiveContextId(persistedActiveContext);
@@ -741,9 +1054,7 @@ export function PortfolioShell() {
             }
           }
         } catch {
-          globalThis.localStorage.removeItem(THREAD_STORAGE_KEY);
-          globalThis.localStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
-          globalThis.sessionStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
+          clearPersistedThreadState();
         }
 
         const envelope = await fetchBootstrapEnvelope();
@@ -787,14 +1098,13 @@ export function PortfolioShell() {
       return;
     }
 
-    textarea.style.height = '0px';
+    textarea.style.height = 'auto';
 
     const lineHeight = Number.parseFloat(globalThis.getComputedStyle(textarea).lineHeight) || 32;
-    const verticalPadding = 32;
-    const maxHeight = Math.round(lineHeight * 3 + verticalPadding);
+    const maxHeight = Math.round(lineHeight * 3);
     const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
 
-    textarea.style.height = `${Math.max(nextHeight, lineHeight + verticalPadding)}px`;
+    textarea.style.height = `${Math.max(nextHeight, lineHeight)}px`;
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
   }, [input]);
 
@@ -869,6 +1179,15 @@ export function PortfolioShell() {
     void openFreshContext(targetContextId, action, { appendUserBubble: false });
   }
 
+  function handleAssistantReturnClick() {
+    if (activeContextId === 'entry') {
+      return;
+    }
+
+    restoreExistingContext('entry');
+    requestStickyScroll();
+  }
+
   function handleCta(action: UIAction) {
     if (action.type === 'open_contact_modal') {
       setModalPayload(buildContactModalPayload());
@@ -900,12 +1219,14 @@ export function PortfolioShell() {
     });
   }
 
-  function handleOpenArtifact(artifactId: string) {
-    if (!currentCaseId) {
+  function handleOpenArtifact(target: ArtifactOpenTarget) {
+    const targetCaseId = target.caseId ?? currentCaseId;
+
+    if (!targetCaseId) {
       return;
     }
 
-    const modal = buildImageModalPayload(currentCaseId, artifactId);
+    const modal = buildImageModalPayload(targetCaseId, target.artifactId);
     if (modal) {
       setModalPayload(modal);
     }
@@ -914,27 +1235,26 @@ export function PortfolioShell() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = input.trim();
-    if (!text || loadingContextId) {
+    if (!text || loadingContextId || sessionMeta.remaining <= 0) {
       return;
     }
 
-    setInput('');
+    const isLandingTextSubmit = workspaceModeRef.current === 'landing';
+
     if (workspaceModeRef.current === 'landing') {
       prepareLandingConversationStart();
       startWorkspaceTransition('submit');
     }
 
-    try {
-      await ensureServerContextSynced(activeContextId);
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
-      return;
-    }
-
     void appendAssistantResponse(
       activeContextId,
       { sessionId: sessionIdRef.current ?? undefined, input: { type: 'message', text } },
-      { userText: text },
+      {
+        userText: text,
+        syncBeforeRequest: true,
+        clearInputOnSuccess: true,
+        forceThreadContextId: isLandingTextSubmit ? 'entry' : undefined,
+      },
     );
   }
 
@@ -949,6 +1269,19 @@ export function PortfolioShell() {
 
     return null;
   }, [activeContextId]);
+
+  const showAssistantReturn = useMemo(() => {
+    if (workspaceMode !== 'chat') {
+      return false;
+    }
+
+    const entryThread = normalizedThreadsByContextId.entry;
+    if (!entryThread || isBootstrapEntryThread(entryThread)) {
+      return false;
+    }
+
+    return entryThread.items.some((item) => item.kind === 'user');
+  }, [normalizedThreadsByContextId, workspaceMode]);
 
   return (
     <>
@@ -968,6 +1301,7 @@ export function PortfolioShell() {
               onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
               ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}
               showDivider={showChatStage}
+              constrainToLandingFrame={showLandingStage && !showChatStage}
             />
 
             <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -981,7 +1315,7 @@ export function PortfolioShell() {
                       input={input}
                       onChangeInput={setInput}
                       onSubmit={handleSubmit}
-                      loading={Boolean(loadingContextId)}
+                      loading={Boolean(loadingContextId) || sessionMeta.remaining <= 0}
                       textareaRef={textareaRef}
                       chips={getEntryPrompts()}
                       onChipClick={handleChipClick}
@@ -994,21 +1328,29 @@ export function PortfolioShell() {
                       key="chat"
                       railItems={railItems}
                       selectedRailId={selectedRailId}
+                      showAssistantReturn={showAssistantReturn}
+                      assistantReturnSelected={activeContextId === 'entry'}
                       messagesRemaining={messagesRemaining}
                       onRailClick={handleRailClick}
+                      onAssistantReturnClick={handleAssistantReturnClick}
                       currentThread={currentThread}
                       loading={loadingContextId === activeContextId}
                       error={error}
+                      canRetryError={Boolean(lastFailedRequest)}
+                      onRetryError={retryLastFailedRequest}
+                      onClearError={clearChatError}
+                      stickToBottomSignal={stickToBottomSignal}
                       expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
                       onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
                       onChipClick={handleChipClick}
                       onCta={handleCta}
                       onOpenArtifact={handleOpenArtifact}
+                      onMarkAnimatedItems={markThreadItemsAnimated}
                       input={input}
                       onChangeInput={setInput}
                       onSubmit={handleSubmit}
                       textareaRef={textareaRef}
-                      currentEnvelope={currentEnvelope}
+                      contextPanelPayload={currentContextPanelPayload}
                       composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
                     />

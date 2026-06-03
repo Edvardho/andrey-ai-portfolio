@@ -2,6 +2,7 @@
 
 import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
+import { PortfolioAssistantAmbiguousReply } from './portfolio-assistant-ambiguous-reply';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { PortfolioButton } from './portfolio-button';
 
@@ -14,6 +15,10 @@ export function PortfolioAssistantRefusalReply({
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
 }) {
+  if (envelope.viewType === 'ambiguous_question') {
+    return <PortfolioAssistantAmbiguousReply envelope={envelope} onChipClick={onChipClick} />;
+  }
+
   const ctaBlocks = envelope.contentBlocks.filter((block) => block.type === 'cta');
 
   return (

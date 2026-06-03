@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import type { ModalPayload, ContactOption } from '@/lib/portfolio/types';
 
@@ -30,7 +30,7 @@ function ContactOptionRow({ option }: { option: ContactOption }) {
       href={option.href}
       target={option.id === 'email' ? undefined : '_blank'}
       rel={option.id === 'email' ? undefined : 'noreferrer'}
-      className="flex w-full cursor-pointer items-center gap-[14px] overflow-hidden rounded-[20px] border border-[#E6EAF3] bg-white p-[18px] transition-colors duration-150 hover:bg-[#F2F4FF]"
+      className="flex w-full cursor-pointer items-center gap-[14px] overflow-hidden rounded-[20px] border border-[#E6EAF3] bg-white p-[18px] transition-colors duration-150 hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
     >
       <div
         className={cx(
@@ -66,8 +66,14 @@ export function PortfolioModalOverlay({
 }) {
   const isContact = modal.type === 'contact';
   const isImage = modal.type === 'image';
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    const previouslyFocusedElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    closeButtonRef.current?.focus();
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -75,7 +81,10 @@ export function PortfolioModalOverlay({
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      previouslyFocusedElement?.focus();
+    };
   }, [onClose]);
 
   return (
@@ -97,9 +106,10 @@ export function PortfolioModalOverlay({
               <div className="text-[22px] font-bold leading-[1.2] text-[#1F2129]">{modal.title}</div>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              className="flex size-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white text-[#202129] transition-colors duration-150 hover:bg-[#FCFDFF]"
+              className="flex size-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white text-[#202129] transition-colors duration-150 hover:bg-[#FCFDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
               aria-label="Закрыть"
             >
               <X className="size-6" strokeWidth={1.8} />
@@ -129,9 +139,10 @@ export function PortfolioModalOverlay({
             )}
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="flex h-[52px] w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white shadow-[0px_10px_14px_rgba(0,0,0,0.14)] transition"
+            className="flex h-[52px] w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white shadow-[0px_10px_14px_rgba(0,0,0,0.14)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
             aria-label="Закрыть"
           >
             <X className="size-6 text-[#202129]" strokeWidth={1.8} />

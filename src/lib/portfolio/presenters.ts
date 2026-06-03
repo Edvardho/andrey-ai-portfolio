@@ -43,6 +43,10 @@ type BaseEnvelopeOptions = {
   responseSource?: ResponseSource;
 };
 
+type HiringGuideOverrides = Partial<
+  Pick<BaseEnvelopeOptions, 'viewType' | 'presentationVariant' | 'contentBlocks' | 'chips' | 'nextActions'>
+>;
+
 function getPromptChipActions(chips: PromptChip[]): UIAction[] {
   return chips.flatMap((chip) => (chip.action ? [chip.action] : []));
 }
@@ -286,18 +290,58 @@ export function buildAdditionalCasesEnvelope(session: AssistantSession): Assista
 function buildHiringGuideEnvelope(
   session: AssistantSession,
   guideKey: Parameters<typeof getHiringGuide>[0],
+  overrides: HiringGuideOverrides = {},
 ): AssistantEnvelope {
   const guide = getHiringGuide(guideKey);
+  const chips = overrides.chips ?? guide.chips;
 
   return createEnvelope({
     session,
-    viewType: guide.viewType,
-    presentationVariant: guide.presentationVariant,
-    selectedContext: session.selectedContext,
-    contentBlocks: guide.contentBlocks,
-    chips: guide.chips,
-    contextPanel: guide.contextPanel,
-    nextActions: getPromptChipActions(guide.chips),
+    viewType: overrides.viewType ?? guide.viewType,
+    presentationVariant: overrides.presentationVariant ?? guide.presentationVariant,
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks: overrides.contentBlocks ?? guide.contentBlocks,
+    chips,
+    contextPanel: {
+      ...guide.contextPanel,
+      hidden: true,
+    },
+    nextActions: overrides.nextActions ?? getPromptChipActions(chips),
+  });
+}
+
+function getCaseDiscoveryBlocks(targetCaseId?: string): ContentBlock[] {
+  const guide = getHiringGuide('caseDiscovery');
+  const normalizedTargetCaseId = targetCaseId && getCaseById(targetCaseId) ? targetCaseId : 'alfa-smart';
+  const caseContent = getCaseById(normalizedTargetCaseId);
+
+  if (!caseContent || normalizedTargetCaseId === 'alfa-smart') {
+    return guide.contentBlocks;
+  }
+
+  return guide.contentBlocks.map((block, index) => {
+    if (index === 0 && block.type === 'lead') {
+      return {
+        ...block,
+        title: `Если нужен один релевантный кейс, начни с ${caseContent.shortTitle}`,
+        body: [
+          `${caseContent.shortTitle} — самый прямой ответ на этот запрос. Я могу коротко объяснить логику здесь, а полный сигнал лежит в самом кейсе.`,
+          caseContent.id === 'chatpoint'
+            ? 'Это не success-story ради галочки, а полезный anti-case: видно, где Андрей видел продуктовый риск и не прятался за delivery.'
+            : 'Если нужна полная картина, лучше открыть сам кейс, а не пытаться выжать весь контекст из одного короткого ответа.',
+        ],
+      } satisfies ContentBlock;
+    }
+
+    if (block.type === 'cta') {
+      return {
+        ...block,
+        label: caseContent.id === 'chatpoint' ? `Перейти к ${caseContent.shortTitle}` : `Открыть ${caseContent.shortTitle}`,
+        action: { type: 'open_case_summary', caseId: caseContent.id },
+      } satisfies ContentBlock;
+    }
+
+    return block;
   });
 }
 
@@ -307,6 +351,23 @@ export function buildIdentityIntroEnvelope(session: AssistantSession): Assistant
 
 export function buildAssistantIntroEnvelope(session: AssistantSession): AssistantEnvelope {
   return buildHiringGuideEnvelope(session, 'assistantProfile');
+}
+
+export function buildCareerSummaryEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'careerSummary');
+}
+
+export function buildCaseDiscoveryEnvelope(
+  session: AssistantSession,
+  targetCaseId?: string | null,
+): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'caseDiscovery', {
+    contentBlocks: getCaseDiscoveryBlocks(targetCaseId ?? undefined),
+  });
+}
+
+export function buildMobileSummaryEnvelope(session: AssistantSession): AssistantEnvelope {
+  return buildHiringGuideEnvelope(session, 'mobileSummary');
 }
 
 export function buildStrengthsEnvelope(session: AssistantSession): AssistantEnvelope {
@@ -420,10 +481,10 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
 
 export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'ambiguous-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
-    { id: 'ambiguous-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
-    { id: 'ambiguous-exp', label: 'Опыт работы', action: { type: 'open_experience_summary' } },
-    { id: 'ambiguous-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+    { id: 'ambiguous-identity', label: 'Расскажи про Андрея', message: 'Расскажи про Андрея' },
+    { id: 'ambiguous-exp', label: 'Какой у него опыт работы', message: 'Какой у него опыт работы' },
+    { id: 'ambiguous-mobile', label: 'Что делал в мобилке', message: 'Что делал в мобилке?' },
+    { id: 'ambiguous-web', label: 'Что делал в web', message: 'Что делал в web?' },
   ];
 
   return createEnvelope({
@@ -431,19 +492,22 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
     uiState: 'fallback',
     viewType: 'ambiguous_question',
     presentationVariant: 'refusal_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
     safetyState: 'ambiguous_question',
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Запрос слишком расплывчатый',
+        title: 'Прости, но я не знаю ответа на этот вопрос.',
         body: [
-          'Я могу быстро представить Андрея, показать опыт, сильный кейс, ограничения или доказательства. Но гадать вместо тебя — плохая идея.',
-          'Выбери один из нормальных входов ниже или задай вопрос так, чтобы из него было понятно, что именно ты хочешь оценить.',
+          'Я могу быстро представить Андрея, показать его опыт, сильный кейс, ограничения или доказательства.',
         ],
       },
     ],
     chips,
-    contextPanel: portfolioContent.entry.contextPanel,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
     nextActions: getPromptChipActions(chips),
   });
 }
@@ -453,9 +517,9 @@ export function buildNoMatchingEnvelope(
   requestedCase?: string,
 ): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'nomatch-alfa', label: 'Покажи Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-    { id: 'nomatch-exp', label: 'Покажи опыт работы', action: { type: 'open_experience_summary' } },
-    { id: 'nomatch-chatpoint', label: 'Покажи ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
+    { id: 'nomatch-alfa', label: 'Открыть Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+    { id: 'nomatch-exp', label: 'Открыть опыт работы', action: { type: 'open_experience_summary' } },
+    { id: 'nomatch-chatpoint', label: 'Перейти к ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
   ];
 
   return createEnvelope({
@@ -463,6 +527,7 @@ export function buildNoMatchingEnvelope(
     uiState: 'fallback',
     viewType: 'no_matching_case',
     presentationVariant: 'refusal_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
     safetyState: 'no_matching_case',
     contentBlocks: [
       {
@@ -475,7 +540,10 @@ export function buildNoMatchingEnvelope(
       },
     ],
     chips,
-    contextPanel: portfolioContent.entry.contextPanel,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
     nextActions: getPromptChipActions(chips),
   });
 }
@@ -484,8 +552,8 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
   const chips: PromptChip[] = [
     { id: 'unsupported-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
     { id: 'unsupported-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
-    { id: 'unsupported-exp', label: 'Какой опыт работы?', action: { type: 'open_experience_summary' } },
-    { id: 'unsupported-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+    { id: 'unsupported-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
+    { id: 'unsupported-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
   ];
 
   return createEnvelope({
@@ -493,6 +561,7 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
     uiState: 'fallback',
     viewType: 'unsupported_request',
     presentationVariant: 'refusal_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
     safetyState: 'unsupported_request',
     contentBlocks: [
       {
@@ -505,7 +574,10 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
       },
     ],
     chips,
-    contextPanel: portfolioContent.entry.contextPanel,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
     nextActions: getPromptChipActions(chips),
   });
 }
@@ -522,6 +594,7 @@ export function buildSafetyEnvelope(
     uiState: 'fallback',
     viewType: 'safety_refusal',
     presentationVariant: 'refusal_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
     safetyState,
     contentBlocks: [{ type: 'lead', title, body }],
     chips,
@@ -531,6 +604,7 @@ export function buildSafetyEnvelope(
       tags: ['Кейсы', 'Опыт', 'Контакт'],
       note: 'Ассистент держит узкий scope специально: так меньше шума и выше доверие к ответам.',
       cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
+      hidden: true,
     },
     nextActions: getPromptChipActions(chips),
   });
@@ -542,6 +616,7 @@ export function buildLoadingEnvelope(session: AssistantSession): AssistantEnvelo
     uiState: 'fallback',
     viewType: 'loading',
     presentationVariant: 'loading_row',
+    selectedContext: { kind: 'none', id: null, label: null },
     contentBlocks: [
       {
         type: 'lead',
@@ -551,7 +626,10 @@ export function buildLoadingEnvelope(session: AssistantSession): AssistantEnvelo
         ],
       },
     ],
-    contextPanel: portfolioContent.entry.contextPanel,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
   });
 }
 

@@ -1,63 +1,129 @@
 'use client';
 
-import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
+import { motion } from 'framer-motion';
+
+import type { AssistantEnvelope, AssistantRenderMode, PromptChip, UIAction } from '@/lib/portfolio/types';
+import { portfolioResponseAnimationConfig } from '@/lib/portfolio/response-animation-config';
+import {
+  getParagraphRevealStartDelayMs,
+  getProgressiveReplyBlockTiming,
+} from '@/lib/portfolio/response-animation-policy';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { PortfolioButton } from './portfolio-button';
+import { PortfolioProgressiveText } from './portfolio-progressive-text';
+import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 
 export function PortfolioAssistantPlainTextReply({
   envelope,
   onChipClick,
   onCta,
+  renderMode = 'instant',
 }: {
   envelope: AssistantEnvelope;
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
+  renderMode?: AssistantRenderMode;
 }) {
   const ctaBlocks = envelope.contentBlocks.filter((block) => block.type === 'cta');
   const textBlocks = envelope.contentBlocks.filter((block) => block.type === 'lead' || block.type === 'section');
+  const progressive = renderMode === 'progressive_text';
+  const textRenderMode = progressive ? 'progressive_text' : 'instant';
 
   return (
-    <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>
-      <div className="space-y-6">
+    <PortfolioAssistantMessageFrame showHeader={false} showLeadingBadge={false} chrome="bare">
+      <div
+        className="max-w-[798px] space-y-5"
+        aria-live={progressive ? portfolioResponseAnimationConfig.global.accessibility.ariaLive : undefined}
+      >
+        <PortfolioAssistantIdentityHeader
+          badge={
+            envelope.meta.responseSource === 'facts_constrained_synthesis' ? (
+              <span className="rounded-full border border-[#E1E4EC] bg-white px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#6b6257]">
+                Только подтвержденные факты
+              </span>
+            ) : undefined
+          }
+        />
+
         {textBlocks.map((block, index) =>
           block.type === 'lead' ? (
-            <section key={`${block.type}-${index}`} className="space-y-4">
-              <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3>
-              <div className="space-y-4 text-[17px] leading-[1.8] text-[#4e4740]">
-                {block.body.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
+            <motion.section
+              key={`${block.type}-${index}`}
+              className="space-y-4"
+              initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(index).translateY } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: progressive ? getProgressiveReplyBlockTiming(index).durationMs / 1000 : 0,
+                delay: progressive ? getProgressiveReplyBlockTiming(index).delayMs / 1000 : 0,
+              }}
+            >
+              <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.01em] text-[#202129]">
+                {block.title}
+              </h3>
+              <div className="space-y-4 text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]">
+                {block.body.map((paragraph, paragraphIndex) => (
+                  <p key={paragraph}>
+                    <PortfolioProgressiveText
+                      text={paragraph}
+                      renderMode={textRenderMode}
+                      startDelayMs={
+                        getProgressiveReplyBlockTiming(index).delayMs +
+                        getParagraphRevealStartDelayMs(paragraphIndex)
+                      }
+                    />
+                  </p>
                 ))}
               </div>
-            </section>
+            </motion.section>
           ) : (
-            <section key={`${block.type}-${index}`} className="space-y-3">
-              <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3>
-              <div className="space-y-3 text-[16px] leading-[1.8] text-[#4e4740]">
-                {block.body.map((paragraph) => (
-                  <p key={paragraph}>{paragraph}</p>
+            <motion.section
+              key={`${block.type}-${index}`}
+              className="space-y-3"
+              initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(index).translateY } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: progressive ? getProgressiveReplyBlockTiming(index).durationMs / 1000 : 0,
+                delay: progressive ? getProgressiveReplyBlockTiming(index).delayMs / 1000 : 0,
+              }}
+            >
+              <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.01em] text-[#202129]">
+                {block.title}
+              </h3>
+              <div className="space-y-3 text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]">
+                {block.body.map((paragraph, paragraphIndex) => (
+                  <p key={paragraph}>
+                    <PortfolioProgressiveText
+                      text={paragraph}
+                      renderMode={textRenderMode}
+                      startDelayMs={
+                        getProgressiveReplyBlockTiming(index).delayMs +
+                        getParagraphRevealStartDelayMs(paragraphIndex)
+                      }
+                    />
+                  </p>
                 ))}
               </div>
-            </section>
+            </motion.section>
           ),
         )}
 
+        {envelope.chips.length ? (
+          <div className="flex flex-wrap gap-3 pt-1">
+            {envelope.chips.map((chip) => (
+              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} />
+            ))}
+          </div>
+        ) : null}
+
         {ctaBlocks.map((block, index) =>
           block.type === 'cta' ? (
-            <PortfolioButton key={`cta-${index}`} onClick={() => onCta(block.action)}>
-              {block.label}
-            </PortfolioButton>
+            <div key={`cta-${index}`} className="pt-1">
+              <PortfolioButton onClick={() => onCta(block.action)}>{block.label}</PortfolioButton>
+            </div>
           ) : null,
         )}
       </div>
-
-      {envelope.chips.length ? (
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-[#EBEDF2] pt-6">
-          {envelope.chips.map((chip) => (
-            <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
-          ))}
-        </div>
-      ) : null}
     </PortfolioAssistantMessageFrame>
   );
 }

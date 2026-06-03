@@ -13,6 +13,9 @@ export type ViewType =
   | 'general_synthesis'
   | 'assistant_intro'
   | 'identity_intro'
+  | 'career_summary'
+  | 'case_discovery'
+  | 'mobile_overview'
   | 'strengths_assessment'
   | 'role_fit_assessment'
   | 'decision_process'
@@ -58,6 +61,8 @@ export type PresentationVariant =
   | 'sectioned_reply'
   | 'refusal_reply'
   | 'loading_row';
+
+export type AssistantRenderMode = 'instant' | 'reveal' | 'progressive_text';
 
 export type SynthesisTopic =
   | 'strengths'
@@ -117,6 +122,11 @@ export type Artifact = {
   note?: string;
 };
 
+export type ArtifactOpenTarget = {
+  artifactId: string;
+  caseId?: string;
+};
+
 export type GalleryItem = {
   id: string;
   artifactId: string;
@@ -133,6 +143,11 @@ export type SummaryPreviewConfig = {
   overlayImageClassName?: string;
 };
 
+export type CaseCollectionLayoutType =
+  | 'single_preview'
+  | 'two_cards'
+  | 'three_cards_scroll';
+
 export type StructuredSummaryDisclosureCard = {
   id: string;
   artifactId?: string;
@@ -143,9 +158,7 @@ export type StructuredSummaryDisclosureCard = {
 };
 
 export type StructuredSummaryDisclosureLayoutType =
-  | 'single_preview'
-  | 'two_cards'
-  | 'three_cards_scroll'
+  | CaseCollectionLayoutType
   | 'text_only';
 
 export type StructuredSummaryDisclosureItem = {
@@ -153,6 +166,8 @@ export type StructuredSummaryDisclosureItem = {
   label: string;
   body: string;
   layoutType: StructuredSummaryDisclosureLayoutType;
+  rowWidth?: number;
+  peekWidth?: number;
   cards?: StructuredSummaryDisclosureCard[];
 };
 
@@ -161,6 +176,7 @@ export type StructuredSummaryShowcaseItem = {
   artifactId: string;
   title: string;
   description: string;
+  width: number;
   preview: SummaryPreviewConfig;
 };
 
@@ -177,6 +193,8 @@ export type StructuredCaseSummaryData = {
   disclosureTitle: string;
   disclosures: StructuredSummaryDisclosureItem[];
   showcaseTitle: string;
+  showcaseRowWidth?: number;
+  showcasePeekWidth?: number;
   showcaseItems: StructuredSummaryShowcaseItem[];
   resultsTitle: string;
   resultsBody: string;
@@ -229,6 +247,18 @@ export type ContentBlock =
       type: 'gallery';
       title?: string;
       items: GalleryItem[];
+    }
+  | {
+      type: 'evidence_case';
+      title: string;
+      body: string[];
+      case: {
+        caseId: string;
+        layoutType: CaseCollectionLayoutType;
+        rowWidth?: number;
+        peekWidth?: number;
+        items: StructuredSummaryDisclosureCard[];
+      };
     }
   | {
       type: 'cta';
@@ -330,6 +360,9 @@ export type HiringGuideContent = {
   viewType:
     | 'assistant_intro'
     | 'identity_intro'
+    | 'career_summary'
+    | 'case_discovery'
+    | 'mobile_overview'
     | 'strengths_assessment'
     | 'role_fit_assessment'
     | 'decision_process'
@@ -348,6 +381,8 @@ export type HiringGuidesContent = {
   assistantProfile: HiringGuideContent;
   identityProfile: HiringGuideContent;
   careerSummary: HiringGuideContent;
+  caseDiscovery: HiringGuideContent;
+  mobileSummary: HiringGuideContent;
   strengthsMap: HiringGuideContent;
   roleFit: HiringGuideContent;
   decisionMakingPatterns: HiringGuideContent;

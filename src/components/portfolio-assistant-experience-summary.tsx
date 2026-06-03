@@ -1,6 +1,15 @@
 'use client';
 
-import type { AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
+import { motion } from 'framer-motion';
+
+import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
+import type {
+  ArtifactOpenTarget,
+  AssistantEnvelope,
+  AssistantRenderMode,
+  PromptChip,
+  UIAction,
+} from '@/lib/portfolio/types';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { renderCanonicalSummaryBlock } from './portfolio-assistant-block-renderers';
@@ -11,7 +20,8 @@ type Props = {
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
-  onOpenArtifact: (artifactId: string) => void;
+  onOpenArtifact: (target: ArtifactOpenTarget) => void;
+  renderMode?: AssistantRenderMode;
 };
 
 export function PortfolioAssistantExperienceSummary({
@@ -21,19 +31,32 @@ export function PortfolioAssistantExperienceSummary({
   onChipClick,
   onCta,
   onOpenArtifact,
+  renderMode = 'instant',
 }: Props) {
+  const reveal = renderMode === 'reveal';
+
   return (
     <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>
       <div className="space-y-8">
         {envelope.contentBlocks.map((block, index) =>
-          renderCanonicalSummaryBlock(block, index, {
-            activeCaseId: null,
-            expandedDisclosureIds,
-            onToggleDisclosure,
-            onChipClick,
-            onCta,
-            onOpenArtifact,
-          }),
+          <motion.div
+            key={`${block.type}-${index}`}
+            initial={reveal ? { opacity: 0, y: 8 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: reveal ? getSummaryRevealTiming(index).durationMs / 1000 : 0,
+              delay: reveal ? getSummaryRevealTiming(index).delayMs / 1000 : 0,
+            }}
+          >
+            {renderCanonicalSummaryBlock(block, index, {
+              activeCaseId: null,
+              expandedDisclosureIds,
+              onToggleDisclosure,
+              onChipClick,
+              onCta,
+              onOpenArtifact,
+            })}
+          </motion.div>,
         )}
       </div>
 

@@ -9,10 +9,12 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "smoke": "tsx scripts/smoke-test.ts",
+    "verify:case-layout": "tsx scripts/case-layout-contract.ts",
+    "verify:intent-policy": "tsx scripts/verify-intent-policy.ts",
     "eval:intents": "tsx scripts/eval-intents.ts",
     "eval:intents:objections": "tsx scripts/eval-intents.ts objections",
     "eval:intents:objections:core": "tsx scripts/eval-intents.ts objections-core",
-    "verify": "npm run typecheck && npm run smoke"
+    "verify": "npm run typecheck && npm run smoke && npm run verify:case-layout"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.65",

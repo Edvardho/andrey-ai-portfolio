@@ -10,7 +10,9 @@ import {
   buildAdditionalCasesEnvelope,
   buildAmbiguousEnvelope,
   buildAssistantIntroEnvelope,
+  buildCareerSummaryEnvelope,
   buildCaseEnvelope,
+  buildCaseDiscoveryEnvelope,
   buildCaseRouteEnvelope,
   buildContactModalEnvelope,
   buildDecisionProcessEnvelope,
@@ -22,6 +24,7 @@ import {
   buildImageModalEnvelope,
   buildLimitEnvelope,
   buildLoadingEnvelope,
+  buildMobileSummaryEnvelope,
   buildMobileCaseEnvelope,
   buildMobileOverviewEnvelope,
   buildNoMatchingEnvelope,
@@ -138,6 +141,12 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
       return buildAssistantIntroEnvelope(session);
     case 'identity_intro':
       return buildIdentityIntroEnvelope(session);
+    case 'career_summary':
+      return buildCareerSummaryEnvelope(session);
+    case 'case_discovery':
+      return buildCaseDiscoveryEnvelope(session);
+    case 'mobile_overview':
+      return buildMobileSummaryEnvelope(session);
     case 'strengths_assessment':
       return buildStrengthsEnvelope(session);
     case 'role_fit_assessment':
@@ -192,32 +201,62 @@ async function resolveMessageIntent(
   session: AssistantSession,
   intent: MessageIntent,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const policy = resolveIntentPolicy(intent);
+
+  if (policy.threadBehavior === 'navigate') {
+    return resolveAction(session, policy.action);
+  }
+
+  return { session, envelope: policy.buildEnvelope(session) };
+}
+
+type IntentPolicy =
+  | {
+      threadBehavior: 'navigate';
+      action: UIAction;
+    }
+  | {
+      threadBehavior: 'stay_current';
+      buildEnvelope: (session: AssistantSession) => AssistantEnvelope;
+    };
+
+function resolveIntentPolicy(intent: MessageIntent): IntentPolicy {
   switch (intent.type) {
     case 'navigation_action':
-      return resolveAction(session, intent.action);
-    case 'experience_overview':
-      return resolveAction(session, { type: 'open_experience_summary' });
+      return { threadBehavior: 'navigate', action: intent.action };
     case 'assistant_intro':
-      return { session, envelope: buildAssistantIntroEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildAssistantIntroEnvelope };
     case 'identity_intro':
-      return { session, envelope: buildIdentityIntroEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildIdentityIntroEnvelope };
+    case 'experience_overview':
+      return { threadBehavior: 'stay_current', buildEnvelope: buildCareerSummaryEnvelope };
+    case 'case_discovery':
+      return {
+        threadBehavior: 'stay_current',
+        buildEnvelope: (session) => buildCaseDiscoveryEnvelope(session, intent.targetCaseId),
+      };
+    case 'mobile_overview':
+      return { threadBehavior: 'stay_current', buildEnvelope: buildMobileSummaryEnvelope };
     case 'strengths_assessment':
-      return { session, envelope: buildStrengthsEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildStrengthsEnvelope };
     case 'role_fit_assessment':
-      return { session, envelope: buildRoleFitEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildRoleFitEnvelope };
     case 'decision_process':
-      return { session, envelope: buildDecisionProcessEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildDecisionProcessEnvelope };
     case 'evidence_request':
-      return { session, envelope: buildEvidenceEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildEvidenceEnvelope };
     case 'risk_objection':
-      return { session, envelope: buildRiskEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildRiskEnvelope };
     case 'missing_case_request':
-      return { session, envelope: buildNoMatchingEnvelope(session, intent.requestedCase) };
+      return {
+        threadBehavior: 'stay_current',
+        buildEnvelope: (session) => buildNoMatchingEnvelope(session, intent.requestedCase),
+      };
     case 'unsupported_request':
-      return { session, envelope: buildUnsupportedEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildUnsupportedEnvelope };
     case 'ambiguous_question':
     default:
-      return { session, envelope: buildAmbiguousEnvelope(session) };
+      return { threadBehavior: 'stay_current', buildEnvelope: buildAmbiguousEnvelope };
   }
 }
 

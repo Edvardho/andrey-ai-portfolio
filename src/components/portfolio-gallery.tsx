@@ -1,4 +1,4 @@
-import type { GalleryItem } from '@/lib/portfolio/types';
+import type { ArtifactOpenTarget, GalleryItem } from '@/lib/portfolio/types';
 import { getCaseById } from '@/data/portfolio-content';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 
@@ -13,7 +13,7 @@ export function PortfolioGallery({
 }: {
   items: GalleryItem[];
   caseId: string | null;
-  onOpenArtifact: (artifactId: string) => void;
+  onOpenArtifact: (target: ArtifactOpenTarget) => void;
 }) {
   return (
     <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
@@ -24,8 +24,8 @@ export function PortfolioGallery({
           <button
             key={item.id}
             type="button"
-            onClick={() => onOpenArtifact(item.artifactId)}
-            className="cursor-pointer rounded-[28px] border border-[#e8e2d8] bg-white p-4 text-left shadow-[0_10px_28px_rgba(34,28,20,0.04)] transition hover:border-[#d7cdbe] hover:shadow-[0_16px_36px_rgba(34,28,20,0.07)]"
+            onClick={() => onOpenArtifact({ artifactId: item.artifactId, caseId: caseId ?? undefined })}
+            className="cursor-pointer rounded-[28px] border border-[#e8e2d8] bg-white p-4 text-left shadow-[0_10px_28px_rgba(34,28,20,0.04)] transition hover:border-[#d7cdbe] hover:shadow-[0_16px_36px_rgba(34,28,20,0.07)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
           >
             <PortfolioPreviewSurface
               src={artifact?.imageUrl}

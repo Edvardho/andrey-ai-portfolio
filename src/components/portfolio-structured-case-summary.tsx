@@ -1,141 +1,42 @@
 'use client';
 
 import clsx from 'clsx';
+import { motion } from 'framer-motion';
 import { ChevronDown, Copy } from 'lucide-react';
 
 import type {
+  ArtifactOpenTarget,
+  AssistantRenderMode,
   CaseContent,
-  StructuredSummaryDisclosureCard,
-  StructuredSummaryDisclosureItem,
   UIAction,
 } from '@/lib/portfolio/types';
+import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
+import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
+import { PortfolioCaseCollection } from './portfolio-case-collection';
+const SUMMARY_BODY_TEXT_16_CLASS =
+  'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]';
 
 type Props = {
   caseContent: CaseContent;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
-  onOpenArtifact: (artifactId: string) => void;
+  onOpenArtifact: (target: ArtifactOpenTarget) => void;
   onCta: (action: UIAction) => void;
+  renderMode?: AssistantRenderMode;
 };
 
 function SummarySection({ title, body }: { title: string; body: string }) {
   return (
     <section className="max-w-[798px] space-y-[10px]">
       <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">{title}</h4>
-      <div className="space-y-0 text-[16px] leading-[26px] text-[#202129]">
+      <div className={clsx('space-y-0', SUMMARY_BODY_TEXT_16_CLASS)}>
         {body.split('\n').map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
       </div>
     </section>
-  );
-}
-
-function SummaryDisclosureCards({
-  caseContent,
-  cards,
-  layoutType,
-  onOpenArtifact,
-}: {
-  caseContent: CaseContent;
-  cards: StructuredSummaryDisclosureCard[];
-  layoutType: StructuredSummaryDisclosureItem['layoutType'];
-  onOpenArtifact: (artifactId: string) => void;
-}) {
-  const cardsRow = (
-    <div
-      className={clsx(
-        'flex items-start gap-5',
-        layoutType === 'single_preview'
-          ? 'w-full'
-          : layoutType === 'two_cards'
-            ? 'w-full'
-            : 'w-max',
-      )}
-    >
-      {cards.map((card) => {
-        const cardWidthClass =
-          layoutType === 'two_cards'
-            ? 'min-w-0 flex-1'
-            : layoutType === 'single_preview'
-              ? 'w-full'
-              : 'shrink-0';
-
-        const content = (
-          <div
-            className={clsx('flex flex-col gap-3 text-left', cardWidthClass)}
-            style={{ width: `${card.width}px` }}
-          >
-            <div
-              className="relative h-[224px] overflow-hidden rounded-[24px] border"
-              style={{
-                backgroundColor: card.preview.backgroundColor,
-                borderColor: card.preview.borderColor ?? '#E7EAF2',
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={card.preview.src}
-                alt={card.title ?? caseContent.shortTitle}
-                className={card.preview.imageClassName}
-              />
-              {card.preview.overlaySrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={card.preview.overlaySrc}
-                  alt=""
-                  aria-hidden="true"
-                  className={
-                    card.preview.overlayImageClassName ??
-                    'absolute inset-0 h-full w-full max-w-none object-cover'
-                  }
-                />
-              ) : null}
-            </div>
-
-            {card.title || card.description ? (
-              <div className="space-y-1">
-                {card.title ? (
-                  <p className="text-[16px] font-normal leading-[22px] text-[#202129]">
-                    {card.title}
-                  </p>
-                ) : null}
-                {card.description ? (
-                  <p className="text-[14px] leading-[20px] text-[#676767]">{card.description}</p>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        );
-
-        if (!card.artifactId) {
-          return <div key={card.id}>{content}</div>;
-        }
-
-        return (
-          <button
-            key={card.id}
-            type="button"
-            onClick={() => onOpenArtifact(card.artifactId!)}
-            className={clsx('cursor-pointer', cardWidthClass)}
-          >
-            {content}
-          </button>
-        );
-      })}
-    </div>
-  );
-
-  if (layoutType === 'single_preview' || layoutType === 'two_cards') {
-    return <div className="w-full pt-2">{cardsRow}</div>;
-  }
-
-  return (
-    <div className="w-full overflow-x-auto pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="pr-4">{cardsRow}</div>
-    </div>
   );
 }
 
@@ -145,26 +46,41 @@ export function PortfolioStructuredCaseSummary({
   onToggleDisclosure,
   onOpenArtifact,
   onCta,
+  renderMode = 'instant',
 }: Props) {
   const summary = caseContent.structuredSummary;
+  const reveal = renderMode === 'reveal';
 
   if (!summary) {
     return null;
   }
 
+  function getRevealProps(order: number, y = 4) {
+    if (!reveal) {
+      return {
+        initial: false as const,
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0 },
+      };
+    }
+
+    const timing = getSummaryRevealTiming(order);
+
+    return {
+      initial: { opacity: 0, y },
+      animate: { opacity: 1, y: 0 },
+      transition: { duration: timing.durationMs / 1000, delay: timing.delayMs / 1000 },
+    };
+  }
+
   return (
     <PortfolioAssistantMessageFrame showHeader={false} showLeadingBadge={false} chrome="bare">
       <div className="space-y-8 text-[#202129]">
-        <div className="flex items-center">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-[14px] bg-[#F2F4FF] text-[15px] text-[#5b61ff]">
-              ✦
-            </div>
-            <p className="text-[16px] font-bold leading-[1.45] text-[#202129]">ИИ ассистент</p>
-          </div>
-        </div>
+        <motion.div className="flex items-center" {...getRevealProps(0)}>
+          <PortfolioAssistantIdentityHeader />
+        </motion.div>
 
-        <section className="flex max-w-[798px] gap-4">
+        <motion.section className="flex max-w-[798px] gap-4" {...getRevealProps(1)}>
           <div
             className="relative size-28 shrink-0 overflow-hidden rounded-[20px]"
             style={{ backgroundColor: summary.intro.preview.backgroundColor }}
@@ -178,15 +94,19 @@ export function PortfolioStructuredCaseSummary({
           </div>
           <div className="min-w-0 flex-1 space-y-2 text-[#202332]">
             <h3 className="text-[20px] font-semibold leading-7">{summary.intro.title}</h3>
-            <p className="text-[16px] leading-[26px]">{summary.intro.body}</p>
+            <p className={SUMMARY_BODY_TEXT_16_CLASS}>
+              {summary.intro.body}
+            </p>
           </div>
-        </section>
+        </motion.section>
 
-        {summary.sections.map((section) => (
-          <SummarySection key={section.title} title={section.title} body={section.body} />
+        {summary.sections.map((section, index) => (
+          <motion.div key={section.title} {...getRevealProps(2 + index)}>
+            <SummarySection title={section.title} body={section.body} />
+          </motion.div>
         ))}
 
-        <section className="w-full space-y-[10px]">
+        <motion.section className="max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(4)}>
           <h4 className="text-[16px] font-semibold leading-[22px] text-[#202332]">
             {summary.disclosureTitle}
           </h4>
@@ -197,10 +117,11 @@ export function PortfolioStructuredCaseSummary({
 
               return (
                 <div key={item.id} className="rounded-[20px]">
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => onToggleDisclosure(item.id)}
-                    className="flex h-8 w-full cursor-pointer items-center text-left"
+                    className="flex h-8 w-full cursor-pointer items-center text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                    {...getRevealProps(5 + index, 4)}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-[10px]">
                       <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#F1F2FF] text-[12px] font-medium leading-4 text-[#434650]">
@@ -217,20 +138,23 @@ export function PortfolioStructuredCaseSummary({
                         strokeWidth={1.8}
                       />
                     </div>
-                  </button>
+                  </motion.button>
 
                   {expanded ? (
-                    <div className={clsx('space-y-3 pt-3', isLastDisclosure ? 'pb-0' : 'pb-6')}>
-                      <div className="h-px w-full bg-[#E7EAF2]" />
-                      <p className="max-w-[798px] text-[14px] leading-5 text-[#202129]">
-                        {item.body}
-                      </p>
+                    <div className={clsx('pt-3', isLastDisclosure ? 'pb-0' : 'pb-6')}>
+                      <div className="space-y-3">
+                        <div className="h-px w-full bg-[#E7EAF2]" />
+                        <p className="text-[14px] leading-5 text-[#202129]">{item.body}</p>
+                      </div>
                       {item.layoutType !== 'text_only' && item.cards?.length ? (
-                        <SummaryDisclosureCards
-                          caseContent={caseContent}
-                          cards={item.cards}
+                        <PortfolioCaseCollection
+                          items={item.cards}
+                          caseId={caseContent.id}
                           layoutType={item.layoutType}
+                          rowWidth={item.rowWidth}
+                          peekWidth={item.peekWidth}
                           onOpenArtifact={onOpenArtifact}
+                          className="pt-2"
                         />
                       ) : null}
                     </div>
@@ -239,59 +163,33 @@ export function PortfolioStructuredCaseSummary({
               );
             })}
           </div>
-        </section>
+        </motion.section>
 
-        <section className="w-full space-y-[10px]">
+        <motion.section className="max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(9)}>
           <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
             {summary.showcaseTitle}
           </h4>
-          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max gap-5 pr-4">
-              {summary.showcaseItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onOpenArtifact(item.artifactId)}
-                  className="flex w-[252px] shrink-0 cursor-pointer flex-col items-start gap-3 text-left"
-                >
-                  <div className="h-[224px] w-full overflow-hidden rounded-[24px]">
-                    <div
-                      className="relative h-full w-full rounded-[24px] border border-solid"
-                      style={{
-                        backgroundColor: item.preview.backgroundColor,
-                        borderColor: item.preview.borderColor ?? '#E7EAF2',
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.preview.src}
-                        alt={item.title}
-                        className={item.preview.imageClassName}
-                      />
-                    </div>
-                  </div>
+          <PortfolioCaseCollection
+            items={summary.showcaseItems}
+            caseId={caseContent.id}
+            layoutType="three_cards_scroll"
+            rowWidth={summary.showcaseRowWidth}
+            peekWidth={summary.showcasePeekWidth}
+            onOpenArtifact={onOpenArtifact}
+          />
+        </motion.section>
 
-                  <div className="space-y-1">
-                    <p className="text-[16px] leading-[1.45] text-[#202129]">{item.title}</p>
-                    <p className="text-[14px] leading-[1.45] text-[#676767]">{item.description}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="max-w-[798px] space-y-[10px]">
+        <motion.section className="max-w-[798px] space-y-[10px]" {...getRevealProps(10)}>
           <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
             {summary.resultsTitle}
           </h4>
-          <p className="text-[16px] leading-[26px] text-[#202129]">{summary.resultsBody}</p>
+          <p className={SUMMARY_BODY_TEXT_16_CLASS}>{summary.resultsBody}</p>
           {summary.resultMetrics.length ? (
             <div className="flex flex-wrap gap-3 pt-3">
               {summary.resultMetrics.map((metric) => (
                 <div
                   key={`${metric.value}-${metric.label}`}
-                  className="flex h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-white px-4 py-[14px]"
+                  className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-white px-4 py-[14px]"
                 >
                   <p className="text-[18px] font-semibold leading-6 text-[#202332]">{metric.value}</p>
                   <p className="text-[13px] leading-[18px] text-[#8F95A7]">{metric.label}</p>
@@ -299,9 +197,9 @@ export function PortfolioStructuredCaseSummary({
               ))}
             </div>
           ) : null}
-        </section>
+        </motion.section>
 
-        <div className="flex items-start gap-3">
+        <motion.div className="flex items-start gap-3" {...getRevealProps(11)}>
           <div
             aria-hidden="true"
             className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#ECECF1] bg-white text-[#6B7182]"
@@ -311,11 +209,11 @@ export function PortfolioStructuredCaseSummary({
           <button
             type="button"
             onClick={() => onCta(summary.footerAction.action)}
-            className="flex h-8 cursor-pointer items-center rounded-full bg-[#1A1C22] px-[14px] text-[14px] font-medium leading-5 text-white transition hover:bg-[#242832]"
+            className="flex h-8 cursor-pointer items-center rounded-full bg-[#1A1C22] px-[14px] text-[14px] font-medium leading-5 text-white transition hover:bg-[#242832] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
           >
             {summary.footerAction.label}
           </button>
-        </div>
+        </motion.div>
       </div>
     </PortfolioAssistantMessageFrame>
   );

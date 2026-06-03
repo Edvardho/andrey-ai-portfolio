@@ -79,8 +79,8 @@ export function detectSafetyState(text: string): SafetyMatch | null {
 
 export function getSafetyFallbackChips(): PromptChip[] {
   return [
-    { id: 'safety-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-    { id: 'safety-exp', label: 'Какой опыт работы?', action: { type: 'open_experience_summary' } },
+    { id: 'safety-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
+    { id: 'safety-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
     { id: 'safety-contact', label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
   ];
 }

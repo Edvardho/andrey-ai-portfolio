@@ -58,9 +58,9 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       'product judgment, а не только craft',
     ],
     chips: [
-      { id: 'facts-strengths-alfa', label: 'Покажи Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-      { id: 'facts-strengths-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
-      { id: 'facts-strengths-exp', label: 'Какой опыт работы?', action: { type: 'open_experience_summary' } },
+      { id: 'facts-strengths-alfa', label: 'Покажи Альфа-Смарт', message: 'Покажи Альфа-Смарт' },
+      { id: 'facts-strengths-siebel', label: 'Открыть SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
+      { id: 'facts-strengths-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
     ],
   },
   decision_making: {
@@ -85,9 +85,9 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       'если ценность не доказана, это отдельный сигнал, а не баг narrative',
     ],
     chips: [
-      { id: 'facts-decisions-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
-      { id: 'facts-decisions-alfa', label: 'Покажи Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-      { id: 'facts-decisions-chatpoint', label: 'Открой ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
+      { id: 'facts-decisions-siebel', label: 'Открыть SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
+      { id: 'facts-decisions-alfa', label: 'Покажи Альфа-Смарт', message: 'Покажи Альфа-Смарт' },
+      { id: 'facts-decisions-chatpoint', label: 'Открыть ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
     ],
   },
   product_approach: {
@@ -112,9 +112,9 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       'метрики и product signal важнее декоративности',
     ],
     chips: [
-      { id: 'facts-approach-exp', label: 'Какой опыт работы?', action: { type: 'open_experience_summary' } },
-      { id: 'facts-approach-mobile', label: 'Что он делал в мобилках?', action: { type: 'open_mobile_experience_overview' } },
-      { id: 'facts-approach-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
+      { id: 'facts-approach-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
+      { id: 'facts-approach-mobile', label: 'Что он делал в мобилках?', message: 'Что делал в мобилке?' },
+      { id: 'facts-approach-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
     ],
   },
   collaboration: {
@@ -137,8 +137,8 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       'умеет вести сложные межкомандные сценарии',
     ],
     chips: [
-      { id: 'facts-collab-mobile', label: 'Покажи мобильные кейсы', action: { type: 'open_mobile_experience_overview' } },
-      { id: 'facts-collab-siebel', label: 'Открой SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
+      { id: 'facts-collab-mobile', label: 'Покажи мобильные кейсы', message: 'Что делал в мобилке?' },
+      { id: 'facts-collab-siebel', label: 'Открыть SIEBEL', action: { type: 'open_case_summary', caseId: 'siebel' } },
       { id: 'facts-collab-contact', label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'facts' } },
     ],
   },
@@ -164,8 +164,8 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       'ширина мобильной работы',
     ],
     chips: [
-      { id: 'facts-fit-alfa', label: 'Покажи сильный кейс', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
-      { id: 'facts-fit-more', label: 'Есть ли что-то сильное кроме флагманов?', action: { type: 'open_additional_cases_overview' } },
+      { id: 'facts-fit-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
+      { id: 'facts-fit-more', label: 'Открыть дополнительные кейсы', action: { type: 'open_additional_cases_overview' } },
       { id: 'facts-fit-contact', label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'facts' } },
     ],
   },

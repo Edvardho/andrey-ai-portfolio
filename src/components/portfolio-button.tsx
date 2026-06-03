@@ -31,7 +31,7 @@ export function PortfolioButton({
         size === 'lg' && 'h-[52px] gap-2 px-7 text-[15px] font-medium leading-5',
         size === 'icon-sm' && 'size-[38px] p-0',
         size === 'icon-lg' && 'size-[54px] p-0',
-        'disabled:cursor-not-allowed',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2 disabled:cursor-not-allowed',
         className,
       )}
       {...props}

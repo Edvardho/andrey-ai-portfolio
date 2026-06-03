@@ -1,12 +1,25 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
-import type { ContentBlock, PromptChip, UIAction } from '@/lib/portfolio/types';
+import type {
+  ArtifactOpenTarget,
+  AssistantRenderMode,
+  ContentBlock,
+  PromptChip,
+  UIAction,
+} from '@/lib/portfolio/types';
+import {
+  getListItemRevealTiming,
+  getParagraphRevealStartDelayMs,
+} from '@/lib/portfolio/response-animation-policy';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { PortfolioGallery } from './portfolio-gallery';
 import { PortfolioDisclosureRow } from './portfolio-disclosure-row';
 import { PortfolioButton } from './portfolio-button';
+import { PortfolioProgressiveText } from './portfolio-progressive-text';
+import { PortfolioAssistantEvidenceCaseBlock } from './portfolio-assistant-evidence-case-block';
 
 type SharedRenderProps = {
   activeCaseId: string | null;
@@ -14,7 +27,7 @@ type SharedRenderProps = {
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
-  onOpenArtifact: (artifactId: string) => void;
+  onOpenArtifact: (target: ArtifactOpenTarget) => void;
 };
 
 export function renderCanonicalSummaryBlock(
@@ -89,6 +102,14 @@ export function renderCanonicalSummaryBlock(
           <PortfolioGallery items={block.items} caseId={props.activeCaseId} onOpenArtifact={props.onOpenArtifact} />
         </section>
       );
+    case 'evidence_case':
+      return (
+        <PortfolioAssistantEvidenceCaseBlock
+          key={`${block.type}-${index}`}
+          block={block}
+          onOpenArtifact={props.onOpenArtifact}
+        />
+      );
     case 'chips':
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
@@ -129,15 +150,27 @@ export function renderConversationalBlock(
   block: ContentBlock,
   index: number,
   props: SharedRenderProps,
+  options?: {
+    renderMode?: AssistantRenderMode;
+  },
 ): ReactNode {
+  const progressive = options?.renderMode === 'progressive_text';
+  const textRenderMode = progressive ? 'progressive_text' : 'instant';
+
   switch (block.type) {
     case 'lead':
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
           <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3>
           <div className="space-y-4 text-[17px] leading-[1.85] text-[#4e4740]">
-            {block.body.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
+            {block.body.map((paragraph, paragraphIndex) => (
+              <p key={paragraph}>
+                <PortfolioProgressiveText
+                  text={paragraph}
+                  renderMode={textRenderMode}
+                  startDelayMs={getParagraphRevealStartDelayMs(paragraphIndex)}
+                />
+              </p>
             ))}
           </div>
         </section>
@@ -147,8 +180,14 @@ export function renderConversationalBlock(
         <section key={`${block.type}-${index}`} className="space-y-3">
           <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3>
           <div className="space-y-3 text-[16px] leading-[1.8] text-[#4e4740]">
-            {block.body.map((paragraph) => (
-              <p key={paragraph}>{paragraph}</p>
+            {block.body.map((paragraph, paragraphIndex) => (
+              <p key={paragraph}>
+                <PortfolioProgressiveText
+                  text={paragraph}
+                  renderMode={textRenderMode}
+                  startDelayMs={getParagraphRevealStartDelayMs(paragraphIndex)}
+                />
+              </p>
             ))}
           </div>
         </section>
@@ -158,11 +197,30 @@ export function renderConversationalBlock(
         <section key={`${block.type}-${index}`} className="space-y-3">
           {block.title ? <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3> : null}
           <ul className="space-y-3 text-[16px] leading-[1.8] text-[#4e4740]">
-            {block.items.map((item) => (
-              <li key={item} className="flex gap-3">
+            {block.items.map((item, itemIndex) => (
+              <motion.li
+                key={item}
+                className="flex gap-3"
+                initial={
+                  progressive
+                    ? { opacity: 0, y: getListItemRevealTiming(itemIndex).translateY }
+                    : false
+                }
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: progressive ? getListItemRevealTiming(itemIndex).durationMs / 1000 : 0,
+                  delay: progressive ? getListItemRevealTiming(itemIndex).delayMs / 1000 : 0,
+                }}
+              >
                 <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-[#2d2923]" />
-                <span>{item}</span>
-              </li>
+                <span>
+                  <PortfolioProgressiveText
+                    text={item}
+                    renderMode={textRenderMode}
+                    startDelayMs={getListItemRevealTiming(itemIndex).delayMs}
+                  />
+                </span>
+              </motion.li>
             ))}
           </ul>
         </section>
@@ -170,6 +228,7 @@ export function renderConversationalBlock(
     case 'metrics':
     case 'disclosures':
     case 'gallery':
+    case 'evidence_case':
     case 'chips':
     case 'cta':
       return renderCanonicalSummaryBlock(block, index, props);

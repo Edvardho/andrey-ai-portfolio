@@ -8,40 +8,80 @@ import { PortfolioButton } from './portfolio-button';
 import { PortfolioComposer } from './portfolio-composer';
 import { PortfolioMetadataChip } from './portfolio-metadata-chip';
 import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
+import type { EntryProjectPromptPreview } from './portfolio-project-prompt-card';
 import { PortfolioProjectPromptCard } from './portfolio-project-prompt-card';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 
 type EntryProjectCard = {
   id: string;
   title: string;
-  imageSrc: string;
+};
+
+const entryProjectPreviewMap: Record<string, EntryProjectPromptPreview> = {
+  'alfa-smart': {
+    src: '/entry/entry-card-alfa-smart.png',
+    imageClassName: 'absolute h-[190.25%] w-[82.02%] max-w-none left-[7.04%] top-0',
+    fillClassName: 'bg-[#D1D7E3]',
+  },
+  'expenses-card-holders': {
+    src: '/entry/entry-card-expenses-history.png',
+    imageClassName: 'absolute h-[184.88%] w-[76.59%] max-w-none left-[9.75%] top-[-0.08%]',
+    fillStyle: {
+      backgroundImage: 'linear-gradient(140.182deg, rgb(157, 180, 225) 0%, rgb(227, 210, 209) 96.702%)',
+    },
+  },
+  'subscription-sharing': {
+    src: '/entry/entry-card-subscription-sharing.png',
+    imageClassName: 'absolute h-[182.07%] w-[74.45%] max-w-none left-[12.77%] top-[1.95%]',
+    fillStyle: {
+      backgroundImage: 'linear-gradient(140.182deg, rgb(227, 210, 209) 0%, rgb(194, 215, 202) 96.702%)',
+    },
+  },
+  'ux-ui-wannabelike': {
+    src: '/entry/entry-card-wannabelike.png',
+    imageClassName: 'absolute h-[223.85%] w-full max-w-none left-0 top-0',
+    fillStyle: {
+      backgroundImage: 'linear-gradient(140.182deg, rgb(211, 227, 209) 0%, rgb(32, 40, 56) 96.702%)',
+    },
+  },
+  chatpoint: {
+    src: '/entry/entry-card-chatpoint.png',
+    imageClassName: 'absolute h-[141.99%] w-[180.69%] max-w-none left-[-18.76%] top-[8.07%]',
+    fillClassName: 'bg-[#D1D7E3]',
+  },
+  siebel: {
+    src: '/entry/entry-card-siebel.png',
+    imageClassName: 'absolute h-[134.55%] w-[167.23%] max-w-none left-[-53.98%] top-[3.9%]',
+    fillStyle: {
+      backgroundImage: 'linear-gradient(141.559deg, rgb(255, 205, 205) 35.355%, rgb(255, 246, 212) 106.07%)',
+    },
+  },
 };
 
 const entryProjectCards: EntryProjectCard[] = [
   {
     id: 'alfa-smart',
     title: 'Альфа-смарт подписка на банковские продукты',
-    imageSrc: '/entry/card-alfa-smart.png',
   },
   {
     id: 'expenses-card-holders',
     title: 'Добавление функционала в истории операции',
-    imageSrc: '/entry/card-expenses-history.png',
   },
   {
     id: 'subscription-sharing',
     title: 'Улучшение пути пользователя при добавлении участников',
-    imageSrc: '/entry/card-subscription-sharing.png',
   },
   {
     id: 'ux-ui-wannabelike',
     title: 'Прохождение курса Миши Розова по прокачке UI',
-    imageSrc: '/entry/card-wannabelike.png',
   },
   {
     id: 'chatpoint',
     title: 'Платформа для коммуникации ChatPoint',
-    imageSrc: '/entry/card-chatpoint.png',
+  },
+  {
+    id: 'siebel',
+    title: 'CRM для службы поддержки SIEBEL',
   },
 ];
 
@@ -102,7 +142,7 @@ export function PortfolioEntryView({
       exit={{ opacity: 0 }}
       transition={STAGE_FADE}
     >
-      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto px-[32px] pb-[46px] pt-[34px]">
+      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto pb-[46px] pt-[34px]">
         <motion.section
           layout
           className="flex flex-col items-center gap-5"
@@ -159,11 +199,13 @@ export function PortfolioEntryView({
           >
             <div className="flex w-max gap-6 pb-4">
               {caseRailItems.map(({ item, card }) => {
+                const preview = entryProjectPreviewMap[card.id];
+
                 return (
                   <PortfolioProjectPromptCard
                     key={item.id}
                     title={card.title}
-                    imageSrc={card.imageSrc}
+                    preview={preview}
                     onClick={() => onRailClick(item)}
                   />
                 );
@@ -174,7 +216,7 @@ export function PortfolioEntryView({
 
         <motion.section
           layout
-          className="mt-[52px] flex w-full max-w-[980px] flex-col items-center gap-6"
+          className="mt-[52px] flex w-full max-w-[932px] flex-col items-center gap-6"
           transition={COMPOSER_DOCK_SPRING}
         >
           <motion.div

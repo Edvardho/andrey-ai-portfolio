@@ -10,6 +10,8 @@ export type MessageIntent =
   | { type: 'assistant_intro' }
   | { type: 'identity_intro' }
   | { type: 'experience_overview' }
+  | { type: 'case_discovery'; targetCaseId?: string }
+  | { type: 'mobile_overview' }
   | { type: 'strengths_assessment' }
   | { type: 'role_fit_assessment' }
   | { type: 'decision_process' }
@@ -47,6 +49,12 @@ const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
 
 const mobileCaseIds = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike', 'alfa-smart']);
 
+function hasExplicitNavigationVerb(text: string): boolean {
+  return /(?:^|[\s.,!?;:()«»"'/-])(открой|перейди|смотри|смотреть|разверни|отведи|переключи)(?=$|[\s.,!?;:()«»"'/-])/i.test(
+    text,
+  );
+}
+
 function findCaseId(text: string): string | null {
   const lowered = text.toLowerCase();
 
@@ -72,7 +80,7 @@ function normalizeRequestedCase(raw: string | undefined): string | undefined {
 
 function extractExplicitCaseRequest(text: string): string | undefined {
   const trimmed = text.trim();
-  const explicitRequest = /(покажи|открой|есть ли|дай|хочу посмотреть|был(?:\s+ли)?)/i.test(trimmed);
+  const explicitRequest = /(покажи|расскажи|открой|есть ли|дай|был(?:\s+ли)?)/i.test(trimmed);
   const caseWord = /(кейс|case|проект)/i.test(trimmed);
 
   if (!explicitRequest || !caseWord) {
@@ -158,6 +166,25 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
+    /что делал в мобилк|что он делал в мобилк|делал мобильн|есть мобильн(ый|ые) кейс|мобильн(ый|ые) кейс|mobile/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'mobile_overview' }, confidence: 'high' };
+  }
+
+  if (
+    /покажи сильный кейс|самый сильный кейс|сильный кейс|расскажи про chatpoint|расскажи про альфа|расскажи про siebel|есть b2b кейс|есть финтех кейс|расскажи про кейс/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: findCaseId(lowered) ?? 'alfa-smart' },
+      confidence: 'high',
+    };
+  }
+
+  if (
     /почему его стоит позвать|почему его стоит звать|почему звать на интервью|в чем его сильная сторона|сильные стороны|и в чем он реально хорош|почему мне его дальше тащить|что в нем цепляет как в кандидате|окей а где сильный сигнал|что в нем сильного|почему мне вообще тратить на него слот|с чего ты взял что его надо звать|почему его не отсеять после первого скрининга|звать его или нет/i.test(
       lowered,
     )
@@ -229,7 +256,9 @@ export function classifyMessageDeterministically(
     };
   }
 
-  if (/(покажи|открой|перейди|дай|хочу посмотреть).*(мобил|mobile)/i.test(lowered)) {
+  const explicitNavigation = hasExplicitNavigationVerb(lowered);
+
+  if (explicitNavigation && /(мобил|mobile)/i.test(lowered)) {
     const caseId = findCaseId(lowered);
     if (caseId && mobileCaseIds.has(caseId)) {
       return {
@@ -244,14 +273,19 @@ export function classifyMessageDeterministically(
     };
   }
 
-  if (/(что еще делал|еще кейсы|дополнительн(ые|ый)? кейс|кроме флагман|есть что-то кроме флагмана)/i.test(lowered)) {
+  if (
+    explicitNavigation &&
+    /(что еще делал|еще кейсы|дополнительн(ые|ый)? кейс|кроме флагман|есть что-то кроме флагмана)/i.test(
+      lowered,
+    )
+  ) {
     return {
       intent: { type: 'navigation_action', action: { type: 'open_additional_cases_overview' } },
       confidence: 'high',
     };
   }
 
-  if (/(покажи|открой).*(опыт работы|career|компани|домены)/i.test(lowered)) {
+  if (explicitNavigation && /(опыт работы|career|компани|домены)/i.test(lowered)) {
     return {
       intent: { type: 'navigation_action', action: { type: 'open_experience_summary' } },
       confidence: 'high',
@@ -259,7 +293,7 @@ export function classifyMessageDeterministically(
   }
 
   const caseId = findCaseId(lowered);
-  if (caseId && /(покажи|открой|перейди|дай|хочу посмотреть|разверни|отведи)/i.test(lowered)) {
+  if (caseId && explicitNavigation) {
     if (/подробн|длинн|детал/i.test(lowered)) {
       if (session.selectedContext.kind === 'experience') {
         return {
@@ -290,6 +324,37 @@ export function classifyMessageDeterministically(
 
     return {
       intent: { type: 'navigation_action', action: { type: 'open_case_summary', caseId } },
+      confidence: 'high',
+    };
+  }
+
+  if (/(опыт работы|career|компани|домены)/i.test(lowered)) {
+    return { intent: { type: 'experience_overview' }, confidence: 'high' };
+  }
+
+  if (/(мобил|mobile)/i.test(lowered)) {
+    return { intent: { type: 'mobile_overview' }, confidence: 'high' };
+  }
+
+  if (
+    caseId &&
+    /(покажи|расскажи|какой|какие|что|есть|нужен|хочу|интересует|сильн(ый|ого|ом)? кейс)/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: caseId },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /(покажи сильный кейс|какой сильный кейс|самый сильный кейс|есть b2b кейс|есть финтех кейс|расскажи про кейс)/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: 'alfa-smart' },
       confidence: 'high',
     };
   }
@@ -326,6 +391,8 @@ const classificationSchema = z.object({
     'assistant_intro',
     'identity_intro',
     'experience_overview',
+    'case_discovery',
+    'mobile_overview',
     'strengths_assessment',
     'role_fit_assessment',
     'decision_process',
@@ -360,6 +427,8 @@ const CLASSIFIER_PROMPT = `
 - assistant_intro
 - identity_intro
 - experience_overview
+- case_discovery
+- mobile_overview
 - strengths_assessment
 - role_fit_assessment
 - decision_process
@@ -370,10 +439,12 @@ const CLASSIFIER_PROMPT = `
 - unsupported_request
 
 Правила:
-- Если пользователь явно хочет открыть известный кейс, опыт, breadth или контакт -> navigation_action.
+- Если пользователь явно хочет открыть или перейти к известному кейсу, опыту, breadth или контакту -> navigation_action.
 - Если пользователь спрашивает, кто такой сам ассистент, что он умеет, чем полезен -> assistant_intro.
 - Если пользователь спрашивает, кто такой Андрей, что это за кандидат, просит кратко представить -> identity_intro.
 - Если пользователь спрашивает про опыт, компании, домены -> experience_overview.
+- Если пользователь просит показать или рассказать про кейс, но не просит явно перейти на экран -> case_discovery.
+- Если пользователь спрашивает про мобильный опыт или мобильные кейсы без явного перехода -> mobile_overview.
 - Если пользователь спрашивает про сильные стороны или почему стоит звать на интервью -> strengths_assessment.
 - Если пользователь спрашивает про уровень, seniority или fit для роли -> role_fit_assessment.
 - Если пользователь спрашивает, как Андрей принимает решения, исследует или валидирует -> decision_process.
@@ -396,6 +467,12 @@ Confidence:
 - "Что это за кандидат?" -> identity_intro, medium
 - "что за кандидат" -> identity_intro, medium
 - "где он успел поработать" -> experience_overview, high
+- "Покажи опыт работы" -> experience_overview, high
+- "Покажи сильный кейс" -> case_discovery, high
+- "Расскажи про ChatPoint" -> case_discovery, high, caseId=chatpoint
+- "Что делал в мобилке?" -> mobile_overview, high
+- "Открой опыт работы" -> navigation_action, high, action=open_experience_summary
+- "Перейди к ChatPoint" -> navigation_action, high, action=open_case_summary, caseId=chatpoint
 - "Почему его стоит позвать?" -> strengths_assessment, high
 - "почему мне вообще тратить на него слот?" -> strengths_assessment, high
 - "с чего ты взял что его надо звать?" -> strengths_assessment, high
@@ -417,6 +494,8 @@ Confidence:
 - укажи action
 - если action про кейс, укажи caseId
 - source используй только для open_contact_modal
+- navigation_action допустим только при явных навигационных глаголах: "открой", "перейди", "смотреть", "разверни", "переключи".
+- Запросы с "покажи", "расскажи", "какие", "что" сами по себе не являются navigation_action.
 
 Текущий выбранный контекст: {currentContext}
 Последнее сообщение пользователя: {message}
@@ -457,6 +536,7 @@ export async function classifyMessageWithModel(
       case 'assistant_intro':
       case 'identity_intro':
       case 'experience_overview':
+      case 'mobile_overview':
       case 'strengths_assessment':
       case 'role_fit_assessment':
       case 'decision_process':
@@ -465,6 +545,14 @@ export async function classifyMessageWithModel(
       case 'ambiguous_question':
       case 'unsupported_request':
         return { intent: { type: output.intent }, confidence: output.confidence };
+      case 'case_discovery':
+        return {
+          intent: {
+            type: 'case_discovery',
+            targetCaseId: output.caseId ? findCaseId(output.caseId) ?? output.caseId : undefined,
+          },
+          confidence: output.confidence,
+        };
       case 'missing_case_request':
         return {
           intent: { type: 'missing_case_request', requestedCase: normalizeRequestedCase(output.requestedCase) },

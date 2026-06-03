@@ -39,8 +39,10 @@ function LimitReachedIcon() {
 
 export function PortfolioSessionLimitCard({
   messagesRemaining,
+  onContactClick,
 }: {
   messagesRemaining: number;
+  onContactClick: () => void;
 }) {
   const hasMessages = messagesRemaining > 0;
 
@@ -64,6 +66,15 @@ export function PortfolioSessionLimitCard({
             ? 'При достижении лимита продолжите диалог с Андреем'
             : 'Вы можете продолжить диалог с Андреем'}
         </div>
+        {!hasMessages ? (
+          <button
+            type="button"
+            onClick={onContactClick}
+            className="mt-2 h-8 cursor-pointer rounded-full bg-[#1A1C22] px-3 text-[13px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+          >
+            Написать Андрею
+          </button>
+        ) : null}
       </div>
     </div>
   );
