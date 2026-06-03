@@ -117,7 +117,7 @@ export function PortfolioCaseCollection({
             key={card.id}
             type="button"
             onClick={() => onOpenArtifact(artifactTarget)}
-            className="shrink-0 cursor-pointer rounded-[24px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className="shrink-0 cursor-pointer rounded-[24px] focus-visible:outline-none"
           >
             {content}
           </button>

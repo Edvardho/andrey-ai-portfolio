@@ -531,6 +531,7 @@ export function PortfolioShell() {
   const [hasHydrated, setHasHydrated] = useState(false);
   const [transitionSource, setTransitionSource] = useState<TransitionSource>(null);
   const [stickToBottomSignal, setStickToBottomSignal] = useState(0);
+  const [scrollToTopSignal, setScrollToTopSignal] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
@@ -607,6 +608,10 @@ export function PortfolioShell() {
 
   function requestStickyScroll() {
     setStickToBottomSignal((current) => current + 1);
+  }
+
+  function requestThreadTopScroll() {
+    setScrollToTopSignal((current) => current + 1);
   }
 
   function clearChatError() {
@@ -868,6 +873,7 @@ export function PortfolioShell() {
       }));
       ensureContextUiState(targetContextId);
       setActiveContextId(targetContextId);
+      requestThreadTopScroll();
     } else {
       if (shouldAppendUserBubble && userLabel) {
         appendUserToThread(targetContextId, userLabel);
@@ -894,7 +900,7 @@ export function PortfolioShell() {
     setError(null);
     setLastFailedRequest(null);
     ensureContextUiState(targetContextId);
-    requestStickyScroll();
+    requestThreadTopScroll();
 
     if (shouldAppendUserBubble && userLabel) {
       appendUserToThread(targetContextId, userLabel);
@@ -1340,6 +1346,7 @@ export function PortfolioShell() {
                       onRetryError={retryLastFailedRequest}
                       onClearError={clearChatError}
                       stickToBottomSignal={stickToBottomSignal}
+                      scrollToTopSignal={scrollToTopSignal}
                       expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
                       onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
                       onChipClick={handleChipClick}

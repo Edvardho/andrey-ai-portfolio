@@ -54,6 +54,7 @@ export function PortfolioChatWorkspace({
   onRetryError,
   onClearError,
   stickToBottomSignal,
+  scrollToTopSignal,
   expandedDisclosureIds,
   onToggleDisclosure,
   onChipClick,
@@ -82,6 +83,7 @@ export function PortfolioChatWorkspace({
   onRetryError: () => void;
   onClearError: () => void;
   stickToBottomSignal: number;
+  scrollToTopSignal: number;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
@@ -154,6 +156,7 @@ export function PortfolioChatWorkspace({
             onRetryError={onRetryError}
             onClearError={onClearError}
             stickToBottomSignal={stickToBottomSignal}
+            scrollToTopSignal={scrollToTopSignal}
             expandedDisclosureIds={expandedDisclosureIds}
             onToggleDisclosure={onToggleDisclosure}
             onChipClick={onChipClick}

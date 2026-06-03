@@ -22,8 +22,8 @@ export function PortfolioPromptChip({
           ? 'gap-3 px-[18px] py-[7px] text-[15px] leading-[22px]'
           : 'h-9 px-[18px] py-[11px] text-[16px] leading-[22px]',
         emphasis
-          ? 'border-[#dedfe5] bg-white text-[#5a5e68] hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129]'
-          : 'border-[#ececf1] bg-[rgba(255,255,255,0.92)] text-[#7c7f89] hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129]',
+          ? 'border-[#dedfe5] bg-white text-[#5A5E68] hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129]'
+          : 'border-[#ececf1] bg-[rgba(255,255,255,0.92)] text-[#5A5E68] hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129]',
       )}
     >
       {chip.label}

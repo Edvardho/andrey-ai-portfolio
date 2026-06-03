@@ -37,6 +37,7 @@ export function PortfolioThreadView({
   onRetryError,
   onClearError,
   stickToBottomSignal,
+  scrollToTopSignal,
   expandedDisclosureIds,
   onToggleDisclosure,
   onChipClick,
@@ -54,6 +55,7 @@ export function PortfolioThreadView({
   onRetryError: () => void;
   onClearError: () => void;
   stickToBottomSignal: number;
+  scrollToTopSignal: number;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
@@ -72,6 +74,9 @@ export function PortfolioThreadView({
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const shouldStickToBottomRef = useRef(true);
   const hasMountedRef = useRef(false);
+  const suppressAutoScrollUntilRef = useRef(0);
+  const preservedDisclosureScrollTopRef = useRef<number | null>(null);
+  const disclosureRestoreTimeoutsRef = useRef<ReturnType<typeof globalThis.setTimeout>[]>([]);
 
   function scrollThreadToBottom(behavior: ScrollBehavior) {
     const viewport = threadViewportRef.current;
@@ -85,6 +90,15 @@ export function PortfolioThreadView({
     });
   }
 
+  function scrollThreadToTop() {
+    const viewport = threadViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    viewport.scrollTop = 0;
+  }
+
   function handleScroll() {
     const viewport = threadViewportRef.current;
     if (!viewport) {
@@ -93,6 +107,51 @@ export function PortfolioThreadView({
 
     const distanceToBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
     shouldStickToBottomRef.current = distanceToBottom < getAutoScrollThresholdPx();
+  }
+
+  function restoreDisclosureScrollPosition() {
+    const viewport = threadViewportRef.current;
+    const scrollTop = preservedDisclosureScrollTopRef.current;
+
+    if (!viewport || scrollTop === null) {
+      return;
+    }
+
+    viewport.scrollTop = scrollTop;
+  }
+
+  function scheduleDisclosureScrollRestores() {
+    disclosureRestoreTimeoutsRef.current.forEach((timeoutId) => {
+      globalThis.clearTimeout(timeoutId);
+    });
+    disclosureRestoreTimeoutsRef.current = [];
+
+    for (const delay of [0, 50, 150, 350, 800, 1200]) {
+      const timeoutId = globalThis.setTimeout(() => {
+        restoreDisclosureScrollPosition();
+      }, delay);
+      disclosureRestoreTimeoutsRef.current.push(timeoutId);
+    }
+  }
+
+  function handleToggleDisclosure(disclosureId: string) {
+    const viewport = threadViewportRef.current;
+
+    if (viewport) {
+      preservedDisclosureScrollTopRef.current = viewport.scrollTop;
+      suppressAutoScrollUntilRef.current = globalThis.performance.now() + 1500;
+    }
+
+    onToggleDisclosure(disclosureId);
+    scheduleDisclosureScrollRestores();
+
+    globalThis.requestAnimationFrame(() => {
+      restoreDisclosureScrollPosition();
+
+      globalThis.requestAnimationFrame(() => {
+        restoreDisclosureScrollPosition();
+      });
+    });
   }
 
   useLayoutEffect(() => {
@@ -109,13 +168,27 @@ export function PortfolioThreadView({
   }, [animateThreadStart, error, items.length, loading]);
 
   useLayoutEffect(() => {
-    if (!threadViewportRef.current) {
+    if (stickToBottomSignal <= 0 || !threadViewportRef.current) {
       return;
     }
 
     shouldStickToBottomRef.current = true;
     scrollThreadToBottom('smooth');
   }, [stickToBottomSignal]);
+
+  useLayoutEffect(() => {
+    if (scrollToTopSignal <= 0 || !threadViewportRef.current) {
+      return;
+    }
+
+    shouldStickToBottomRef.current = false;
+    suppressAutoScrollUntilRef.current = globalThis.performance.now() + 1200;
+    scrollThreadToTop();
+
+    globalThis.requestAnimationFrame(() => {
+      scrollThreadToTop();
+    });
+  }, [scrollToTopSignal]);
 
   useLayoutEffect(() => {
     const content = threadContentRef.current;
@@ -126,6 +199,13 @@ export function PortfolioThreadView({
     let frameId = 0;
 
     const observer = new ResizeObserver(() => {
+      if (globalThis.performance.now() < suppressAutoScrollUntilRef.current) {
+        restoreDisclosureScrollPosition();
+        return;
+      }
+
+      preservedDisclosureScrollTopRef.current = null;
+
       if (!shouldStickToBottomRef.current) {
         return;
       }
@@ -141,6 +221,14 @@ export function PortfolioThreadView({
     return () => {
       observer.disconnect();
       globalThis.cancelAnimationFrame(frameId);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    return () => {
+      disclosureRestoreTimeoutsRef.current.forEach((timeoutId) => {
+        globalThis.clearTimeout(timeoutId);
+      });
     };
   }, []);
 
@@ -229,7 +317,7 @@ export function PortfolioThreadView({
     <div
       ref={threadViewportRef}
       onScroll={handleScroll}
-      className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6"
+      className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
     >
       <div ref={threadContentRef} className="space-y-7 px-6">
         {!items.length && !loading && !error ? (
@@ -251,7 +339,7 @@ export function PortfolioThreadView({
               <PortfolioAssistantEnvelopeView
                 envelope={item.envelope}
                 expandedDisclosureIds={expandedDisclosureIds}
-                onToggleDisclosure={onToggleDisclosure}
+                onToggleDisclosure={handleToggleDisclosure}
                 onChipClick={onChipClick}
                 onCta={onCta}
                 onOpenArtifact={onOpenArtifact}
