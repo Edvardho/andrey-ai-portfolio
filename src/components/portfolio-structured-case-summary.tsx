@@ -154,7 +154,7 @@ export function PortfolioStructuredCaseSummary({
                           rowWidth={item.rowWidth}
                           peekWidth={item.peekWidth}
                           onOpenArtifact={onOpenArtifact}
-                          className="pt-2"
+                          className="pt-4"
                         />
                       ) : null}
                     </div>

@@ -1,16 +1,27 @@
 'use client';
 
-import { useLayoutEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowDown } from 'lucide-react';
 
 import type { ArtifactOpenTarget, AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
 import {
   estimateAssistantAnimationMs,
   getAssistantRenderMode,
-  getAutoScrollThresholdPx,
   getThreadItemMotionTiming,
   shouldMarkInitialRevealPlayed,
 } from '@/lib/portfolio/response-animation-policy';
+import {
+  getDisclosureScrollPreserveWindowMs,
+  getDisclosureScrollRestoreDelaysMs,
+  getScrollToTopSuppressionMs,
+  isNearBottom as isViewportNearBottom,
+  shouldReleaseDisclosureAnchorOnManualScroll,
+  shouldShowJumpToLatest,
+  shouldStickToBottom,
+  shouldTemporarilyPreserveDisclosureAnchor,
+  type ThreadScrollState,
+} from '@/lib/portfolio/response-scroll-policy';
 import { THREAD_EASE, WORKSPACE_EASE } from './portfolio-motion';
 import { PortfolioUserBubble } from './portfolio-user-bubble';
 import { PortfolioAssistantEnvelopeView } from './portfolio-assistant-envelope';
@@ -27,27 +38,18 @@ export type ContextId =
   | 'additional-cases'
   | `case:${string}`;
 
-export function PortfolioThreadView({
-  contextId,
-  items,
-  hasPlayedInitialReveal,
-  loading,
-  error,
-  canRetryError,
-  onRetryError,
-  onClearError,
-  stickToBottomSignal,
-  scrollToTopSignal,
-  expandedDisclosureIds,
-  onToggleDisclosure,
-  onChipClick,
-  onCta,
-  onOpenArtifact,
-  onMarkAnimatedItems,
-  startTransitionSource,
-}: {
+export type PortfolioThreadViewHandle = {
+  captureScrollState: () => ThreadScrollState | null;
+};
+
+function getLatestAssistantItemId(items: ThreadItem[]) {
+  return [...items].reverse().find((item) => item.kind === 'assistant')?.id ?? null;
+}
+
+type PortfolioThreadViewProps = {
   contextId: ContextId;
   items: ThreadItem[];
+  scrollState: ThreadScrollState;
   hasPlayedInitialReveal: boolean;
   loading: boolean;
   error: string | null;
@@ -56,6 +58,8 @@ export function PortfolioThreadView({
   onClearError: () => void;
   stickToBottomSignal: number;
   scrollToTopSignal: number;
+  restoreThreadScrollSignal: number;
+  restoreThreadScrollTop: number | null;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
@@ -66,17 +70,107 @@ export function PortfolioThreadView({
     itemIds: string[],
     options?: { markInitialRevealPlayed?: boolean },
   ) => void;
+  onScrollStateChange: (contextId: ContextId, scrollState: ThreadScrollState) => void;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
-}) {
+};
+
+export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, PortfolioThreadViewProps>(function PortfolioThreadView({
+  contextId,
+  items,
+  scrollState,
+  hasPlayedInitialReveal,
+  loading,
+  error,
+  canRetryError,
+  onRetryError,
+  onClearError,
+  stickToBottomSignal,
+  scrollToTopSignal,
+  restoreThreadScrollSignal,
+  restoreThreadScrollTop,
+  expandedDisclosureIds,
+  onToggleDisclosure,
+  onChipClick,
+  onCta,
+  onOpenArtifact,
+  onMarkAnimatedItems,
+  onScrollStateChange,
+  startTransitionSource,
+}, ref) {
   const animateThreadStart = Boolean(startTransitionSource);
   const threadViewportRef = useRef<HTMLDivElement | null>(null);
   const threadContentRef = useRef<HTMLDivElement | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
-  const shouldStickToBottomRef = useRef(true);
+  const shouldStickToBottomRef = useRef(scrollState.isNearBottom);
   const hasMountedRef = useRef(false);
   const suppressAutoScrollUntilRef = useRef(0);
   const preservedDisclosureScrollTopRef = useRef<number | null>(null);
   const disclosureRestoreTimeoutsRef = useRef<ReturnType<typeof globalThis.setTimeout>[]>([]);
+  const scrollStateReportTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const latestAssistantItemId = getLatestAssistantItemId(items);
+  const [liveScrollState, setLiveScrollState] = useState(scrollState);
+  const liveScrollStateRef = useRef(scrollState);
+
+  const flushScrollState = useCallback((nextScrollState: ThreadScrollState) => {
+    liveScrollStateRef.current = nextScrollState;
+    onScrollStateChange(contextId, nextScrollState);
+  }, [contextId, onScrollStateChange]);
+
+  const scheduleScrollStateFlush = useCallback((nextScrollState: ThreadScrollState) => {
+    liveScrollStateRef.current = nextScrollState;
+
+    if (scrollStateReportTimeoutRef.current) {
+      globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
+    }
+
+    scrollStateReportTimeoutRef.current = globalThis.setTimeout(() => {
+      flushScrollState(nextScrollState);
+      scrollStateReportTimeoutRef.current = null;
+    }, 80);
+  }, [flushScrollState]);
+
+  const setNextScrollState = useCallback((nextScrollState: ThreadScrollState, options?: { flushImmediately?: boolean }) => {
+    setLiveScrollState(nextScrollState);
+
+    if (options?.flushImmediately) {
+      if (scrollStateReportTimeoutRef.current) {
+        globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
+        scrollStateReportTimeoutRef.current = null;
+      }
+
+      flushScrollState(nextScrollState);
+      return;
+    }
+
+    scheduleScrollStateFlush(nextScrollState);
+  }, [flushScrollState, scheduleScrollStateFlush]);
+
+  const readScrollStateFromViewport = useCallback((params?: { hasUnseenAssistantContent?: boolean }) => {
+    const viewport = threadViewportRef.current;
+
+    if (!viewport) {
+      return liveScrollStateRef.current;
+    }
+
+    const nearBottom = isViewportNearBottom({
+      scrollHeight: viewport.scrollHeight,
+      scrollTop: viewport.scrollTop,
+      clientHeight: viewport.clientHeight,
+    });
+
+    return {
+      scrollTop: viewport.scrollTop,
+      isNearBottom: nearBottom,
+      hasUnseenAssistantContent: nearBottom ? false : (params?.hasUnseenAssistantContent ?? liveScrollStateRef.current.hasUnseenAssistantContent),
+      lastSeenAssistantItemId: nearBottom ? latestAssistantItemId : liveScrollStateRef.current.lastSeenAssistantItemId,
+    };
+  }, [latestAssistantItemId]);
+
+  useImperativeHandle(ref, () => ({
+    captureScrollState() {
+      return readScrollStateFromViewport();
+    },
+  }), [readScrollStateFromViewport]);
 
   function scrollThreadToBottom(behavior: ScrollBehavior) {
     const viewport = threadViewportRef.current;
@@ -100,13 +194,9 @@ export function PortfolioThreadView({
   }
 
   function handleScroll() {
-    const viewport = threadViewportRef.current;
-    if (!viewport) {
-      return;
-    }
-
-    const distanceToBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-    shouldStickToBottomRef.current = distanceToBottom < getAutoScrollThresholdPx();
+    const nextScrollState = readScrollStateFromViewport();
+    shouldStickToBottomRef.current = nextScrollState.isNearBottom;
+    setNextScrollState(nextScrollState);
   }
 
   function restoreDisclosureScrollPosition() {
@@ -120,13 +210,22 @@ export function PortfolioThreadView({
     viewport.scrollTop = scrollTop;
   }
 
+  function clearDisclosureScrollPreservation() {
+    disclosureRestoreTimeoutsRef.current.forEach((timeoutId) => {
+      globalThis.clearTimeout(timeoutId);
+    });
+    disclosureRestoreTimeoutsRef.current = [];
+    preservedDisclosureScrollTopRef.current = null;
+    suppressAutoScrollUntilRef.current = 0;
+  }
+
   function scheduleDisclosureScrollRestores() {
     disclosureRestoreTimeoutsRef.current.forEach((timeoutId) => {
       globalThis.clearTimeout(timeoutId);
     });
     disclosureRestoreTimeoutsRef.current = [];
 
-    for (const delay of [0, 50, 150, 350, 800, 1200]) {
+    for (const delay of getDisclosureScrollRestoreDelaysMs()) {
       const timeoutId = globalThis.setTimeout(() => {
         restoreDisclosureScrollPosition();
       }, delay);
@@ -134,12 +233,20 @@ export function PortfolioThreadView({
     }
   }
 
+  function handleManualScrollIntent() {
+    if (preservedDisclosureScrollTopRef.current === null || !shouldReleaseDisclosureAnchorOnManualScroll()) {
+      return;
+    }
+
+    clearDisclosureScrollPreservation();
+  }
+
   function handleToggleDisclosure(disclosureId: string) {
     const viewport = threadViewportRef.current;
 
-    if (viewport) {
+    if (viewport && shouldTemporarilyPreserveDisclosureAnchor()) {
       preservedDisclosureScrollTopRef.current = viewport.scrollTop;
-      suppressAutoScrollUntilRef.current = globalThis.performance.now() + 1500;
+      suppressAutoScrollUntilRef.current = globalThis.performance.now() + getDisclosureScrollPreserveWindowMs();
     }
 
     onToggleDisclosure(disclosureId);
@@ -159,7 +266,7 @@ export function PortfolioThreadView({
       return;
     }
 
-    if (!shouldStickToBottomRef.current && !animateThreadStart) {
+    if (!shouldStickToBottom({ isNearBottom: shouldStickToBottomRef.current, force: animateThreadStart })) {
       return;
     }
 
@@ -174,7 +281,16 @@ export function PortfolioThreadView({
 
     shouldStickToBottomRef.current = true;
     scrollThreadToBottom('smooth');
-  }, [stickToBottomSignal]);
+    setNextScrollState(
+      {
+        ...liveScrollStateRef.current,
+        isNearBottom: true,
+        hasUnseenAssistantContent: false,
+        lastSeenAssistantItemId: latestAssistantItemId,
+      },
+      { flushImmediately: true },
+    );
+  }, [latestAssistantItemId, setNextScrollState, stickToBottomSignal]);
 
   useLayoutEffect(() => {
     if (scrollToTopSignal <= 0 || !threadViewportRef.current) {
@@ -182,13 +298,58 @@ export function PortfolioThreadView({
     }
 
     shouldStickToBottomRef.current = false;
-    suppressAutoScrollUntilRef.current = globalThis.performance.now() + 1200;
+    suppressAutoScrollUntilRef.current = globalThis.performance.now() + getScrollToTopSuppressionMs();
     scrollThreadToTop();
+    setNextScrollState(
+      {
+        ...liveScrollStateRef.current,
+        scrollTop: 0,
+        isNearBottom: false,
+      },
+      { flushImmediately: true },
+    );
 
     globalThis.requestAnimationFrame(() => {
       scrollThreadToTop();
     });
-  }, [scrollToTopSignal]);
+  }, [scrollToTopSignal, setNextScrollState]);
+
+  useLayoutEffect(() => {
+    const viewport = threadViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    viewport.scrollTop = scrollState.scrollTop;
+    shouldStickToBottomRef.current = scrollState.isNearBottom;
+    liveScrollStateRef.current = scrollState;
+    setLiveScrollState(scrollState);
+
+    globalThis.requestAnimationFrame(() => {
+      viewport.scrollTop = scrollState.scrollTop;
+    });
+  }, [contextId, scrollState]);
+
+  useLayoutEffect(() => {
+    if (restoreThreadScrollSignal <= 0 || restoreThreadScrollTop === null || !threadViewportRef.current) {
+      return;
+    }
+
+    const viewport = threadViewportRef.current;
+    viewport.scrollTop = restoreThreadScrollTop;
+    shouldStickToBottomRef.current = liveScrollStateRef.current.isNearBottom;
+    setNextScrollState(
+      {
+        ...liveScrollStateRef.current,
+        scrollTop: restoreThreadScrollTop,
+      },
+      { flushImmediately: true },
+    );
+
+    globalThis.requestAnimationFrame(() => {
+      viewport.scrollTop = restoreThreadScrollTop;
+    });
+  }, [restoreThreadScrollSignal, restoreThreadScrollTop, setNextScrollState]);
 
   useLayoutEffect(() => {
     const content = threadContentRef.current;
@@ -204,7 +365,9 @@ export function PortfolioThreadView({
         return;
       }
 
-      preservedDisclosureScrollTopRef.current = null;
+      if (preservedDisclosureScrollTopRef.current !== null) {
+        clearDisclosureScrollPreservation();
+      }
 
       if (!shouldStickToBottomRef.current) {
         return;
@@ -226,11 +389,25 @@ export function PortfolioThreadView({
 
   useLayoutEffect(() => {
     return () => {
-      disclosureRestoreTimeoutsRef.current.forEach((timeoutId) => {
-        globalThis.clearTimeout(timeoutId);
-      });
+      clearDisclosureScrollPreservation();
+      if (scrollStateReportTimeoutRef.current) {
+        globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
+      }
     };
   }, []);
+
+  useEffect(() => {
+    liveScrollStateRef.current = {
+      ...liveScrollStateRef.current,
+      hasUnseenAssistantContent: scrollState.hasUnseenAssistantContent,
+      lastSeenAssistantItemId: scrollState.lastSeenAssistantItemId,
+    };
+    setLiveScrollState((current) => ({
+      ...current,
+      hasUnseenAssistantContent: scrollState.hasUnseenAssistantContent,
+      lastSeenAssistantItemId: scrollState.lastSeenAssistantItemId,
+    }));
+  }, [contextId, scrollState.hasUnseenAssistantContent, scrollState.lastSeenAssistantItemId]);
 
   const pendingItems = items.filter((item) => !item.hasAnimated);
   const pendingSignature = pendingItems.map((item) => item.id).join('|');
@@ -313,85 +490,128 @@ export function PortfolioThreadView({
     };
   }
 
+  function handleJumpToLatest() {
+    shouldStickToBottomRef.current = true;
+    clearDisclosureScrollPreservation();
+    scrollThreadToBottom('smooth');
+    setNextScrollState(
+      {
+        ...liveScrollStateRef.current,
+        isNearBottom: true,
+        hasUnseenAssistantContent: false,
+        lastSeenAssistantItemId: latestAssistantItemId,
+      },
+      { flushImmediately: true },
+    );
+  }
+
+  const showJumpToLatest = shouldShowJumpToLatest({
+    isNearBottom: liveScrollState.isNearBottom,
+    hasUnseenAssistantContent: liveScrollState.hasUnseenAssistantContent,
+  });
+
   return (
-    <div
-      ref={threadViewportRef}
-      onScroll={handleScroll}
-      className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
-    >
-      <div ref={threadContentRef} className="space-y-7 px-6">
-        {!items.length && !loading && !error ? (
-          <div className="max-w-[798px] rounded-[24px] border border-[#EBEDF2] bg-[#FCFDFF] px-5 py-4 text-[15px] leading-6 text-[#5E606A]">
-            Задайте вопрос ассистенту или выберите кейс слева.
-          </div>
-        ) : null}
+    <div className="relative min-h-0 flex-1">
+      <div
+        ref={threadViewportRef}
+        onScroll={handleScroll}
+        onWheel={handleManualScrollIntent}
+        onTouchMove={handleManualScrollIntent}
+        className="min-h-0 h-full overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
+      >
+        <div ref={threadContentRef} className="space-y-7 px-6">
+          {!items.length && !loading && !error ? (
+            <div className="max-w-[798px] rounded-[24px] border border-[#EBEDF2] bg-[#FCFDFF] px-5 py-4 text-[15px] leading-6 text-[#5E606A]">
+              Задайте вопрос ассистенту или выберите кейс слева.
+            </div>
+          ) : null}
 
-        {items.map((item) =>
-          item.kind === 'user' ? (
-            <motion.div key={item.id} {...getItemMotion(item)}>
-              <PortfolioUserBubble text={item.text} />
-            </motion.div>
-          ) : (
+          {items.map((item) =>
+            item.kind === 'user' ? (
+              <motion.div key={item.id} {...getItemMotion(item)}>
+                <PortfolioUserBubble text={item.text} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key={item.id}
+                {...getItemMotion(item)}
+              >
+                <PortfolioAssistantEnvelopeView
+                  envelope={item.envelope}
+                  expandedDisclosureIds={expandedDisclosureIds}
+                  onToggleDisclosure={handleToggleDisclosure}
+                  onChipClick={onChipClick}
+                  onCta={onCta}
+                  onOpenArtifact={onOpenArtifact}
+                  renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
+                />
+              </motion.div>
+            ),
+          )}
+
+          {loading ? (
             <motion.div
-              key={item.id}
-              {...getItemMotion(item)}
+              initial={animateThreadStart ? { opacity: 0, y: 40 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.42, delay: animateThreadStart ? 0.22 : 0, ease: WORKSPACE_EASE }}
             >
-              <PortfolioAssistantEnvelopeView
-                envelope={item.envelope}
-                expandedDisclosureIds={expandedDisclosureIds}
-                onToggleDisclosure={handleToggleDisclosure}
-                onChipClick={onChipClick}
-                onCta={onCta}
-                onOpenArtifact={onOpenArtifact}
-                renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
-              />
+              <PortfolioAssistantLoadingRow />
             </motion.div>
-          ),
-        )}
+          ) : null}
 
-        {loading ? (
-          <motion.div
-            initial={animateThreadStart ? { opacity: 0, y: 40 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.42, delay: animateThreadStart ? 0.22 : 0, ease: WORKSPACE_EASE }}
-          >
-            <PortfolioAssistantLoadingRow />
-          </motion.div>
-        ) : null}
-
-        {error ? (
-          <motion.div
-            initial={animateThreadStart ? { opacity: 0, y: 20 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.24, ease: THREAD_EASE }}
-            className="max-w-[798px] rounded-[24px] border border-[#F0D5D2] bg-[#FFF7F6] px-5 py-4 text-[#832B22]"
-          >
-            <p className="text-[15px] font-medium leading-5">Не получилось получить ответ</p>
-            <p className="mt-1 text-[14px] leading-5 text-[#9A4A42]">{error}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {canRetryError ? (
+          {error ? (
+            <motion.div
+              initial={animateThreadStart ? { opacity: 0, y: 20 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, ease: THREAD_EASE }}
+              className="max-w-[798px] rounded-[24px] border border-[#F0D5D2] bg-[#FFF7F6] px-5 py-4 text-[#832B22]"
+            >
+              <p className="text-[15px] font-medium leading-5">Не получилось получить ответ</p>
+              <p className="mt-1 text-[14px] leading-5 text-[#9A4A42]">{error}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {canRetryError ? (
+                  <button
+                    type="button"
+                    onClick={onRetryError}
+                    className="h-8 cursor-pointer rounded-full bg-[#1A1C22] px-4 text-[13px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                  >
+                    Повторить
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  onClick={onRetryError}
-                  className="h-8 cursor-pointer rounded-full bg-[#1A1C22] px-4 text-[13px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                  onClick={onClearError}
+                  className="h-8 cursor-pointer rounded-full border border-[#F0D5D2] bg-white px-4 text-[13px] font-medium leading-5 text-[#832B22] transition hover:bg-[#FFF1F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
                 >
-                  Повторить
+                  Очистить ошибку
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onClearError}
-                className="h-8 cursor-pointer rounded-full border border-[#F0D5D2] bg-white px-4 text-[13px] font-medium leading-5 text-[#832B22] transition hover:bg-[#FFF1F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
-              >
-                Очистить ошибку
-              </button>
-            </div>
-          </motion.div>
-        ) : null}
+              </div>
+            </motion.div>
+          ) : null}
 
-        <div className="h-4" aria-hidden="true" />
-        <div ref={threadEndRef} aria-hidden="true" />
+          <div className="h-4" aria-hidden="true" />
+          <div ref={threadEndRef} aria-hidden="true" />
+        </div>
       </div>
+      <AnimatePresence initial={false}>
+        {showJumpToLatest ? (
+          <motion.button
+            key="jump-to-latest"
+            type="button"
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ duration: 0.18, ease: WORKSPACE_EASE }}
+            onClick={handleJumpToLatest}
+            className="absolute bottom-5 left-1/2 z-10 flex size-[56px] -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#EBEDF2] bg-white text-[#11110F] shadow-[0px_12px_24px_rgba(17,15,11,0.14)] transition hover:bg-[#FCFDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            aria-label="Прокрутить к последнему сообщению"
+          >
+            <ArrowDown className="size-[26px]" strokeWidth={1.9} />
+          </motion.button>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
-}
+});
+
+PortfolioThreadView.displayName = 'PortfolioThreadView';

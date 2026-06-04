@@ -83,7 +83,13 @@ export function PortfolioModalOverlay({
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      previouslyFocusedElement?.focus();
+      if (previouslyFocusedElement) {
+        try {
+          previouslyFocusedElement.focus({ preventScroll: true });
+        } catch {
+          previouslyFocusedElement.focus();
+        }
+      }
     };
   }, [onClose]);
 

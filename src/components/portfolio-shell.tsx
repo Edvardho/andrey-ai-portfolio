@@ -19,11 +19,18 @@ import type {
   UIAction,
 } from '@/lib/portfolio/types';
 import { getLastAnimatedAssistantMessageId } from '@/lib/portfolio/response-animation-policy';
+import {
+  DEFAULT_THREAD_SCROLL_STATE,
+  shouldRestoreScrollAfterModalClose,
+  shouldRestoreThreadScrollOnSwitch,
+  type ThreadScrollState,
+} from '@/lib/portfolio/response-scroll-policy';
 
 import { PortfolioEntryView } from './portfolio-entry-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
+import type { PortfolioThreadViewHandle } from './portfolio-thread-view';
 
 type ThreadItem =
   | { id: string; kind: 'user'; text: string; hasAnimated: boolean }
@@ -44,6 +51,7 @@ type ContextThread = {
   hasPlayedInitialReveal: boolean;
   restoredFromStorage: boolean;
   lastAnimatedAssistantMessageId: string | null;
+  scrollState: ThreadScrollState;
   updatedAt: string;
 };
 
@@ -169,6 +177,31 @@ function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
   };
 }
 
+function getLastAssistantItemId(items: ThreadItem[]) {
+  return [...items].reverse().find((item) => item.kind === 'assistant')?.id ?? null;
+}
+
+function normalizeThreadScrollState(
+  scrollState: Partial<ThreadScrollState> | undefined,
+  items: ThreadItem[],
+): ThreadScrollState {
+  const lastAssistantItemId = getLastAssistantItemId(items);
+
+  return {
+    scrollTop: typeof scrollState?.scrollTop === 'number' ? scrollState.scrollTop : DEFAULT_THREAD_SCROLL_STATE.scrollTop,
+    isNearBottom:
+      typeof scrollState?.isNearBottom === 'boolean' ? scrollState.isNearBottom : DEFAULT_THREAD_SCROLL_STATE.isNearBottom,
+    hasUnseenAssistantContent:
+      typeof scrollState?.hasUnseenAssistantContent === 'boolean'
+        ? scrollState.hasUnseenAssistantContent
+        : DEFAULT_THREAD_SCROLL_STATE.hasUnseenAssistantContent,
+    lastSeenAssistantItemId:
+      typeof scrollState?.lastSeenAssistantItemId === 'string' || scrollState?.lastSeenAssistantItemId === null
+        ? scrollState.lastSeenAssistantItemId
+        : lastAssistantItemId,
+  };
+}
+
 function getContextIdFromAction(action: UIAction): ContextId | null {
   switch (action.type) {
     case 'open_entry':
@@ -262,15 +295,26 @@ function getSyncActionForContext(thread: ContextThread): UIAction | null {
 
 function createContextThread(contextId: ContextId, envelope?: AssistantEnvelope): ContextThread {
   const now = new Date().toISOString();
+  const initialItems = envelope ? [createAssistantThreadItem(envelope)] : [];
 
   return {
     contextId,
-    items: envelope ? [createAssistantThreadItem(envelope)] : [],
+    items: initialItems,
     lastEnvelope: envelope ?? null,
     initialized: Boolean(envelope),
     hasPlayedInitialReveal: false,
     restoredFromStorage: false,
     lastAnimatedAssistantMessageId: null,
+    scrollState: normalizeThreadScrollState(
+      envelope
+        ? {
+            isNearBottom: false,
+            hasUnseenAssistantContent: false,
+            lastSeenAssistantItemId: getLastAssistantItemId(initialItems),
+          }
+        : undefined,
+      initialItems,
+    ),
     updatedAt: now,
   };
 }
@@ -472,6 +516,10 @@ function normalizeRuntimeThreads(threads: ThreadStore): ThreadStore {
         ('lastAnimatedAssistantMessageId' in thread && typeof thread.lastAnimatedAssistantMessageId === 'string'
           ? thread.lastAnimatedAssistantMessageId
           : getLastAnimatedAssistantMessageId(items)) ?? null;
+      const scrollState = normalizeThreadScrollState(
+        'scrollState' in thread && thread.scrollState ? thread.scrollState : undefined,
+        items,
+      );
 
       return [
         contextId,
@@ -488,6 +536,7 @@ function normalizeRuntimeThreads(threads: ThreadStore): ThreadStore {
               ? thread.restoredFromStorage
               : false,
           lastAnimatedAssistantMessageId,
+          scrollState,
         },
       ];
     }),
@@ -510,6 +559,7 @@ function hydratePersistedThreads(threads: ThreadStore): ThreadStore {
           hasPlayedInitialReveal: true,
           restoredFromStorage: true,
           lastAnimatedAssistantMessageId,
+          scrollState: normalizeThreadScrollState(thread.scrollState, items),
         },
       ];
     }),
@@ -532,7 +582,10 @@ export function PortfolioShell() {
   const [transitionSource, setTransitionSource] = useState<TransitionSource>(null);
   const [stickToBottomSignal, setStickToBottomSignal] = useState(0);
   const [scrollToTopSignal, setScrollToTopSignal] = useState(0);
+  const [restoreThreadScrollSignal, setRestoreThreadScrollSignal] = useState(0);
+  const [restoreThreadScrollTop, setRestoreThreadScrollTop] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const threadViewRef = useRef<PortfolioThreadViewHandle | null>(null);
   const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
   const activeContextIdRef = useRef<ContextId>('entry');
@@ -614,6 +667,15 @@ export function PortfolioShell() {
     setScrollToTopSignal((current) => current + 1);
   }
 
+  function requestThreadScrollRestore(scrollTop: number | null) {
+    if (scrollTop === null) {
+      return;
+    }
+
+    setRestoreThreadScrollTop(scrollTop);
+    setRestoreThreadScrollSignal((current) => current + 1);
+  }
+
   function clearChatError() {
     setError(null);
     setLastFailedRequest(null);
@@ -634,6 +696,39 @@ export function PortfolioShell() {
         [contextId]: recipe(existing),
       };
     });
+  }
+
+  function updateThreadScrollState(contextId: ContextId, scrollState: ThreadScrollState) {
+    setThreadsByContextId((current) => {
+      const existing = current[contextId] ?? createContextThread(contextId);
+      const previousScrollState = existing.scrollState;
+      if (
+        previousScrollState.scrollTop === scrollState.scrollTop &&
+        previousScrollState.isNearBottom === scrollState.isNearBottom &&
+        previousScrollState.hasUnseenAssistantContent === scrollState.hasUnseenAssistantContent &&
+        previousScrollState.lastSeenAssistantItemId === scrollState.lastSeenAssistantItemId
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [contextId]: {
+          ...existing,
+          scrollState,
+        },
+      };
+    });
+  }
+
+  function captureActiveThreadScrollState() {
+    const snapshot = threadViewRef.current?.captureScrollState();
+    if (!snapshot) {
+      return null;
+    }
+
+    updateThreadScrollState(activeContextIdRef.current, snapshot);
+    return snapshot;
   }
 
   function ensureContextUiState(contextId: ContextId) {
@@ -701,14 +796,27 @@ export function PortfolioShell() {
   }
 
   function appendAssistantToThread(contextId: ContextId, envelope: AssistantEnvelope) {
-    upsertThread(contextId, (thread) => ({
-      ...thread,
-      items: [...thread.items, createAssistantThreadItem(envelope)],
-      lastEnvelope: envelope,
-      initialized: true,
-      restoredFromStorage: false,
-      updatedAt: new Date().toISOString(),
-    }));
+    upsertThread(contextId, (thread) => {
+      const assistantItem = createAssistantThreadItem(envelope);
+      const isThreadNearBottom = thread.scrollState.isNearBottom;
+      const shouldMarkUnseenAssistantContent = thread.initialized && !isThreadNearBottom;
+
+      return {
+        ...thread,
+        items: [...thread.items, assistantItem],
+        lastEnvelope: envelope,
+        initialized: true,
+        restoredFromStorage: false,
+        scrollState: {
+          ...thread.scrollState,
+          hasUnseenAssistantContent: shouldMarkUnseenAssistantContent,
+          lastSeenAssistantItemId: !shouldMarkUnseenAssistantContent
+            ? assistantItem.id
+            : thread.scrollState.lastSeenAssistantItemId,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }
 
   function replaceThreadWithEnvelope(contextId: ContextId, envelope: AssistantEnvelope) {
@@ -766,6 +874,10 @@ export function PortfolioShell() {
           : [...state.expandedDisclosureIds, disclosureId],
       };
     });
+  }
+
+  function handleThreadScrollStateChange(contextId: ContextId, scrollState: ThreadScrollState) {
+    updateThreadScrollState(contextId, scrollState);
   }
 
   async function fetchChatEnvelope(body: ChatRequestBody): Promise<AssistantEnvelope> {
@@ -852,6 +964,7 @@ export function PortfolioShell() {
     setLastFailedRequest(null);
 
     if (targetContextId !== activeContextId) {
+      captureActiveThreadScrollState();
       const items: ThreadItem[] = [];
       if (shouldAppendUserBubble && userLabel) {
         items.push(createUserThreadItem(userLabel));
@@ -868,6 +981,14 @@ export function PortfolioShell() {
           hasPlayedInitialReveal: false,
           restoredFromStorage: false,
           lastAnimatedAssistantMessageId: null,
+          scrollState: normalizeThreadScrollState(
+            {
+              isNearBottom: false,
+              hasUnseenAssistantContent: false,
+              lastSeenAssistantItemId: getLastAssistantItemId(items),
+            },
+            items,
+          ),
           updatedAt: new Date().toISOString(),
         },
       }));
@@ -894,6 +1015,7 @@ export function PortfolioShell() {
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
+    captureActiveThreadScrollState();
     setModalPayload(null);
     setActiveContextId(targetContextId);
     setLoadingContextId(targetContextId);
@@ -948,7 +1070,9 @@ export function PortfolioShell() {
     setLoadingContextId(contextId);
     setError(null);
     setLastFailedRequest(null);
-    requestStickyScroll();
+    if (threadsRef.current[contextId]?.scrollState.isNearBottom ?? true) {
+      requestStickyScroll();
+    }
 
     try {
       if (options?.syncBeforeRequest) {
@@ -984,10 +1108,16 @@ export function PortfolioShell() {
   }
 
   function restoreExistingContext(contextId: ContextId) {
+    const targetThread = threadsRef.current[contextId];
+    captureActiveThreadScrollState();
     setModalPayload(null);
     setError(null);
     setLastFailedRequest(null);
     setActiveContextId(contextId);
+
+    if (!shouldRestoreThreadScrollOnSwitch(Boolean(targetThread?.initialized))) {
+      requestThreadTopScroll();
+    }
   }
 
   function retryLastFailedRequest() {
@@ -996,7 +1126,6 @@ export function PortfolioShell() {
     }
 
     setError(null);
-    requestStickyScroll();
 
     if (lastFailedRequest.kind === 'fresh-context') {
       void openFreshContext(lastFailedRequest.targetContextId, lastFailedRequest.action, {
@@ -1191,16 +1320,17 @@ export function PortfolioShell() {
     }
 
     restoreExistingContext('entry');
-    requestStickyScroll();
   }
 
   function handleCta(action: UIAction) {
     if (action.type === 'open_contact_modal') {
+      captureActiveThreadScrollState();
       setModalPayload(buildContactModalPayload());
       return;
     }
 
     if (action.type === 'open_image_modal') {
+      captureActiveThreadScrollState();
       const modal = buildImageModalPayload(action.caseId, action.artifactId);
       if (modal) {
         setModalPayload(modal);
@@ -1232,9 +1362,19 @@ export function PortfolioShell() {
       return;
     }
 
+    captureActiveThreadScrollState();
     const modal = buildImageModalPayload(targetCaseId, target.artifactId);
     if (modal) {
       setModalPayload(modal);
+    }
+  }
+
+  function handleCloseModal() {
+    const snapshot = captureActiveThreadScrollState();
+    setModalPayload(null);
+
+    if (shouldRestoreScrollAfterModalClose()) {
+      requestThreadScrollRestore(snapshot?.scrollTop ?? currentThread.scrollState.scrollTop);
     }
   }
 
@@ -1347,16 +1487,20 @@ export function PortfolioShell() {
                       onClearError={clearChatError}
                       stickToBottomSignal={stickToBottomSignal}
                       scrollToTopSignal={scrollToTopSignal}
+                      restoreThreadScrollSignal={restoreThreadScrollSignal}
+                      restoreThreadScrollTop={restoreThreadScrollTop}
                       expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
                       onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
                       onChipClick={handleChipClick}
                       onCta={handleCta}
                       onOpenArtifact={handleOpenArtifact}
                       onMarkAnimatedItems={markThreadItemsAnimated}
+                      onThreadScrollStateChange={handleThreadScrollStateChange}
                       input={input}
                       onChangeInput={setInput}
                       onSubmit={handleSubmit}
                       textareaRef={textareaRef}
+                      threadViewRef={threadViewRef}
                       contextPanelPayload={currentContextPanelPayload}
                       composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
@@ -1374,7 +1518,7 @@ export function PortfolioShell() {
       {modalPayload ? (
         <PortfolioModalOverlay
           modal={modalPayload}
-          onClose={() => setModalPayload(null)}
+          onClose={handleCloseModal}
         />
       ) : null}
     </>

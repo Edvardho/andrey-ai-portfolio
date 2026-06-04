@@ -105,6 +105,49 @@ function main() {
     peekWidth: chatpointSummary.showcasePeekWidth!,
   });
 
+  const expensesSummary = portfolioContent.cases['expenses-card-holders'].structuredSummary;
+  assert.ok(expensesSummary, 'Expenses structured summary is required');
+  assert.equal(expensesSummary.showcaseRowWidth, 1009.333);
+  assert.equal(expensesSummary.showcasePeekWidth, 158);
+  assertScrollableContract({
+    label: 'Expenses showcase',
+    rowWidth: expensesSummary.showcaseRowWidth!,
+    peekWidth: expensesSummary.showcasePeekWidth!,
+  });
+
+  const sharingSummary = portfolioContent.cases['subscription-sharing'].structuredSummary;
+  assert.ok(sharingSummary, 'Subscription Sharing structured summary is required');
+  assert.equal(sharingSummary.showcaseRowWidth, 798);
+  assert.equal(sharingSummary.showcasePeekWidth, 158);
+  assertScrollableContract({
+    label: 'Subscription Sharing showcase',
+    rowWidth: sharingSummary.showcaseRowWidth!,
+    peekWidth: sharingSummary.showcasePeekWidth!,
+  });
+
+  const wannabelikeSummary = portfolioContent.cases['ux-ui-wannabelike'].structuredSummary;
+  assert.ok(wannabelikeSummary, 'UX/UI WannabeLike structured summary is required');
+  const wannabelikeDisclosure3 = wannabelikeSummary.disclosures.find(
+    (item) => item.id === 'wannabelike-structured-ui-concept',
+  );
+  assert.ok(wannabelikeDisclosure3, 'UX/UI WannabeLike disclosure 3 is required');
+  assert.equal(wannabelikeDisclosure3.layoutType, 'three_cards_scroll');
+  assert.equal(wannabelikeDisclosure3.rowWidth, 1207);
+  assert.equal(wannabelikeDisclosure3.peekWidth, 158);
+  assertScrollableContract({
+    label: 'UX/UI WannabeLike disclosure 3',
+    rowWidth: wannabelikeDisclosure3.rowWidth!,
+    peekWidth: wannabelikeDisclosure3.peekWidth!,
+  });
+
+  assert.equal(wannabelikeSummary.showcaseRowWidth, 1009.333);
+  assert.equal(wannabelikeSummary.showcasePeekWidth, 158);
+  assertScrollableContract({
+    label: 'UX/UI WannabeLike showcase',
+    rowWidth: wannabelikeSummary.showcaseRowWidth!,
+    peekWidth: wannabelikeSummary.showcasePeekWidth!,
+  });
+
   const evidenceIndex = portfolioContent.hiringGuides.evidenceIndex;
   const evidenceCase = evidenceIndex.contentBlocks.find(isThreeCardsEvidenceCase);
   assert.ok(evidenceCase, 'evidence_case proof block is required');

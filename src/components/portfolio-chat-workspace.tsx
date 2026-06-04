@@ -16,7 +16,8 @@ import {
   getContextPanelRevealDelayMs,
   shouldDelayContextPanelReveal,
 } from '@/lib/portfolio/response-animation-policy';
-import type { ThreadItem, ContextId } from './portfolio-thread-view';
+import type { ThreadItem, ContextId, PortfolioThreadViewHandle } from './portfolio-thread-view';
+import type { ThreadScrollState } from '@/lib/portfolio/response-scroll-policy';
 import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
 import { PortfolioContextPanel } from './portfolio-context-panel';
@@ -31,6 +32,7 @@ interface ContextThread {
   hasPlayedInitialReveal: boolean;
   restoredFromStorage: boolean;
   lastAnimatedAssistantMessageId: string | null;
+  scrollState: ThreadScrollState;
   updatedAt: string;
 }
 
@@ -55,16 +57,20 @@ export function PortfolioChatWorkspace({
   onClearError,
   stickToBottomSignal,
   scrollToTopSignal,
+  restoreThreadScrollSignal,
+  restoreThreadScrollTop,
   expandedDisclosureIds,
   onToggleDisclosure,
   onChipClick,
   onCta,
   onOpenArtifact,
   onMarkAnimatedItems,
+  onThreadScrollStateChange,
   input,
   onChangeInput,
   onSubmit,
   textareaRef,
+  threadViewRef,
   contextPanelPayload,
   composerLayoutId,
   startTransitionSource,
@@ -84,6 +90,8 @@ export function PortfolioChatWorkspace({
   onClearError: () => void;
   stickToBottomSignal: number;
   scrollToTopSignal: number;
+  restoreThreadScrollSignal: number;
+  restoreThreadScrollTop: number | null;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onChipClick: (chip: PromptChip) => void;
@@ -94,10 +102,12 @@ export function PortfolioChatWorkspace({
     itemIds: string[],
     options?: { markInitialRevealPlayed?: boolean },
   ) => void;
+  onThreadScrollStateChange: (contextId: ContextId, scrollState: ThreadScrollState) => void;
   input: string;
   onChangeInput: (value: string) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+  threadViewRef: RefObject<PortfolioThreadViewHandle | null>;
   contextPanelPayload: ContextPanelPayload | null;
   composerLayoutId: string;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
@@ -147,8 +157,10 @@ export function PortfolioChatWorkspace({
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
           <PortfolioThreadView
+            ref={threadViewRef}
             contextId={currentThread.contextId}
             items={currentThread.items}
+            scrollState={currentThread.scrollState}
             hasPlayedInitialReveal={currentThread.hasPlayedInitialReveal}
             loading={loading}
             error={error}
@@ -157,12 +169,15 @@ export function PortfolioChatWorkspace({
             onClearError={onClearError}
             stickToBottomSignal={stickToBottomSignal}
             scrollToTopSignal={scrollToTopSignal}
+            restoreThreadScrollSignal={restoreThreadScrollSignal}
+            restoreThreadScrollTop={restoreThreadScrollTop}
             expandedDisclosureIds={expandedDisclosureIds}
             onToggleDisclosure={onToggleDisclosure}
             onChipClick={onChipClick}
             onCta={onCta}
             onOpenArtifact={onOpenArtifact}
             onMarkAnimatedItems={onMarkAnimatedItems}
+            onScrollStateChange={onThreadScrollStateChange}
             startTransitionSource={startTransitionSource}
           />
 

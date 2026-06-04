@@ -14,6 +14,7 @@ import type {
   PromptChip,
   RailItem,
   StructuredCaseSummaryData,
+  StructuredExperienceSummaryData,
 } from '@/lib/portfolio/types';
 
 const railItems: RailItem[] = [
@@ -1296,6 +1297,173 @@ const expensesDisclosures: DisclosureRow[] = [
   },
 ];
 
+const expensesStructuredSummary: StructuredCaseSummaryData = {
+  intro: {
+    title: 'Кейс про расходы для держателей карт',
+    body: 'Задача выглядела как локальная мобильная доработка: Нужно было дать дополнительным держателям карт доступ к информации о расходах. Но на самом функционал истории операций принадлежал другой команде и чтобы реализовать доработку пришлось долго договариаваться.',
+    preview: {
+      src: '/structured-summary/expenses-card-holders/intro-preview.png',
+      backgroundColor: '#D1D7E3',
+      borderColor: '#EBEDF2',
+      imageClassName: 'absolute inset-0 size-full max-w-none rounded-[24px] object-contain',
+    },
+  },
+  sections: [
+    {
+      title: 'Почему задача была сложной',
+      body: 'Проблема была не в отрисовке экрана, а в согласовании логики между двумя командами. Семейный банк отвечал за сценарий доп. держателей, а история операций — за базовый экран расходов. Без доказанной потребности фича не проходила бы дальше обсуждения.',
+    },
+    {
+      title: 'Роль Андрея',
+      body: 'Андрей коммуницировал с командой истории операций, собрал аргументацию через исследование, подтвердил, что пользователям действительно нужен такой сценарий, затем помог согласовать новую сущность с соседней командой и спроектировал мобильный путь просмотра расходов и фильтрации операций.',
+    },
+  ],
+  disclosureTitle: 'Что делал Андрей',
+  disclosures: [
+    {
+      id: 'expenses-structured-research',
+      label: 'Составил путь пользователя, провел исследование и подтвердил гипотезу',
+      body: 'Сначала Андрей составил путь пользователя и провел исследование, чтобы понять, действительно ли доп. держателям нужен отдельный сценарий просмотра расходов. Исследование подтвердило гипотезу и дало аргументы для обсуждения с соседней командой.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'expenses-structured-research-card',
+          artifactId: 'expenses-research-path',
+          width: 462,
+          preview: {
+            src: '/structured-summary/expenses-card-holders/disclosure-research.png',
+            backgroundColor: '#FFFFFF',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 size-full max-w-none rounded-[24px] object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'expenses-structured-entity',
+      label: 'Согласовал новую сущность с командой истории операций',
+      body: 'Проблема была не только в интерфейсе: функционал истории операций принадлежал другой команде. Поэтому Андрей согласовал появление новой сущности доп. держателя, показал сценарий и договорился о том, как эта сущность будет работать внутри истории операций.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'expenses-structured-entity-card',
+          artifactId: 'expenses-entity-alignment',
+          width: 462,
+          preview: {
+            src: '/structured-summary/expenses-card-holders/disclosure-entity.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 size-full max-w-none rounded-[24px] object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'expenses-structured-filters',
+      label: 'Внедрил функционал не ломая логику работы фильтра',
+      body: 'Были собраны просмотр расходов, переходы внутри истории операций и сценарий фильтрации. Важно было не навесить лишнюю сложность, а встроить новый путь в знакомую логику мобильного банка.',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'expenses-structured-expenses-screen-card',
+          artifactId: 'expenses-screen-flow',
+          title: 'Экран расходов',
+          description: 'Основной путь просмотра расходов был собран под новый тип пользователя.',
+          width: 389,
+          preview: {
+            src: '/structured-summary/expenses-card-holders/disclosure-filters.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[83.34%] left-[3.2%] max-w-none top-[8.33%] w-[93.61%]',
+          },
+        },
+        {
+          id: 'expenses-structured-filter-details-card',
+          artifactId: 'expenses-filter-details',
+          title: 'Фильтры и детализация',
+          description: 'Дополнительный слой сценария не усложняет базовую историю операций, а уточняет ее.',
+          width: 389,
+          preview: {
+            src: '/structured-summary/expenses-card-holders/disclosure-filters-detail.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[107.16%] left-[13.67%] max-w-none top-[-2%] w-[72.66%]',
+          },
+        },
+      ],
+    },
+  ],
+  showcaseTitle: 'Ключевые экраны и артефакты',
+  showcaseRowWidth: 1009.333,
+  showcasePeekWidth: 158,
+  showcaseItems: [
+    {
+      id: 'expenses-structured-showcase-history',
+      artifactId: 'expenses-history',
+      title: 'История операций',
+      description: 'Контур, где нужно было встроить новый тип пользователя',
+      width: 252,
+      preview: {
+        src: '/structured-summary/expenses-card-holders/showcase-history.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[185.06%] left-[10.65%] max-w-none top-[12.83%] w-[78.69%]',
+      },
+    },
+    {
+      id: 'expenses-structured-showcase-family',
+      artifactId: 'expenses-family',
+      title: 'Расходы семьи',
+      description: 'Просмотр расходов для доп. держателя карты',
+      width: 252,
+      preview: {
+        src: '/structured-summary/expenses-card-holders/showcase-family-expenses.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[185.06%] left-[10.65%] max-w-none top-[12.83%] w-[78.69%]',
+      },
+    },
+    {
+      id: 'expenses-structured-showcase-filters',
+      artifactId: 'expenses-filters',
+      title: 'Фильтры',
+      description: 'Сценарий детализации и отбора операций',
+      width: 252,
+      preview: {
+        src: '/structured-summary/expenses-card-holders/showcase-filters.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[182.93%] left-[15.24%] max-w-none top-[-89.16%] w-[69.52%]',
+      },
+    },
+    {
+      id: 'expenses-structured-showcase-flow',
+      artifactId: 'expenses-flow-artifact',
+      title: 'Flow',
+      description: 'Как связались два командных контура',
+      width: 252,
+      preview: {
+        src: '/structured-summary/expenses-card-holders/showcase-flow.png',
+        backgroundColor: '#F4F5FC',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[209.85%] left-[-1.83%] max-w-none top-[-2.81%] w-[300.44%]',
+      },
+    },
+  ],
+  resultsTitle: 'Результат',
+  resultsBody:
+    'Этот кейс ценен тем, что показывает не декоративный UI, а работу с сопротивлением системы. Андрей доказал потребность, синхронизировал две команды и довел мобильный сценарий до понятного решения.',
+  resultMetrics: [
+    { value: '2 команды', label: 'было синхронизированно' },
+    { value: '1 исследование', label: 'Подтвердило гипотезу' },
+    { value: 'mobile flow', label: 'Довели до реализации' },
+  ],
+  footerAction: {
+    label: 'Написать Андрею',
+    action: { type: 'open_contact_modal', source: 'expenses-summary' },
+  },
+};
+
 const expensesCase: CaseContent = {
   id: 'expenses-card-holders',
   shortTitle: 'Расходы держателей',
@@ -1334,14 +1502,20 @@ const expensesCase: CaseContent = {
   ],
   disclosures: expensesDisclosures,
   artifacts: [
-    { id: 'expenses-history', title: 'История операций', caption: 'Исходный экран чужой команды.', imageUrl: '/projects/mobile/expenses-history.png' },
-    { id: 'expenses-family', title: 'Расходы семьи', caption: 'Целевой сценарий просмотра расходов.', imageUrl: '/projects/mobile/expenses-family.png' },
-    { id: 'expenses-filters', title: 'Фильтры', caption: 'Детализация и отбор операций.', imageUrl: '/projects/mobile/expenses-filters.png' },
+    { id: 'expenses-research-path', title: 'Путь пользователя и исследование', caption: 'Проверка потребности до согласования с соседней командой.', imageUrl: '/structured-summary/expenses-card-holders/disclosure-research.png', sourceLabel: 'Figma' },
+    { id: 'expenses-entity-alignment', title: 'Новая сущность в истории операций', caption: 'Согласование доп. держателя как новой сущности внутри чужого продуктового контура.', imageUrl: '/structured-summary/expenses-card-holders/disclosure-entity.png', sourceLabel: 'Figma' },
+    { id: 'expenses-screen-flow', title: 'Экран расходов', caption: 'Основной путь просмотра расходов был собран под новый тип пользователя.', imageUrl: '/structured-summary/expenses-card-holders/disclosure-filters.png', sourceLabel: 'Figma' },
+    { id: 'expenses-filter-details', title: 'Фильтры и детализация', caption: 'Дополнительный слой сценария не усложняет базовую историю операций, а уточняет ее.', imageUrl: '/structured-summary/expenses-card-holders/disclosure-filters-detail.png', sourceLabel: 'Figma' },
+    { id: 'expenses-history', title: 'История операций', caption: 'Контур, где нужно было встроить новый тип пользователя.', imageUrl: '/structured-summary/expenses-card-holders/showcase-history.png', sourceLabel: 'Figma' },
+    { id: 'expenses-family', title: 'Расходы семьи', caption: 'Просмотр расходов для доп. держателя карты.', imageUrl: '/structured-summary/expenses-card-holders/showcase-family-expenses.png', sourceLabel: 'Figma' },
+    { id: 'expenses-filters', title: 'Фильтры', caption: 'Сценарий детализации и отбора операций.', imageUrl: '/structured-summary/expenses-card-holders/showcase-filters.png', sourceLabel: 'Figma' },
+    { id: 'expenses-flow-artifact', title: 'Flow', caption: 'Как связались два командных контура.', imageUrl: '/structured-summary/expenses-card-holders/showcase-flow.png', sourceLabel: 'Figma' },
   ],
   gallery: makeGallery([
     { id: 'expenses-history', title: 'История операций', description: 'Исходный контур.' },
     { id: 'expenses-family', title: 'Расходы семьи', description: 'Новый сценарий.' },
     { id: 'expenses-filters', title: 'Фильтры', description: 'Работа с деталями.' },
+    { id: 'expenses-flow-artifact', title: 'Flow', description: 'Связка двух командных контуров.' },
   ]),
   contextPanel: {
     headerLabel: 'Контекст кейса',
@@ -1366,6 +1540,7 @@ const expensesCase: CaseContent = {
       bordered: false,
     },
   },
+  structuredSummary: expensesStructuredSummary,
   followUpChips: [],
 };
 
@@ -1389,6 +1564,161 @@ const sharingDisclosures: DisclosureRow[] = [
     ],
   },
 ];
+
+const sharingStructuredSummary: StructuredCaseSummaryData = {
+  intro: {
+    title: 'Кейс про доработку шаринга подписки',
+    body: 'Старый путь добавления участника был перегружен: нужно было ввести телефон, дождаться проверки, является ли человек клиентом банка, отправить приглашение и еще потратить деньги на SMS. Андрей вместе с командой пересобрал этот flow вокруг ссылки и двух понятных сценариев.',
+    preview: {
+      src: '/structured-summary/subscription-sharing/intro-preview.png',
+      backgroundColor: '#D1D7E3',
+      borderColor: '#E7EAF2',
+      imageClassName: 'absolute h-[167.58%] left-[8.23%] max-w-none top-[-2.62%] w-[83.55%]',
+    },
+  },
+  sections: [
+    {
+      title: 'Почему старый путь ломался',
+      body: 'Пользователь делал слишком много шагов до реального результата. Вся логика завязывалась на системную проверку номера и платное SMS-оповещение, из-за чего путь становился медленным, хрупким и дорогим.',
+    },
+    {
+      title: 'Роль Андрея',
+      body: 'Андрей помог переосмыслить логику приглашения: вместо phone-based сценария появился flow с генерацией ссылки. Дальше пользователь попадал в одну из двух веток — клиент банка или не-клиент — и уже там видел релевантный onboarding.',
+    },
+  ],
+  disclosureTitle: 'Что делал Андрей',
+  disclosures: [
+    {
+      id: 'sharing-structured-old-flow',
+      label: 'Разобрал, где старый путь создает лишнее трение',
+      body: 'Старый user-flow заставлял пользователя  →  вводить телефон  →  ждать ответ системы  →  отправлять приглашение через SMS. Это добавляло шаги, задержки и ненужную зависимость от внутренних проверок.',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'sharing-structured-old-flow-card',
+          artifactId: 'sharing-old-flow',
+          width: 462,
+          preview: {
+            src: '/structured-summary/subscription-sharing/disclosure-old-flow.png',
+            backgroundColor: '#F4F5FC',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 size-full max-w-none rounded-[24px] object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'sharing-structured-link-flow',
+      label: 'Заменил SMS-зависимый flow на ссылку',
+      body: 'Приглашение по ссылке сделало сценарий проще и дешевле: пользователь может отправить ссылку как угодно. Когда приглашенный участник переходит по ссылке продукт уже решает, какой следующий шаг показать',
+      layoutType: 'single_preview',
+      cards: [
+        {
+          id: 'sharing-structured-link-flow-card',
+          artifactId: 'sharing-link-flow',
+          title: 'Ссылка как единая точка входа',
+          description: 'Flow стал проще: одна сущность вместо цепочки phone-check → SMS.',
+          width: 462,
+          preview: {
+            src: '/structured-summary/subscription-sharing/disclosure-link-flow.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[95.45%] left-[8.37%] max-w-none top-[2.28%] w-[83.27%]',
+          },
+        },
+      ],
+    },
+    {
+      id: 'sharing-structured-branches',
+      label: 'Развел сценарии для клиента и не-клиента банка',
+      body: 'После перехода по ссылке приглашенный участник видит лендинг с офферами и может быстро принять или отклонить приглашение. Не-клиент тоже видит ценность подписки, но для активации переходит в flow оформления карты.',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'sharing-structured-bank-client-card',
+          artifactId: 'sharing-bank-client-branch',
+          title: 'Ветка клиента банка',
+          description: 'Для существующего клиента сценарий стал максимально коротким и понятным.',
+          width: 389,
+          preview: {
+            src: '/structured-summary/subscription-sharing/disclosure-bank-client.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[98.28%] left-0 max-w-none top-[3.82%] w-full',
+          },
+        },
+        {
+          id: 'sharing-structured-non-client-card',
+          artifactId: 'sharing-non-client-branch',
+          title: 'Превращение не-клиента в клиента банка',
+          description: 'Чтобы принять подписку пользователю необходимо было заказать дебетовую карту',
+          width: 389,
+          preview: {
+            src: '/structured-summary/subscription-sharing/disclosure-non-client.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[92.82%] left-[9.23%] max-w-none top-[3.59%] w-[81.54%]',
+          },
+        },
+      ],
+    },
+  ],
+  showcaseTitle: 'Ключевые экраны и артефакты',
+  showcaseRowWidth: 798,
+  showcasePeekWidth: 158,
+  showcaseItems: [
+    {
+      id: 'sharing-structured-showcase-old-path',
+      artifactId: 'sharing-showcase-old-path',
+      title: 'Старый путь',
+      description: 'Пользователь должен пройти 8 шагов чтобы добавить участника',
+      width: 252,
+      preview: {
+        src: '/structured-summary/subscription-sharing/showcase-old-path.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[160.88%] left-0 max-w-none top-[-30.44%] w-[291.04%]',
+      },
+    },
+    {
+      id: 'sharing-structured-showcase-link',
+      artifactId: 'sharing-showcase-link',
+      title: 'Ссылка',
+      description: 'Новая точка входа в сценарий приглашения',
+      width: 252,
+      preview: {
+        src: '/structured-summary/subscription-sharing/showcase-link.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[175.21%] left-[11.81%] max-w-none top-[10.38%] w-[76.37%]',
+      },
+    },
+    {
+      id: 'sharing-structured-showcase-new-path',
+      artifactId: 'sharing-showcase-new-path',
+      title: 'Новый путь',
+      description: 'Позволял добавить участника за 2 шага вместо 8 шагов',
+      width: 252,
+      preview: {
+        src: '/structured-summary/subscription-sharing/showcase-new-path.png',
+        backgroundColor: '#E7EBF6',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[123.7%] left-0 max-w-none top-0 w-[205.8%]',
+      },
+    },
+  ],
+  resultsTitle: 'Результат',
+  resultsBody:
+    'Этот кейс показывает, что Андрей умеет не только улучшать отдельный экран, а переписывать саму механику активации. Пользовательский путь стал короче, понятнее и гибче.',
+  resultMetrics: [
+    { value: '2 шага', label: 'вместо 8 шагов и валидаций' },
+    { value: 'Сокращение расходов', label: 'ссылка вместо sms' },
+  ],
+  footerAction: {
+    label: 'Написать Андрею',
+    action: { type: 'open_contact_modal', source: 'subscription-sharing-summary' },
+  },
+};
 
 const sharingCase: CaseContent = {
   id: 'subscription-sharing',
@@ -1416,9 +1746,19 @@ const sharingCase: CaseContent = {
   routeBlocks: [{ type: 'lead', title: 'О чем этот кейс', body: ['Про перепаковку сложного invite-flow в более прямой и масштабируемый путь через ссылку.'] }],
   disclosures: sharingDisclosures,
   artifacts: [
-    { id: 'sharing-flow', title: 'Путь пользователя', caption: 'Новая branching-логика сценария.', imageUrl: '/projects/mobile/subscription-sharing-flow.png' },
+    { id: 'sharing-old-flow', title: 'Старый путь добавления участника', caption: 'Phone-check, ожидание проверки и SMS как источники лишнего трения.', imageUrl: '/structured-summary/subscription-sharing/disclosure-old-flow.png', sourceLabel: 'Figma' },
+    { id: 'sharing-link-flow', title: 'Ссылка как единая точка входа', caption: 'Новая механика приглашения по ссылке вместо SMS-зависимого flow.', imageUrl: '/structured-summary/subscription-sharing/disclosure-link-flow.png', sourceLabel: 'Figma' },
+    { id: 'sharing-bank-client-branch', title: 'Ветка клиента банка', caption: 'Короткий сценарий принятия приглашения для существующего клиента банка.', imageUrl: '/structured-summary/subscription-sharing/disclosure-bank-client.png', sourceLabel: 'Figma' },
+    { id: 'sharing-non-client-branch', title: 'Ветка не-клиента банка', caption: 'Сценарий, где ценность подписки ведет пользователя в flow оформления карты.', imageUrl: '/structured-summary/subscription-sharing/disclosure-non-client.png', sourceLabel: 'Figma' },
+    { id: 'sharing-showcase-old-path', title: 'Старый путь', caption: 'Пользователь должен пройти 8 шагов, чтобы добавить участника.', imageUrl: '/structured-summary/subscription-sharing/showcase-old-path.png', sourceLabel: 'Figma' },
+    { id: 'sharing-showcase-link', title: 'Ссылка', caption: 'Новая точка входа в сценарий приглашения.', imageUrl: '/structured-summary/subscription-sharing/showcase-link.png', sourceLabel: 'Figma' },
+    { id: 'sharing-showcase-new-path', title: 'Новый путь', caption: 'Добавление участника за 2 шага вместо 8.', imageUrl: '/structured-summary/subscription-sharing/showcase-new-path.png', sourceLabel: 'Figma' },
   ],
-  gallery: makeGallery([{ id: 'sharing-flow', title: 'Путь пользователя', description: 'Новый link-based сценарий.' }]),
+  gallery: makeGallery([
+    { id: 'sharing-showcase-old-path', title: 'Старый путь', description: '8 шагов до добавления участника.' },
+    { id: 'sharing-showcase-link', title: 'Ссылка', description: 'Новая точка входа в сценарий.' },
+    { id: 'sharing-showcase-new-path', title: 'Новый путь', description: '2 шага вместо 8.' },
+  ]),
   contextPanel: {
     headerLabel: 'Контекст кейса',
     title: 'Шаринг подписки',
@@ -1442,6 +1782,7 @@ const sharingCase: CaseContent = {
       bordered: true,
     },
   },
+  structuredSummary: sharingStructuredSummary,
   followUpChips: [],
 };
 
@@ -1459,6 +1800,215 @@ const superappDisclosures: DisclosureRow[] = [
     details: ['Это хороший пример того, что Андрей умеет идти от структуры и сценариев к интерфейсу, а не наоборот.'],
   },
 ];
+
+const wannabelikeStructuredSummary: StructuredCaseSummaryData = {
+  intro: {
+    title: 'Кейс про UX/UI WannabeLike',
+    body: 'Андрей пришел на курс Миши Розова, чтобы прокачать UI. Прежде чем рисовать красивые макеты нужно было, пройти полноценный продуктовый подход при разработке продукта.',
+    preview: {
+      src: '/structured-summary/ux-ui-wannabelike/intro-preview.png',
+      backgroundColor: '#D1D7E3',
+      borderColor: '#E7EAF2',
+      imageClassName: 'absolute h-[201.5%] left-[-6.7%] max-w-none top-[1.68%] w-[113.4%]',
+    },
+  },
+  sections: [
+    {
+      title: 'Почему кейс важен',
+      body: 'Сильная сторона этого кейса — связность. Андрей накидывал гипотезы → проводил исследования → создавал структуру приложения → делал пользовательские сценарии и только после этого начал отрисовывать UI интерфейса.',
+    },
+    {
+      title: 'Роль Андрея',
+      body: 'Андрей выступил в роли мультидисциплинарного дизайнера, который отвечал за весь путь создания продукта.',
+    },
+  ],
+  disclosureTitle: 'Что делал Андрей',
+  disclosures: [
+    {
+      id: 'wannabelike-structured-research',
+      label: 'Собрал обратную связь от пользователей и собрал структуру приложения',
+      body: 'После проведенных интервью Андрей собрал боли и желания пользователей. Из них получилось собрать функционал продукта.',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'wannabelike-structured-research-card',
+          artifactId: 'wannabelike-research-synthesis',
+          title: 'Research synthesis',
+          description: 'Инсайты были переведены в продуктовые фчич, а не остались данными после исследования',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/research-synthesis.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-full left-0 max-w-none top-0 w-[100.19%]',
+          },
+        },
+        {
+          id: 'wannabelike-structured-structure-card',
+          artifactId: 'wannabelike-app-structure',
+          title: 'Структура приложения',
+          description: 'Информационная архитектура задает рамку для всех дальнейших UX-решений.',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/app-structure.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[117.44%] left-0 max-w-none top-[-8.72%] w-full',
+          },
+        },
+      ],
+    },
+    {
+      id: 'wannabelike-structured-scenarios',
+      label: 'Создание пользовательских сценариев и поиск визуальной метафоры',
+      body: 'На этом этапе формировалась информационная архитектура: как распределить семейные сценарии, какие модули нужны приложению и как связать их так, чтобы продукт ощущался целостным, а не случайно склеенным.',
+      layoutType: 'two_cards',
+      cards: [
+        {
+          id: 'wannabelike-structured-user-flow-card',
+          artifactId: 'wannabelike-user-flow',
+          title: 'Проработал User-Flow пользователя',
+          description: 'Основываясь на всей информации, Андрей подготовил Job Stories и на их основе создал путь, по которому двигался пользователь',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/user-flow.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[129.86%] left-0 max-w-none top-[-2.01%] w-full',
+          },
+        },
+        {
+          id: 'wannabelike-structured-metaphor-card',
+          artifactId: 'wannabelike-visual-metaphor',
+          title: 'Поиск и согласование визуальной метафоры',
+          description: 'Это был самый важный этап в обучениию. Андрей нашел нужную метафору после 3-го раунда согласования референсов с Мишей Розовым.',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/visual-metaphor.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 size-full object-cover',
+          },
+        },
+      ],
+    },
+    {
+      id: 'wannabelike-structured-ui-concept',
+      label: 'Подготовил UI-концепт приложения',
+      body: 'На основе созданных User-Flow Андрей собрал экраны мобильного приложения.',
+      layoutType: 'three_cards_scroll',
+      rowWidth: 1207,
+      peekWidth: 158,
+      cards: [
+        {
+          id: 'wannabelike-structured-first-entry-card',
+          artifactId: 'wannabelike-first-entry',
+          title: 'Первый вход в приложение',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/first-entry.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[125.3%] left-[-8.23%] max-w-none top-[-12.65%] w-[116.46%]',
+          },
+        },
+        {
+          id: 'wannabelike-structured-payment-card',
+          artifactId: 'wannabelike-payment-scenario',
+          title: 'Сценарий оплаты услуги',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/payment-scenario.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute h-[107.15%] left-0 max-w-none top-0 w-full',
+          },
+        },
+        {
+          id: 'wannabelike-structured-family-account-card',
+          artifactId: 'wannabelike-family-account',
+          title: 'Просмотр семейного счета',
+          width: 389,
+          preview: {
+            src: '/structured-summary/ux-ui-wannabelike/family-account.png',
+            backgroundColor: '#D1D7E3',
+            borderColor: '#E7EAF2',
+            imageClassName: 'absolute inset-0 size-full object-cover',
+          },
+        },
+      ],
+    },
+  ],
+  showcaseTitle: 'Ключевые экраны и артефакты',
+  showcaseRowWidth: 1009.333,
+  showcasePeekWidth: 158,
+  showcaseItems: [
+    {
+      id: 'wannabelike-structured-showcase-research',
+      artifactId: 'wannabelike-showcase-research',
+      title: 'Исследования',
+      description: 'Что легло в основу продуктовой концепции',
+      width: 252,
+      preview: {
+        src: '/structured-summary/ux-ui-wannabelike/showcase-research.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[104.01%] left-0 max-w-none top-[-4.01%] w-full',
+      },
+    },
+    {
+      id: 'wannabelike-structured-showcase-structure',
+      artifactId: 'wannabelike-showcase-structure',
+      title: 'Структура',
+      description: 'IA и модули приложения',
+      width: 252,
+      preview: {
+        src: '/structured-summary/ux-ui-wannabelike/showcase-structure.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-full left-[-3.05%] max-w-none top-0 w-[114.28%]',
+      },
+    },
+    {
+      id: 'wannabelike-structured-showcase-user-flow',
+      artifactId: 'wannabelike-showcase-user-flow',
+      title: 'User flow',
+      description: 'Ключевые семейные сценарии',
+      width: 252,
+      preview: {
+        src: '/structured-summary/ux-ui-wannabelike/user-flow.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-[100.32%] left-0 max-w-none top-0 w-[119.25%]',
+      },
+    },
+    {
+      id: 'wannabelike-structured-showcase-ui-concept',
+      artifactId: 'wannabelike-showcase-ui-concept',
+      title: 'UI-концепт',
+      description: 'Как это превратилось в мобильный интерфейс',
+      width: 252,
+      preview: {
+        src: '/structured-summary/ux-ui-wannabelike/showcase-ui-concept.png',
+        backgroundColor: '#D1D7E3',
+        borderColor: '#E7EAF2',
+        imageClassName: 'absolute h-full left-[-6.01%] max-w-none top-0 w-[136.47%]',
+      },
+    },
+  ],
+  resultsTitle: 'Результат',
+  resultsBody:
+    'Для лида этот кейс полезен как индикатор системного уровня: Андрей умеет соединять research, IA, flow и UI в одну продуктовую историю, а не работать только на последнем визуальном слое.',
+  resultMetrics: [
+    { value: 'Исследования', label: 'Проведено 8 интервью' },
+    { value: 'Собрал структуру', label: 'Основываясь на данных' },
+    { value: 'Создал UI концепт', label: 'Состоящий из 6 сценариев' },
+  ],
+  footerAction: {
+    label: 'Написать Андрею',
+    action: { type: 'open_contact_modal', source: 'wannabelike-summary' },
+  },
+};
 
 const superappCase: CaseContent = {
   id: 'ux-ui-wannabelike',
@@ -1490,6 +2040,17 @@ const superappCase: CaseContent = {
     { id: 'superapp-ia', title: 'Структура приложения', caption: 'Information architecture.', imageUrl: '/projects/mobile/superapp-ia.png' },
     { id: 'superapp-flow', title: 'User flow', caption: 'Ключевые сценарии.', imageUrl: '/projects/mobile/superapp-flow.png' },
     { id: 'superapp-ui', title: 'Работа над UI', caption: 'UI-концепт.', imageUrl: '/projects/mobile/superapp-ui.png' },
+    { id: 'wannabelike-research-synthesis', title: 'Research synthesis', caption: 'Инсайты были переведены в продуктовые фчич, а не остались данными после исследования.', imageUrl: '/structured-summary/ux-ui-wannabelike/research-synthesis.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-app-structure', title: 'Структура приложения', caption: 'Информационная архитектура задает рамку для всех дальнейших UX-решений.', imageUrl: '/structured-summary/ux-ui-wannabelike/app-structure.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-user-flow', title: 'Проработал User-Flow пользователя', caption: 'Job Stories и пользовательский путь на основе собранной информации.', imageUrl: '/structured-summary/ux-ui-wannabelike/user-flow.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-visual-metaphor', title: 'Поиск визуальной метафоры', caption: 'Метафора была найдена после третьего раунда согласования референсов.', imageUrl: '/structured-summary/ux-ui-wannabelike/visual-metaphor.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-first-entry', title: 'Первый вход в приложение', caption: 'Первый сценарий входа в мобильное приложение.', imageUrl: '/structured-summary/ux-ui-wannabelike/first-entry.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-payment-scenario', title: 'Сценарий оплаты услуги', caption: 'Экранный сценарий оплаты услуги внутри UI-концепта.', imageUrl: '/structured-summary/ux-ui-wannabelike/payment-scenario.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-family-account', title: 'Просмотр семейного счета', caption: 'Сценарий просмотра семейного счета.', imageUrl: '/structured-summary/ux-ui-wannabelike/family-account.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-showcase-research', title: 'Исследования', caption: 'Что легло в основу продуктовой концепции.', imageUrl: '/structured-summary/ux-ui-wannabelike/showcase-research.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-showcase-structure', title: 'Структура', caption: 'IA и модули приложения.', imageUrl: '/structured-summary/ux-ui-wannabelike/showcase-structure.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-showcase-user-flow', title: 'User flow', caption: 'Ключевые семейные сценарии.', imageUrl: '/structured-summary/ux-ui-wannabelike/user-flow.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-showcase-ui-concept', title: 'UI-концепт', caption: 'Как это превратилось в мобильный интерфейс.', imageUrl: '/structured-summary/ux-ui-wannabelike/showcase-ui-concept.png', sourceLabel: 'Figma' },
   ],
   gallery: makeGallery([
     { id: 'superapp-research', title: 'Исследования', description: 'Основа продуктовой структуры.' },
@@ -1520,10 +2081,122 @@ const superappCase: CaseContent = {
       bordered: false,
     },
   },
+  structuredSummary: wannabelikeStructuredSummary,
   followUpChips: [],
 };
 
+const experienceStructuredSummary: StructuredExperienceSummaryData = {
+  intro: {
+    title: 'Андрей — product designer с 6 годами опыта в B2B и B2C',
+    body:
+      'Работал в МТС, Альфа-Банке и Positive Technologies. Проектировал интерфейсы для финтеха, кибербезопасности и внутренних систем, где важно быстро разобраться в сложной логике, упростить сценарий и довести решение до запуска.',
+    preview: {
+      src: '/structured-summary/experience/intro-preview.png',
+      backgroundColor: '#EFF1F6',
+      borderColor: '#EBEDF2',
+      imageClassName: 'absolute h-[121.84%] w-[144.63%] max-w-none left-[-22.31%] top-[-10.92%]',
+    },
+  },
+  currentWork: {
+    title: 'Где сейчас работает:',
+    body:
+      'Андрей работает в Positive Technologies и помогает создавать продукты: начиная от платформы для Кибер-игр хакеров, Багхантинга и заканчивая интерфейсами жюри, которые проверяют сданные отчеты хакеров.',
+  },
+  workHistory: {
+    title: 'Где работал Андрей',
+    items: [
+      {
+        id: 'positive-technologies',
+        company: 'Positive Technologies',
+        period: 'Июнь 2024 — сейчас',
+        description: 'Проектирует интерфейс для Киберполигона и Багхантинга',
+        resultLabel: 'Что получилось:',
+        resultTags: [
+          'Сократил время сдачи отчетов хакерами',
+          'Сократил время анализа отчета жюри',
+        ],
+      },
+      {
+        id: 'alfa-bank',
+        company: 'Альфа-Банк',
+        period: 'Май 2023 — Июнь 2024',
+        description: 'Проектировал подписку на банковские продукты – Альфа-Смарт',
+        resultLabel: 'Что получилось:',
+        resultTags: [
+          '32 111 подписок спустя месяц запуска продукта',
+          '1,1 млн ₽ выручка за 1 месяц',
+        ],
+      },
+      {
+        id: 'mts-digital',
+        company: 'MTS Digital',
+        period: 'Апрель 2021 — Май 2023',
+        description: 'Проектировал платформу для коммуникации бизнеса с клиентами',
+        resultLabel: 'Что получилось:',
+        resultTags: [
+          'Уменьшил время обработки диалога с 900 до 580 секунд',
+          'Увеличил количество обрабатываемых диалогов с 1000 до 2000 в день',
+        ],
+      },
+    ],
+  },
+  importantTakeaway: {
+    title: 'Что важно понять',
+    body:
+      'Андрей будет полезен командам, которым нужно превратить сложный B2B/B2C-продукт в понятный интерфейс и довести решение до релиза.',
+    metrics: [
+      {
+        value: '6 лет опыта',
+        label: 'В сложных B2B продуктах и B2C сценариях',
+      },
+      {
+        value: 'Не оператор Figma',
+        label: 'При решении задачи следует продуктовому подходу',
+      },
+      {
+        value: 'AI tooling',
+        label: 'Использует в работе AI инструменты для ускорения своей работы',
+      },
+    ],
+  },
+  casePromptSection: {
+    title: 'Про какой кейс рассказать подробнее?',
+    chips: [
+      {
+        id: 'experience-case-alfa-smart',
+        label: 'Альфа-Смарт',
+        action: { type: 'open_case_summary', caseId: 'alfa-smart' },
+      },
+      {
+        id: 'experience-case-expenses',
+        label: 'Расходы держателей',
+        action: { type: 'open_case_summary', caseId: 'expenses-card-holders' },
+      },
+      {
+        id: 'experience-case-sharing',
+        label: 'Добавление участников в подписку',
+        action: { type: 'open_case_summary', caseId: 'subscription-sharing' },
+      },
+      {
+        id: 'experience-case-wannabelike',
+        label: 'UX/UI WannabeLike',
+        action: { type: 'open_case_summary', caseId: 'ux-ui-wannabelike' },
+      },
+      {
+        id: 'experience-case-chatpoint',
+        label: 'ChatPoint',
+        action: { type: 'open_case_summary', caseId: 'chatpoint' },
+      },
+    ],
+  },
+  footerAction: {
+    label: 'Написать Андрею',
+    action: { type: 'open_contact_modal', source: 'experience' },
+  },
+};
+
 const experience: ExperienceContent = {
+  structuredSummary: experienceStructuredSummary,
   summaryBlocks: [
     { type: 'lead', title: 'Коротко про опыт', body: ['У Андрея 5+ лет опыта на стыке B2B и B2C: MTS Digital, Альфа-Банк и Positive Technologies. Общий знаменатель — research → решение → релиз, а не просто “рисование экранов”.'] },
     { type: 'gallery', title: 'Компании', items: makeGallery([

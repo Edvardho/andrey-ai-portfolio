@@ -205,6 +205,44 @@ export type StructuredCaseSummaryData = {
   };
 };
 
+export type StructuredExperienceWorkItem = {
+  id: string;
+  company: string;
+  period: string;
+  description: string;
+  resultLabel: string;
+  resultTags: string[];
+};
+
+export type StructuredExperienceSummaryData = {
+  intro: {
+    title: string;
+    body: string;
+    preview: SummaryPreviewConfig;
+  };
+  currentWork: {
+    title: string;
+    body: string;
+  };
+  workHistory: {
+    title: string;
+    items: StructuredExperienceWorkItem[];
+  };
+  importantTakeaway: {
+    title: string;
+    body: string;
+    metrics: Metric[];
+  };
+  casePromptSection: {
+    title: string;
+    chips: PromptChip[];
+  };
+  footerAction: {
+    label: string;
+    action: UIAction;
+  };
+};
+
 export type ContactOption = {
   id: 'telegram' | 'linkedin' | 'email';
   label: string;
@@ -330,6 +368,7 @@ export type CaseContent = {
 };
 
 export type ExperienceContent = {
+  structuredSummary?: StructuredExperienceSummaryData;
   summaryBlocks: ContentBlock[];
   detailBlocks: ContentBlock[];
   routeBlocks: Record<string, ContentBlock[]>;

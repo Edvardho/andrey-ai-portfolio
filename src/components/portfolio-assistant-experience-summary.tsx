@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 
+import { portfolioContent } from '@/data/portfolio-content';
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
@@ -12,6 +13,7 @@ import type {
 } from '@/lib/portfolio/types';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
+import { PortfolioStructuredExperienceSummary } from './portfolio-structured-experience-summary';
 import { renderCanonicalSummaryBlock } from './portfolio-assistant-block-renderers';
 
 type Props = {
@@ -34,6 +36,17 @@ export function PortfolioAssistantExperienceSummary({
   renderMode = 'instant',
 }: Props) {
   const reveal = renderMode === 'reveal';
+
+  if (envelope.presentationVariant === 'experience_summary' && portfolioContent.experience.structuredSummary) {
+    return (
+      <PortfolioStructuredExperienceSummary
+        experience={portfolioContent.experience}
+        onChipClick={onChipClick}
+        onCta={onCta}
+        renderMode={renderMode}
+      />
+    );
+  }
 
   return (
     <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>
