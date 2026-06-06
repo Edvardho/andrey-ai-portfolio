@@ -14,6 +14,7 @@ import type {
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
+import { PortfolioStructuredIntroPreview } from './portfolio-structured-intro-preview';
 
 const BODY_TEXT_CLASS = 'text-[16px] font-normal leading-[23px] tracking-[0] text-[#202129]';
 
@@ -26,7 +27,7 @@ type Props = {
 
 function Section({ title, body }: { title: string; body: string }) {
   return (
-    <section className="max-w-[798px] space-y-[10px]">
+    <section className="w-full max-w-[798px] space-y-[10px]">
       <h4 className="text-[16px] font-semibold leading-[22px] text-[#202129]">{title}</h4>
       <p className={BODY_TEXT_CLASS}>{body}</p>
     </section>
@@ -35,9 +36,9 @@ function Section({ title, body }: { title: string; body: string }) {
 
 function MetricCard({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-white px-4 py-[14px]">
+    <div className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-[#FAFBFF] px-4 py-[14px]">
       <p className="text-[18px] font-semibold leading-6 text-[#202332]">{value}</p>
-      <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#8F95A7]">{label}</p>
+      <p className="whitespace-pre-line text-[13px] leading-[18px] text-[#50525A]">{label}</p>
     </div>
   );
 }
@@ -80,21 +81,11 @@ export function PortfolioStructuredExperienceSummary({
           <PortfolioAssistantIdentityHeader />
         </motion.div>
 
-        <motion.section className="flex max-w-[798px] gap-4" {...getRevealProps(1)}>
-          <div
-            className="relative size-28 shrink-0 overflow-hidden rounded-[16px] border"
-            style={{
-              backgroundColor: summary.intro.preview.backgroundColor,
-              borderColor: summary.intro.preview.borderColor ?? '#EBEDF2',
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={summary.intro.preview.src}
-              alt=""
-              className={summary.intro.preview.imageClassName}
-            />
-          </div>
+        <motion.section className="flex w-full max-w-[798px] gap-4" {...getRevealProps(1)}>
+          <PortfolioStructuredIntroPreview
+            preview={summary.intro.preview}
+            alt={summary.intro.title}
+          />
           <div className="min-w-0 flex-1 space-y-2">
             <h3 className="text-[20px] font-semibold leading-7 text-[#202332]">
               {summary.intro.title}
@@ -116,25 +107,25 @@ export function PortfolioStructuredExperienceSummary({
           <div>
             {summary.workHistory.items.map((item, index) => (
               <div key={item.id}>
-                <div className="space-y-2 py-2">
-                  <div className="flex items-start gap-6">
-                    <h5 className="min-w-0 flex-1 text-[20px] font-semibold leading-7 text-[#202129]">
-                      {item.company}
-                    </h5>
-                    <p className="w-[257px] shrink-0 text-[13px] font-normal leading-[18px] text-[#8F95A7]">
+                <div className="space-y-[6px] py-4">
+                  <div className="space-y-1">
+                    <p className="w-[257px] text-[13px] font-normal leading-[18px] text-[#5E606A]">
                       {item.period}
                     </p>
+                    <h5 className="text-[18px] font-semibold leading-6 text-[#202332]">
+                      {item.company}
+                    </h5>
                   </div>
                   <p className={BODY_TEXT_CLASS}>{item.description}</p>
-                  <div className="flex items-start gap-3 pt-1">
-                    <p className="shrink-0 text-[16px] font-normal leading-[22px] text-[#202129]">
+                  <div className="space-y-[6px] pt-3">
+                    <p className="text-[16px] font-normal leading-[23px] text-[#202129]">
                       {item.resultLabel}
                     </p>
                     <div className="flex min-w-0 flex-wrap gap-3">
                       {item.resultTags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-[14px] bg-[#F2F4FF] px-3 py-[7px] text-[12px] font-medium leading-[16px] text-[#50525A]"
+                          className="w-[206px] shrink-0 rounded-[18px] border border-[#E7EAF2] bg-[#FAFBFF] px-4 py-[14px] text-[13px] font-normal leading-[18px] text-[#50525A]"
                         >
                           {tag}
                         </span>
@@ -150,7 +141,7 @@ export function PortfolioStructuredExperienceSummary({
           </div>
         </motion.section>
 
-        <motion.section className="max-w-[798px] space-y-[10px]" {...getRevealProps(4)}>
+        <motion.section className="w-full max-w-[798px] space-y-[10px]" {...getRevealProps(4)}>
           <h4 className="text-[16px] font-semibold leading-[22px] text-[#202129]">
             {summary.importantTakeaway.title}
           </h4>

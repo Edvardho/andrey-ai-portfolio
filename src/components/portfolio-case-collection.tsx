@@ -129,10 +129,12 @@ export function PortfolioCaseCollection({
   if (fixedWidthLayout) {
     return (
       <div
-        className={clsx(className)}
-        style={{ maxWidth: `${CASE_COLLECTION_SECTION_WIDTH}px` }}
+        className={clsx('overflow-visible', className)}
+        style={{ width: '100%', maxWidth: `${CASE_COLLECTION_SECTION_WIDTH}px` }}
       >
-        {cardsRow}
+        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {cardsRow}
+        </div>
       </div>
     );
   }
@@ -140,7 +142,7 @@ export function PortfolioCaseCollection({
   return (
     <div
       className={clsx('overflow-visible', className)}
-      style={{ maxWidth: `${contract.sectionWidth}px` }}
+      style={{ width: '100%', maxWidth: `${contract.sectionWidth}px` }}
     >
       <div
         className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

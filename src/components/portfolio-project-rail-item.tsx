@@ -13,25 +13,25 @@ type RailThumbConfig = {
 
 const railThumbMap: Record<string, RailThumbConfig> = {
   'alfa-smart': {
-    src: '/entry/card-alfa-smart-figma-image.png',
+    src: '/cases/alfa-smart/rail.png',
     imageClassName: 'absolute h-[172.95%] w-[93.94%] max-w-none left-[3.03%] top-[5.58%]',
     frameClassName: 'border-[#D1D7E3]',
     fillClassName: 'bg-[#D1D7E3]',
   },
   chatpoint: {
-    src: '/entry/card-chatpoint.png',
+    src: '/cases/chatpoint/rail.png',
     imageClassName: 'absolute h-full w-[160.32%] max-w-none left-[-12.24%] top-[16.6%]',
     frameClassName: 'border-[#EBEDF2]',
     fillClassName: 'bg-[#D1D7E3]',
   },
   siebel: {
-    src: '/entry/card-siebel.png',
+    src: '/cases/siebel/rail.png',
     imageClassName: 'absolute h-[121.17%] w-[150.6%] max-w-none left-[-45.67%] top-[9.01%]',
     frameClassName: 'border-[#EBEDF2]',
     fillClassName: 'bg-[#D1D7E3]',
   },
   'expenses-card-holders': {
-    src: '/entry/card-expenses-history.png',
+    src: '/cases/expenses-card-holders/rail.png',
     imageClassName: 'absolute h-[172.61%] w-[90.08%] max-w-none left-[4.96%] top-[2.82%]',
     frameClassName: 'border-[#D1D7E3]',
     fillStyle: {
@@ -39,7 +39,7 @@ const railThumbMap: Record<string, RailThumbConfig> = {
     },
   },
   'subscription-sharing': {
-    src: '/entry/card-subscription-sharing.png',
+    src: '/cases/subscription-sharing/rail.png',
     imageClassName: 'absolute h-[181.39%] w-[88.19%] max-w-none left-[5.9%] top-[1.65%]',
     frameClassName: 'border-[#EBEDF2]',
     fillStyle: {
@@ -47,7 +47,7 @@ const railThumbMap: Record<string, RailThumbConfig> = {
     },
   },
   'ux-ui-wannabelike': {
-    src: '/entry/card-wannabelike.png',
+    src: '/cases/ux-ui-wannabelike/rail.png',
     imageClassName: 'absolute h-[223.85%] w-full max-w-none left-0 top-0',
     frameClassName: 'border-[#EBEDF2]',
     fillStyle: {
@@ -55,8 +55,8 @@ const railThumbMap: Record<string, RailThumbConfig> = {
     },
   },
   experience: {
-    src: '/entry/card-experience.png',
-    imageClassName: 'absolute size-[144.63%] max-w-none left-[-22.31%] top-[-10.92%]',
+    src: '/cases/experience/intro-preview.png',
+    imageClassName: 'absolute left-0 top-0 h-[150.24%] w-full max-w-none',
     frameClassName: 'border-[#EBEDF2]',
     fillClassName: 'bg-[#D1D7E3]',
   },

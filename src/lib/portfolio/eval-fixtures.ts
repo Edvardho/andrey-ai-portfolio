@@ -115,7 +115,7 @@ export const batch1CuratedFixtures: IntentEvalFixture[] = [
   {
     input: 'Какие у него слабые стороны?',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
@@ -334,25 +334,25 @@ export const batch2DirtyRussianFixtures: IntentEvalFixture[] = [
   {
     input: 'а где у него слабое место',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
     input: 'что тут смущает',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
     input: 'а риск какой если брать',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
     input: 'в чем он может просесть',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
@@ -516,19 +516,19 @@ export const batch3ExploratoryFixtures: IntentEvalFixture[] = [
   {
     input: 'есть ощущение что он больше про execution, это так?',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
     input: 'если сравнивать с сильным senior, где у него зазор?',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {
     input: 'куда его опасно сажать?',
     expectedIntent: 'risk_objection',
-    expectedPresentationVariant: 'bullet_reply',
+    expectedPresentationVariant: 'plain_text_reply',
     expectedViewType: 'risk_objection',
   },
   {

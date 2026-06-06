@@ -26,7 +26,7 @@ export function PortfolioDesktopHeader({
       <div
         className={
           constrainToLandingFrame
-            ? 'mx-auto flex h-full w-full max-w-[1548px] items-center justify-between'
+            ? 'portfolio-desktop-frame mx-auto flex h-full items-center justify-between'
             : 'flex h-full items-center justify-between'
         }
       >

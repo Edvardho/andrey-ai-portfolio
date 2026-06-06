@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
+import Image from 'next/image';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
@@ -1431,18 +1432,39 @@ export function PortfolioShell() {
 
   return (
     <>
-      <div className="flex min-h-screen items-center justify-center bg-white p-5 lg:hidden">
-        <div className="max-w-md rounded-[32px] border border-[#e6dfd4] bg-white p-8 text-center shadow-[0_18px_44px_rgba(31,26,20,0.06)]">
-          <div className="text-[26px] font-semibold tracking-[-0.03em] text-[#11110f]">Desktop-only V1</div>
-          <p className="mt-4 text-[16px] leading-8 text-[#605950]">
-            Мобильная версия в этот релиз сознательно не входит. Сейчас продукт собран как desktop-first assistant, а не как еще один расползающийся MVP.
-          </p>
+      <div className="portfolio-desktop-blocker min-h-screen items-center justify-center bg-[#F7F8FC] px-6 py-10">
+        <div className="flex w-full max-w-[424px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-6 py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
+          <div className="relative size-28 shrink-0 overflow-hidden rounded-[20px]" aria-hidden="true">
+            <Image
+              src="/ui/desktop-only-preview.png"
+              alt=""
+              fill
+              sizes="112px"
+              className="max-w-none"
+              style={{ height: '382.69%', left: '-205.13%', top: '-91.35%', width: '510.26%' }}
+            />
+          </div>
+          <div className="flex flex-col items-center gap-3">
+            <div className="text-[22px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2129]">
+              Доступна только Destop версия
+            </div>
+            <p className="max-w-[376px] text-[18px] font-normal leading-6 text-[#202129]">
+              Мобильная версия в этот релиз сознательно не входит. Вы можете связаться с Андреем
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleCta({ type: 'open_contact_modal', source: 'desktop-blocker' })}
+            className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1A1C22] px-6 py-3 text-[15px] font-medium leading-5 text-white transition-colors duration-150 hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17191F]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          >
+            Написать Андрею
+          </button>
         </div>
       </div>
 
-      <div className="hidden h-screen overflow-hidden bg-white lg:block">
+      <div className="portfolio-desktop-stage h-screen overflow-hidden bg-white">
         <div className="flex h-full w-full justify-center overflow-hidden bg-white">
-          <div className="flex h-full w-[1584px] flex-col overflow-hidden bg-white">
+          <div className="portfolio-desktop-frame flex h-full flex-col overflow-hidden bg-white">
             <PortfolioDesktopHeader
               onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
               ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}

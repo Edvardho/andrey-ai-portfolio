@@ -19,38 +19,38 @@ type EntryProjectCard = {
 
 const entryProjectPreviewMap: Record<string, EntryProjectPromptPreview> = {
   'alfa-smart': {
-    src: '/entry/entry-card-alfa-smart.png',
+    src: '/cases/alfa-smart/entry.png',
     imageClassName: 'absolute h-[190.25%] w-[82.02%] max-w-none left-[7.04%] top-0',
     fillClassName: 'bg-[#D1D7E3]',
   },
   'expenses-card-holders': {
-    src: '/entry/entry-card-expenses-history.png',
+    src: '/cases/expenses-card-holders/entry.png',
     imageClassName: 'absolute h-[184.88%] w-[76.59%] max-w-none left-[9.75%] top-[-0.08%]',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(157, 180, 225) 0%, rgb(227, 210, 209) 96.702%)',
     },
   },
   'subscription-sharing': {
-    src: '/entry/entry-card-subscription-sharing.png',
+    src: '/cases/subscription-sharing/entry.png',
     imageClassName: 'absolute h-[182.07%] w-[74.45%] max-w-none left-[12.77%] top-[1.95%]',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(227, 210, 209) 0%, rgb(194, 215, 202) 96.702%)',
     },
   },
   'ux-ui-wannabelike': {
-    src: '/entry/entry-card-wannabelike.png',
+    src: '/cases/ux-ui-wannabelike/entry.png',
     imageClassName: 'absolute h-[223.85%] w-full max-w-none left-0 top-0',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(211, 227, 209) 0%, rgb(32, 40, 56) 96.702%)',
     },
   },
   chatpoint: {
-    src: '/entry/entry-card-chatpoint.png',
+    src: '/cases/chatpoint/entry.png',
     imageClassName: 'absolute h-[141.99%] w-[180.69%] max-w-none left-[-18.76%] top-[8.07%]',
     fillClassName: 'bg-[#D1D7E3]',
   },
   siebel: {
-    src: '/entry/entry-card-siebel.png',
+    src: '/cases/siebel/entry.png',
     imageClassName: 'absolute h-[134.55%] w-[167.23%] max-w-none left-[-53.98%] top-[3.9%]',
     fillStyle: {
       backgroundImage: 'linear-gradient(141.559deg, rgb(255, 205, 205) 35.355%, rgb(255, 246, 212) 106.07%)',
@@ -142,7 +142,7 @@ export function PortfolioEntryView({
       exit={{ opacity: 0 }}
       transition={STAGE_FADE}
     >
-      <div className="mx-auto flex h-full w-full max-w-[1548px] flex-1 flex-col items-center overflow-y-auto pb-[46px] pt-[34px]">
+      <div className="portfolio-desktop-frame mx-auto flex h-full flex-1 flex-col items-center overflow-y-auto pb-[46px] pt-[34px]">
         <motion.section
           layout
           className="flex flex-col items-center gap-5"
@@ -162,7 +162,7 @@ export function PortfolioEntryView({
 
         <motion.section
           layout
-          className="mt-[64px] w-full max-w-[1584px]"
+          className="mt-[64px] w-full"
           exit={{ y: -22, opacity: 0 }}
           transition={{ duration: 0.44, ease: WORKSPACE_EASE }}
         >

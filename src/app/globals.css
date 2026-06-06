@@ -51,3 +51,62 @@ textarea {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.portfolio-desktop-blocker {
+  display: flex;
+}
+
+.portfolio-desktop-stage {
+  display: none;
+}
+
+.portfolio-desktop-frame {
+  width: min(1584px, calc(100vw - 112px));
+  max-width: 1584px;
+}
+
+.portfolio-chat-grid {
+  grid-template-columns: 298px 1px minmax(0, 1fr);
+}
+
+.portfolio-wide-context-divider,
+.portfolio-context-column {
+  display: none;
+}
+
+.portfolio-narrow-context-trigger {
+  display: flex;
+}
+
+.portfolio-context-drawer-layer {
+  display: block;
+}
+
+@media (min-width: 1280px) {
+  .portfolio-desktop-blocker {
+    display: none;
+  }
+
+  .portfolio-desktop-stage {
+    display: block;
+  }
+}
+
+@media (min-width: 1440px) {
+  .portfolio-chat-grid {
+    grid-template-columns: 298px 1px minmax(0, 1fr) 1px 304px;
+  }
+
+  .portfolio-wide-context-divider,
+  .portfolio-context-column {
+    display: block;
+  }
+
+  .portfolio-narrow-context-trigger {
+    display: none;
+  }
+
+  .portfolio-context-drawer-layer {
+    display: none;
+  }
+}

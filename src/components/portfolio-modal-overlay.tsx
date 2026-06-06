@@ -130,7 +130,7 @@ export function PortfolioModalOverlay({
         </div>
       ) : isImage ? (
         <div className="relative z-10 flex max-w-[calc(100vw-48px)] items-start gap-4">
-          <div className="h-[min(736px,calc(100vh-142px))] w-[min(1200px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#F7F8FC] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
+          <div className="h-[min(736px,calc(100vh-142px))] w-[min(1200px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
             {modal.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

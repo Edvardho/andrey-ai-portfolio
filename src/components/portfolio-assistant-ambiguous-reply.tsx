@@ -23,12 +23,12 @@ export function PortfolioAssistantAmbiguousReply({
 
   return (
     <PortfolioAssistantMessageFrame showHeader={false} showLeadingBadge={false} chrome="bare">
-      <div className="max-w-[798px] space-y-5">
+      <div className="w-full max-w-[798px] space-y-5">
         <PortfolioAssistantIdentityHeader />
 
         <div className="space-y-5 text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]">
           {paragraphs.map((paragraph) => (
-            <p key={paragraph} className="max-w-[798px]">
+            <p key={paragraph} className="w-full max-w-[798px]">
               {paragraph}
             </p>
           ))}

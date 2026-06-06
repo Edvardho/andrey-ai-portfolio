@@ -138,6 +138,8 @@ export type SummaryPreviewConfig = {
   src: string;
   backgroundColor: string;
   borderColor?: string;
+  bordered?: boolean;
+  radiusClassName?: string;
   imageClassName: string;
   overlaySrc?: string;
   overlayImageClassName?: string;

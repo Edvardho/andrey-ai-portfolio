@@ -26,6 +26,10 @@ assert.equal(summary.intro.title, 'Андрей — product designer с 6 год
 assertIncludes(summary.intro.body, 'Работал в МТС, Альфа-Банке и Positive Technologies', 'intro body');
 assertIncludes(summary.intro.body, 'довести решение до запуска', 'intro body');
 assertAssetExists(summary.intro.preview.src);
+assert.equal(summary.intro.preview.backgroundColor, '#D1D7E3');
+assert.equal(summary.intro.preview.bordered, true);
+assert.equal(summary.intro.preview.radiusClassName, 'rounded-[16px]');
+assert.equal(summary.intro.preview.imageClassName, 'absolute left-0 top-0 h-[150.24%] w-full max-w-none');
 
 assert.equal(summary.currentWork.title, 'Где сейчас работает:');
 assertIncludes(summary.currentWork.body, 'Positive Technologies', 'current work body');
@@ -43,13 +47,14 @@ assert.deepEqual(
 
 for (const item of summary.workHistory.items) {
   assert.ok(item.description.length > 0, `${item.company} should have description`);
-  assert.equal(item.resultLabel, 'Что получилось:');
+  assert.equal(item.resultLabel, 'Результат работы');
   assert.ok(item.resultTags.length >= 2, `${item.company} should have result tags`);
 }
 
 assertIncludes(serialized, 'Сократил время сдачи отчетов хакерами', 'work result tags');
-assertIncludes(serialized, '32 111 подписок спустя месяц запуска продукта', 'work result tags');
-assertIncludes(serialized, 'Уменьшил время обработки диалога с 900 до 580 секунд', 'work result tags');
+assertIncludes(serialized, '32 111 подписок за 1 месяц после запуска продукта', 'work result tags');
+assertIncludes(serialized, 'Сократилось время диалога с 900 до 580 сек.', 'work result tags');
+assertIncludes(serialized, 'Выросла обработка диалогов с 1000 до 2000', 'work result tags');
 
 assert.equal(summary.importantTakeaway.title, 'Что важно понять');
 assertIncludes(summary.importantTakeaway.body, 'превратить сложный B2B/B2C-продукт', 'important takeaway');

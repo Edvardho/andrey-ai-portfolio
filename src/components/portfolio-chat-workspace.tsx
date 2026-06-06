@@ -1,7 +1,8 @@
 'use client';
 
-import type { RefObject } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import { motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import type {
   ArtifactOpenTarget,
   RailItem,
@@ -114,10 +115,45 @@ export function PortfolioChatWorkspace({
 }) {
   const animateStageEntry = Boolean(startTransitionSource);
   const showContextPanel = Boolean(contextPanelPayload && !contextPanelPayload.contextPanel.hidden);
+  const [contextDrawerContextId, setContextDrawerContextId] = useState<ContextId | null>(null);
+  const isContextDrawerOpen = showContextPanel && contextDrawerContextId === currentThread.contextId;
   const delayContextPanelReveal = shouldDelayContextPanelReveal(
     showContextPanel,
     currentThread.hasPlayedInitialReveal,
   );
+
+  useEffect(() => {
+    if (!isContextDrawerOpen) {
+      return undefined;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setContextDrawerContextId(null);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isContextDrawerOpen]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 1440px)');
+    const closeIfWide = () => {
+      if (mediaQuery.matches) {
+        setContextDrawerContextId(null);
+      }
+    };
+
+    mediaQuery.addEventListener('change', closeIfWide);
+
+    return () => {
+      mediaQuery.removeEventListener('change', closeIfWide);
+    };
+  }, []);
 
   return (
     <motion.div
@@ -127,9 +163,7 @@ export function PortfolioChatWorkspace({
       exit={{ opacity: 0 }}
       transition={STAGE_FADE}
     >
-      <div
-        className="grid h-full min-h-0 grid-cols-[298px_1px_980px_1px_304px] overflow-hidden"
-      >
+      <div className="portfolio-chat-grid grid h-full min-h-0 overflow-hidden">
         <motion.div
           className="min-h-0"
           initial={animateStageEntry ? { opacity: 0, x: -32 } : false}
@@ -151,11 +185,23 @@ export function PortfolioChatWorkspace({
         <div className="bg-[#EBEDF2]" aria-hidden="true" />
 
         <motion.div
-          className="flex min-h-0 flex-col"
+          className="relative flex min-h-0 flex-col"
           initial={animateStageEntry ? { opacity: 0, y: 34 } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
+          {showContextPanel ? (
+            <div className="portfolio-narrow-context-trigger justify-end px-6 pt-5">
+              <button
+                type="button"
+                onClick={() => setContextDrawerContextId(currentThread.contextId)}
+                className="flex h-9 cursor-pointer items-center rounded-full border border-[#EBEDF2] bg-white px-4 text-[14px] font-medium leading-5 text-[#202129] shadow-[0px_6px_14px_rgba(17,19,26,0.06)] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              >
+                Контекст проекта
+              </button>
+            </div>
+          ) : null}
+
           <PortfolioThreadView
             ref={threadViewRef}
             contextId={currentThread.contextId}
@@ -204,9 +250,9 @@ export function PortfolioChatWorkspace({
           </motion.div>
         </motion.div>
 
-        <div className="bg-[#EBEDF2]" aria-hidden="true" />
+        <div className="portfolio-wide-context-divider bg-[#EBEDF2]" aria-hidden="true" />
 
-        <div className="min-h-0 pl-6 pt-6">
+        <div className="portfolio-context-column min-h-0 pl-6 pt-6">
           {showContextPanel && contextPanelPayload ? (
             <motion.div
               initial={animateStageEntry ? { opacity: 0, x: 32 } : false}
@@ -225,6 +271,39 @@ export function PortfolioChatWorkspace({
           ) : null}
         </div>
       </div>
+
+      {showContextPanel && contextPanelPayload && isContextDrawerOpen ? (
+        <div className="portfolio-context-drawer-layer absolute inset-0 z-30">
+          <button
+            type="button"
+            aria-label="Закрыть контекст проекта"
+            className="absolute inset-0 cursor-default bg-[#202129]/10"
+            onClick={() => setContextDrawerContextId(null)}
+          />
+          <motion.aside
+            role="dialog"
+            aria-label="Контекст проекта"
+            className="absolute bottom-6 right-0 top-6 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
+            initial={{ opacity: 0, x: 28 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 28 }}
+            transition={{ duration: 0.28, ease: WORKSPACE_EASE }}
+          >
+            <button
+              type="button"
+              aria-label="Закрыть контекст проекта"
+              onClick={() => setContextDrawerContextId(null)}
+              className="absolute right-0 top-0 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#202129] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            >
+              <X className="size-4" strokeWidth={1.8} />
+            </button>
+            <PortfolioContextPanel
+              contextPanel={contextPanelPayload.contextPanel}
+              selectedContext={contextPanelPayload.selectedContext}
+            />
+          </motion.aside>
+        </div>
+      ) : null}
     </motion.div>
   );
 }

@@ -15,6 +15,7 @@ import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-polic
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 import { PortfolioCaseCollection } from './portfolio-case-collection';
+import { PortfolioStructuredIntroPreview } from './portfolio-structured-intro-preview';
 const SUMMARY_BODY_TEXT_16_CLASS =
   'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]';
 
@@ -29,7 +30,7 @@ type Props = {
 
 function SummarySection({ title, body }: { title: string; body: string }) {
   return (
-    <section className="max-w-[798px] space-y-[10px]">
+    <section className="w-full max-w-[798px] space-y-[10px]">
       <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">{title}</h4>
       <div className={clsx('space-y-0', SUMMARY_BODY_TEXT_16_CLASS)}>
         {body.split('\n').map((paragraph) => (
@@ -80,18 +81,11 @@ export function PortfolioStructuredCaseSummary({
           <PortfolioAssistantIdentityHeader />
         </motion.div>
 
-        <motion.section className="flex max-w-[798px] gap-4" {...getRevealProps(1)}>
-          <div
-            className="relative size-28 shrink-0 overflow-hidden rounded-[20px]"
-            style={{ backgroundColor: summary.intro.preview.backgroundColor }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={summary.intro.preview.src}
-              alt={summary.intro.title}
-              className={summary.intro.preview.imageClassName}
-            />
-          </div>
+        <motion.section className="flex w-full max-w-[798px] gap-4" {...getRevealProps(1)}>
+          <PortfolioStructuredIntroPreview
+            preview={summary.intro.preview}
+            alt={summary.intro.title}
+          />
           <div className="min-w-0 flex-1 space-y-2 text-[#202332]">
             <h3 className="text-[20px] font-semibold leading-7">{summary.intro.title}</h3>
             <p className={SUMMARY_BODY_TEXT_16_CLASS}>
@@ -106,7 +100,7 @@ export function PortfolioStructuredCaseSummary({
           </motion.div>
         ))}
 
-        <motion.section className="max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(4)}>
+        <motion.section className="w-full max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(4)}>
           <h4 className="text-[16px] font-semibold leading-[22px] text-[#202332]">
             {summary.disclosureTitle}
           </h4>
@@ -165,7 +159,7 @@ export function PortfolioStructuredCaseSummary({
           </div>
         </motion.section>
 
-        <motion.section className="max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(9)}>
+        <motion.section className="w-full max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(9)}>
           <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
             {summary.showcaseTitle}
           </h4>
@@ -179,7 +173,7 @@ export function PortfolioStructuredCaseSummary({
           />
         </motion.section>
 
-        <motion.section className="max-w-[798px] space-y-[10px]" {...getRevealProps(10)}>
+        <motion.section className="w-full max-w-[798px] space-y-[10px]" {...getRevealProps(10)}>
           <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
             {summary.resultsTitle}
           </h4>
@@ -189,7 +183,7 @@ export function PortfolioStructuredCaseSummary({
               {summary.resultMetrics.map((metric) => (
                 <div
                   key={`${metric.value}-${metric.label}`}
-                  className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-white px-4 py-[14px]"
+                  className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-[#FAFBFF] px-4 py-[14px]"
                 >
                   <p className="text-[18px] font-semibold leading-6 text-[#202332]">{metric.value}</p>
                   <p className="text-[13px] leading-[18px] text-[#8F95A7]">{metric.label}</p>

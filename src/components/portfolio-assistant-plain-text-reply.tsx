@@ -33,7 +33,7 @@ export function PortfolioAssistantPlainTextReply({
   return (
     <PortfolioAssistantMessageFrame showHeader={false} showLeadingBadge={false} chrome="bare">
       <div
-        className="max-w-[798px] space-y-5"
+        className="w-full max-w-[798px] space-y-5"
         aria-live={progressive ? portfolioResponseAnimationConfig.global.accessibility.ariaLive : undefined}
       >
         <PortfolioAssistantIdentityHeader
@@ -108,14 +108,6 @@ export function PortfolioAssistantPlainTextReply({
           ),
         )}
 
-        {envelope.chips.length ? (
-          <div className="flex flex-wrap gap-3 pt-1">
-            {envelope.chips.map((chip) => (
-              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} />
-            ))}
-          </div>
-        ) : null}
-
         {ctaBlocks.map((block, index) =>
           block.type === 'cta' ? (
             <div key={`cta-${index}`} className="pt-1">
@@ -123,6 +115,14 @@ export function PortfolioAssistantPlainTextReply({
             </div>
           ) : null,
         )}
+
+        {envelope.chips.length ? (
+          <div className="flex flex-wrap gap-3 pt-1">
+            {envelope.chips.map((chip) => (
+              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} />
+            ))}
+          </div>
+        ) : null}
       </div>
     </PortfolioAssistantMessageFrame>
   );
