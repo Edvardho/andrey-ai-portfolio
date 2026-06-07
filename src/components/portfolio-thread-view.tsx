@@ -59,6 +59,100 @@ function isManualScrollKey(key: string) {
     || key === 'Spacebar';
 }
 
+function areThreadScrollStatesEqual(left: ThreadScrollState, right: ThreadScrollState) {
+  return left.scrollTop === right.scrollTop
+    && left.isNearBottom === right.isNearBottom
+    && left.hasUnseenAssistantContent === right.hasUnseenAssistantContent
+    && left.lastSeenAssistantItemId === right.lastSeenAssistantItemId;
+}
+
+function useThreadScrollStateController({
+  contextId,
+  scrollState,
+  onScrollStateChange,
+}: {
+  contextId: ContextId;
+  scrollState: ThreadScrollState;
+  onScrollStateChange: (contextId: ContextId, scrollState: ThreadScrollState) => void;
+}) {
+  const [liveScrollState, setLiveScrollStateValue] = useState(scrollState);
+  const liveScrollStateRef = useRef(scrollState);
+  const latestScrollStatePropRef = useRef(scrollState);
+  const scrollStateReportTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+
+  useLayoutEffect(() => {
+    latestScrollStatePropRef.current = scrollState;
+  }, [scrollState]);
+
+  const cancelPendingScrollStateFlush = useCallback(() => {
+    if (!scrollStateReportTimeoutRef.current) {
+      return;
+    }
+
+    globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
+    scrollStateReportTimeoutRef.current = null;
+  }, []);
+
+  const flushScrollState = useCallback((nextScrollState: ThreadScrollState) => {
+    liveScrollStateRef.current = nextScrollState;
+    onScrollStateChange(contextId, nextScrollState);
+  }, [contextId, onScrollStateChange]);
+
+  const setLiveScrollStateIfChanged = useCallback((nextScrollState: ThreadScrollState) => {
+    if (areThreadScrollStatesEqual(liveScrollStateRef.current, nextScrollState)) {
+      return false;
+    }
+
+    liveScrollStateRef.current = nextScrollState;
+    setLiveScrollStateValue((currentScrollState) => (
+      areThreadScrollStatesEqual(currentScrollState, nextScrollState) ? currentScrollState : nextScrollState
+    ));
+
+    return true;
+  }, []);
+
+  const scheduleScrollStateFlush = useCallback((nextScrollState: ThreadScrollState) => {
+    liveScrollStateRef.current = nextScrollState;
+    cancelPendingScrollStateFlush();
+
+    scrollStateReportTimeoutRef.current = globalThis.setTimeout(() => {
+      flushScrollState(nextScrollState);
+      scrollStateReportTimeoutRef.current = null;
+    }, 80);
+  }, [cancelPendingScrollStateFlush, flushScrollState]);
+
+  const setNextScrollState = useCallback((nextScrollState: ThreadScrollState, options?: { flushImmediately?: boolean }) => {
+    setLiveScrollStateIfChanged(nextScrollState);
+
+    if (areThreadScrollStatesEqual(latestScrollStatePropRef.current, nextScrollState)) {
+      cancelPendingScrollStateFlush();
+      return;
+    }
+
+    if (options?.flushImmediately) {
+      cancelPendingScrollStateFlush();
+      flushScrollState(nextScrollState);
+      return;
+    }
+
+    scheduleScrollStateFlush(nextScrollState);
+  }, [
+    cancelPendingScrollStateFlush,
+    flushScrollState,
+    scheduleScrollStateFlush,
+    setLiveScrollStateIfChanged,
+  ]);
+
+  return {
+    cancelPendingScrollStateFlush,
+    latestScrollStatePropRef,
+    liveScrollState,
+    liveScrollStateRef,
+    setLiveScrollStateIfChanged,
+    setNextScrollState,
+  };
+}
+
 type PortfolioThreadViewProps = {
   contextId: ContextId;
   items: ThreadItem[];
@@ -125,46 +219,19 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   const isProgrammaticScrollInFlightRef = useRef(false);
   const preservedDisclosureScrollTopRef = useRef<number | null>(null);
   const disclosureRestoreTimeoutsRef = useRef<ReturnType<typeof globalThis.setTimeout>[]>([]);
-  const scrollStateReportTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
   const latestAssistantItemId = getLatestAssistantItemId(items);
-  const [liveScrollState, setLiveScrollState] = useState(scrollState);
-  const liveScrollStateRef = useRef(scrollState);
-  const latestScrollStatePropRef = useRef(scrollState);
-  latestScrollStatePropRef.current = scrollState;
-
-  const flushScrollState = useCallback((nextScrollState: ThreadScrollState) => {
-    liveScrollStateRef.current = nextScrollState;
-    onScrollStateChange(contextId, nextScrollState);
-  }, [contextId, onScrollStateChange]);
-
-  const scheduleScrollStateFlush = useCallback((nextScrollState: ThreadScrollState) => {
-    liveScrollStateRef.current = nextScrollState;
-
-    if (scrollStateReportTimeoutRef.current) {
-      globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
-    }
-
-    scrollStateReportTimeoutRef.current = globalThis.setTimeout(() => {
-      flushScrollState(nextScrollState);
-      scrollStateReportTimeoutRef.current = null;
-    }, 80);
-  }, [flushScrollState]);
-
-  const setNextScrollState = useCallback((nextScrollState: ThreadScrollState, options?: { flushImmediately?: boolean }) => {
-    setLiveScrollState(nextScrollState);
-
-    if (options?.flushImmediately) {
-      if (scrollStateReportTimeoutRef.current) {
-        globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
-        scrollStateReportTimeoutRef.current = null;
-      }
-
-      flushScrollState(nextScrollState);
-      return;
-    }
-
-    scheduleScrollStateFlush(nextScrollState);
-  }, [flushScrollState, scheduleScrollStateFlush]);
+  const {
+    cancelPendingScrollStateFlush,
+    latestScrollStatePropRef,
+    liveScrollState,
+    liveScrollStateRef,
+    setLiveScrollStateIfChanged,
+    setNextScrollState,
+  } = useThreadScrollStateController({
+    contextId,
+    scrollState,
+    onScrollStateChange,
+  });
 
   const readScrollStateFromViewport = useCallback((params?: { hasUnseenAssistantContent?: boolean }) => {
     const viewport = threadViewportRef.current;
@@ -185,7 +252,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       hasUnseenAssistantContent: nearBottom ? false : (params?.hasUnseenAssistantContent ?? liveScrollStateRef.current.hasUnseenAssistantContent),
       lastSeenAssistantItemId: nearBottom ? latestAssistantItemId : liveScrollStateRef.current.lastSeenAssistantItemId,
     };
-  }, [latestAssistantItemId]);
+  }, [latestAssistantItemId, liveScrollStateRef]);
 
   useImperativeHandle(ref, () => ({
     captureScrollState() {
@@ -381,7 +448,14 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       },
       { flushImmediately: true },
     );
-  }, [applyProgrammaticScroll, getThreadBottomScrollTop, latestAssistantItemId, setNextScrollState, stickToBottomSignal]);
+  }, [
+    applyProgrammaticScroll,
+    getThreadBottomScrollTop,
+    latestAssistantItemId,
+    liveScrollStateRef,
+    setNextScrollState,
+    stickToBottomSignal,
+  ]);
 
   useLayoutEffect(() => {
     if (scrollToTopSignal <= 0 || !threadViewportRef.current) {
@@ -414,7 +488,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         top: 0,
       });
     });
-  }, [applyProgrammaticScroll, scrollToTopSignal, setNextScrollState]);
+  }, [applyProgrammaticScroll, liveScrollStateRef, scrollToTopSignal, setNextScrollState]);
 
   useLayoutEffect(() => {
     const viewport = threadViewportRef.current;
@@ -428,8 +502,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       top: nextScrollState.scrollTop,
     });
     shouldStickToBottomRef.current = nextScrollState.isNearBottom;
-    liveScrollStateRef.current = nextScrollState;
-    setLiveScrollState(nextScrollState);
+    setLiveScrollStateIfChanged(nextScrollState);
 
     globalThis.requestAnimationFrame(() => {
       applyProgrammaticScroll({
@@ -437,7 +510,12 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         top: nextScrollState.scrollTop,
       });
     });
-  }, [applyProgrammaticScroll, contextId]);
+  }, [
+    applyProgrammaticScroll,
+    contextId,
+    latestScrollStatePropRef,
+    setLiveScrollStateIfChanged,
+  ]);
 
   useLayoutEffect(() => {
     if (restoreThreadScrollSignal <= 0 || restoreThreadScrollTop === null || !threadViewportRef.current) {
@@ -468,7 +546,13 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         top: restoreThreadScrollTop,
       });
     });
-  }, [applyProgrammaticScroll, restoreThreadScrollSignal, restoreThreadScrollTop, setNextScrollState]);
+  }, [
+    applyProgrammaticScroll,
+    liveScrollStateRef,
+    restoreThreadScrollSignal,
+    restoreThreadScrollTop,
+    setNextScrollState,
+  ]);
 
   useLayoutEffect(() => {
     const content = threadContentRef.current;
@@ -518,24 +602,23 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   useLayoutEffect(() => {
     return () => {
       clearDisclosureScrollPreservation();
-      if (scrollStateReportTimeoutRef.current) {
-        globalThis.clearTimeout(scrollStateReportTimeoutRef.current);
-      }
+      cancelPendingScrollStateFlush();
     };
-  }, [clearDisclosureScrollPreservation]);
+  }, [cancelPendingScrollStateFlush, clearDisclosureScrollPreservation]);
 
   useEffect(() => {
-    liveScrollStateRef.current = {
+    setLiveScrollStateIfChanged({
       ...liveScrollStateRef.current,
       hasUnseenAssistantContent: scrollState.hasUnseenAssistantContent,
       lastSeenAssistantItemId: scrollState.lastSeenAssistantItemId,
-    };
-    setLiveScrollState((current) => ({
-      ...current,
-      hasUnseenAssistantContent: scrollState.hasUnseenAssistantContent,
-      lastSeenAssistantItemId: scrollState.lastSeenAssistantItemId,
-    }));
-  }, [contextId, scrollState.hasUnseenAssistantContent, scrollState.lastSeenAssistantItemId]);
+    });
+  }, [
+    contextId,
+    liveScrollStateRef,
+    scrollState.hasUnseenAssistantContent,
+    scrollState.lastSeenAssistantItemId,
+    setLiveScrollStateIfChanged,
+  ]);
 
   const pendingItems = items.filter((item) => !item.hasAnimated);
   const pendingSignature = pendingItems.map((item) => item.id).join('|');
