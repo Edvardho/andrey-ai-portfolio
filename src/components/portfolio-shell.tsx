@@ -109,6 +109,7 @@ const DEFAULT_CONTEXT_UI_STATE: ContextUiState = {
   expandedDisclosureIds: [],
 };
 const MOBILE_CASE_IDS = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike']);
+const PERSISTENCE_WRITE_DEBOUNCE_MS = 120;
 
 function isCaseContextId(contextId: ContextId): contextId is `case:${string}` {
   return contextId.startsWith('case:');
@@ -414,10 +415,73 @@ function getCurrentContextPanel(envelope: AssistantEnvelope): AssistantEnvelope[
   return envelope.contextPanel;
 }
 
+function readStorageItem(storage: Storage, key: string) {
+  try {
+    return storage.getItem(key);
+  } catch (error) {
+    console.warn(`Failed to read ${key} from portfolio storage.`, error);
+    return null;
+  }
+}
+
+function removeStorageItem(storage: Storage, key: string) {
+  try {
+    storage.removeItem(key);
+  } catch (error) {
+    console.warn(`Failed to remove ${key} from portfolio storage.`, error);
+  }
+}
+
+function writeStorageItem(storage: Storage, key: string, value: string) {
+  try {
+    storage.setItem(key, value);
+  } catch (error) {
+    console.warn(`Failed to persist ${key} to portfolio storage.`, error);
+  }
+}
+
+function readPersistedThreadState() {
+  return (
+    readStorageItem(globalThis.localStorage, THREAD_STORAGE_KEY) ??
+    readStorageItem(globalThis.localStorage, LEGACY_THREAD_STORAGE_KEY) ??
+    readStorageItem(globalThis.sessionStorage, LEGACY_THREAD_STORAGE_KEY)
+  );
+}
+
 function clearPersistedThreadState() {
-  globalThis.localStorage.removeItem(THREAD_STORAGE_KEY);
-  globalThis.localStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
-  globalThis.sessionStorage.removeItem(LEGACY_THREAD_STORAGE_KEY);
+  removeStorageItem(globalThis.localStorage, THREAD_STORAGE_KEY);
+  removeStorageItem(globalThis.localStorage, LEGACY_THREAD_STORAGE_KEY);
+  removeStorageItem(globalThis.sessionStorage, LEGACY_THREAD_STORAGE_KEY);
+}
+
+function persistThreadState(payload: PersistedThreadState) {
+  try {
+    writeStorageItem(globalThis.localStorage, THREAD_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn('Failed to serialize portfolio thread state.', error);
+  }
+}
+
+function createClientFallbackSessionId() {
+  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
+    return `local-${globalThis.crypto.randomUUID()}`;
+  }
+
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createBootstrapFallbackEnvelope(): AssistantEnvelope {
+  const envelope = buildClientEnvelopeForAction(
+    { type: 'open_entry' },
+    createClientFallbackSessionId(),
+    DEFAULT_SESSION_META.used,
+  );
+
+  if (!envelope) {
+    throw new Error('Failed to create local bootstrap fallback.');
+  }
+
+  return envelope;
 }
 
 function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
@@ -594,6 +658,7 @@ export function PortfolioShell() {
   const threadsRef = useRef<ThreadStore>({});
   const contextUiStateRef = useRef<ContextUiStateStore>({});
   const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const persistenceTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
   const railItems = getRailItems();
   const normalizedThreadsByContextId = useMemo(
@@ -645,7 +710,21 @@ export function PortfolioShell() {
       sessionMeta,
     };
 
-    globalThis.localStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(payload));
+    if (persistenceTimeoutRef.current) {
+      globalThis.clearTimeout(persistenceTimeoutRef.current);
+    }
+
+    persistenceTimeoutRef.current = globalThis.setTimeout(() => {
+      persistThreadState(payload);
+      persistenceTimeoutRef.current = null;
+    }, PERSISTENCE_WRITE_DEBOUNCE_MS);
+
+    return () => {
+      if (persistenceTimeoutRef.current) {
+        globalThis.clearTimeout(persistenceTimeoutRef.current);
+        persistenceTimeoutRef.current = null;
+      }
+    };
   }, [
     activeContextId,
     contextUiStateByContextId,
@@ -1176,10 +1255,7 @@ export function PortfolioShell() {
         }
 
         try {
-          const persistedRaw =
-            globalThis.localStorage.getItem(THREAD_STORAGE_KEY) ??
-            globalThis.localStorage.getItem(LEGACY_THREAD_STORAGE_KEY) ??
-            globalThis.sessionStorage.getItem(LEGACY_THREAD_STORAGE_KEY);
+          const persistedRaw = readPersistedThreadState();
           if (persistedRaw) {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
             const persistedThreads = hydratePersistedThreads(persisted.threadsByContextId ?? {});
@@ -1240,6 +1316,9 @@ export function PortfolioShell() {
       cancelled = true;
       if (transitionTimeoutRef.current) {
         globalThis.clearTimeout(transitionTimeoutRef.current);
+      }
+      if (persistenceTimeoutRef.current) {
+        globalThis.clearTimeout(persistenceTimeoutRef.current);
       }
     };
   }, []);

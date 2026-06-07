@@ -265,6 +265,26 @@ async function main() {
     await delay(INTERACTION_SETTLE_MS);
     await assertHealthy(page, state, 'artifact modal escape close');
 
+    await page.addInitScript({
+      content: `
+        Object.defineProperty(Storage.prototype, 'setItem', {
+          configurable: true,
+          value: function () {
+            throw new DOMException('Forced runtime smoke storage write failure', 'QuotaExceededError');
+          },
+        });
+      `,
+    });
+    resetRuntimeSmokeState(state);
+    await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
+    await page
+      .getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i })
+      .waitFor({ state: 'visible', timeout: 15_000 });
+    await assertHealthy(page, state, 'landing with storage write failure');
+    await page.getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i }).click();
+    await page.getByText('ИИ ассистент').waitFor({ state: 'visible', timeout: 15_000 });
+    await assertHealthy(page, state, 'case click with storage write failure');
+
     console.log('Runtime browser smoke passed.');
   } finally {
     if (browser) {
