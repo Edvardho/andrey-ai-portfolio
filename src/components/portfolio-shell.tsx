@@ -1145,6 +1145,22 @@ export function PortfolioShell() {
   useEffect(() => {
     let cancelled = false;
 
+    function hydrateFromBootstrapEnvelope(
+      envelope: AssistantEnvelope,
+      options: { workspaceMode: WorkspaceMode; serverContextId: ContextId | null },
+    ) {
+      const contextId = getContextIdFromEnvelope(envelope);
+
+      setSessionId(envelope.sessionId);
+      updateSessionMeta(envelope);
+      replaceThreadWithEnvelope(contextId, envelope);
+      ensureContextUiState(contextId);
+      setActiveContextId(contextId);
+      setWorkspaceMode(options.workspaceMode);
+      setServerContextId(options.serverContextId);
+      setHasHydrated(true);
+    }
+
     async function bootstrap() {
       setLoadingContextId('entry');
       setError(null);
@@ -1198,18 +1214,18 @@ export function PortfolioShell() {
           return;
         }
 
-        const contextId = getContextIdFromEnvelope(envelope);
-        setSessionId(envelope.sessionId);
-        updateSessionMeta(envelope);
-        replaceThreadWithEnvelope(contextId, envelope);
-        ensureContextUiState(contextId);
-        setActiveContextId(contextId);
-        setWorkspaceMode('landing');
-        setServerContextId(contextId);
-        setHasHydrated(true);
+        hydrateFromBootstrapEnvelope(envelope, {
+          workspaceMode: 'landing',
+          serverContextId: getContextIdFromEnvelope(envelope),
+        });
       } catch (caughtError) {
         if (!cancelled) {
-          setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+          console.warn('Bootstrap failed; using local portfolio seed.', caughtError);
+          hydrateFromBootstrapEnvelope(createBootstrapFallbackEnvelope(), {
+            workspaceMode: 'landing',
+            serverContextId: null,
+          });
+          setError(null);
         }
       } finally {
         if (!cancelled) {

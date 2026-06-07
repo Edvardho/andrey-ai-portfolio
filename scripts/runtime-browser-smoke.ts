@@ -28,7 +28,16 @@ type Page = import('playwright').Page;
 type RuntimeSmokeState = {
   consoleErrors: string[];
   pageErrors: string[];
+  ignoredConsoleErrorPatterns: RegExp[];
 };
+
+function createRuntimeSmokeState(ignoredConsoleErrorPatterns: RegExp[] = []): RuntimeSmokeState {
+  return {
+    consoleErrors: [],
+    pageErrors: [],
+    ignoredConsoleErrorPatterns,
+  };
+}
 
 function formatConsoleMessage(message: ConsoleMessage) {
   return `[${message.type()}] ${message.text()}`;
@@ -139,14 +148,40 @@ async function clickRailCase(page: Page, label: string) {
   await delay(INTERACTION_SETTLE_MS);
 }
 
+function resetRuntimeSmokeState(state: RuntimeSmokeState, ignoredConsoleErrorPatterns: RegExp[] = []) {
+  state.consoleErrors = [];
+  state.pageErrors = [];
+  state.ignoredConsoleErrorPatterns = ignoredConsoleErrorPatterns;
+}
+
+function collectRuntimeErrors(page: Page, state: RuntimeSmokeState) {
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      const formatted = formatConsoleMessage(message);
+      if (state.ignoredConsoleErrorPatterns.some((pattern) => pattern.test(formatted))) {
+        return;
+      }
+
+      state.consoleErrors.push(formatted);
+    }
+  });
+  page.on('pageerror', (error) => {
+    state.pageErrors.push(error.stack ?? error.message);
+  });
+}
+
+async function clearBrowserStorageBeforeNavigation(page: Page) {
+  await page.addInitScript(() => {
+    window.localStorage.clear();
+    window.sessionStorage.clear();
+  });
+}
+
 async function main() {
   let server: ChildProcess | null = null;
   let browser: Browser | null = null;
   let appUrl = process.env.RUNTIME_SMOKE_URL ?? DEFAULT_EXISTING_SERVER_URL;
-  const state: RuntimeSmokeState = {
-    consoleErrors: [],
-    pageErrors: [],
-  };
+  const state = createRuntimeSmokeState();
 
   try {
     if (!process.env.RUNTIME_SMOKE_URL && !(await canReachServer(appUrl))) {
@@ -160,20 +195,27 @@ async function main() {
 
     const { chromium } = await import('playwright');
     browser = await chromium.launch({ args: ['--single-process'] });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
 
-    page.on('console', (message) => {
-      if (message.type() === 'error') {
-        state.consoleErrors.push(formatConsoleMessage(message));
-      }
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+    collectRuntimeErrors(page, state);
+    await clearBrowserStorageBeforeNavigation(page);
+
+    resetRuntimeSmokeState(state, [/Failed to load resource:.*500/i]);
+    await page.route('**/api/assistant/bootstrap**', async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Forced runtime smoke bootstrap failure' }),
+      });
     });
-    page.on('pageerror', (error) => {
-      state.pageErrors.push(error.stack ?? error.message);
-    });
-    await page.addInitScript(() => {
-      window.localStorage.clear();
-      window.sessionStorage.clear();
-    });
+    await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
+    await page
+      .getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i })
+      .waitFor({ state: 'visible', timeout: 15_000 });
+    await assertHealthy(page, state, 'bootstrap fallback after forced 500');
+
+    await page.unroute('**/api/assistant/bootstrap**');
+    resetRuntimeSmokeState(state);
 
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
     await page.getByText('Макаревич Андрей').waitFor({ state: 'visible', timeout: 15_000 });
