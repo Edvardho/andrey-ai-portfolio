@@ -32,6 +32,13 @@ import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
 import type { PortfolioThreadViewHandle } from './portfolio-thread-view';
+import {
+  useDebouncedPortfolioPersistence,
+  usePortfolioModalController,
+  usePortfolioStageRouting,
+  usePortfolioTextareaAutosize,
+  useSyncedRef,
+} from './portfolio-shell-hooks';
 
 type ThreadItem =
   | { id: string; kind: 'user'; text: string; hasAnimated: boolean }
@@ -637,7 +644,6 @@ export function PortfolioShell() {
   const [threadsByContextId, setThreadsByContextId] = useState<ThreadStore>({});
   const [contextUiStateByContextId, setContextUiStateByContextId] = useState<ContextUiStateStore>({});
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
-  const [modalPayload, setModalPayload] = useState<ModalPayload | null>(null);
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
@@ -651,20 +657,18 @@ export function PortfolioShell() {
   const [restoreThreadScrollTop, setRestoreThreadScrollTop] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const threadViewRef = useRef<PortfolioThreadViewHandle | null>(null);
-  const sessionIdRef = useRef<string | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
-  const activeContextIdRef = useRef<ContextId>('entry');
-  const workspaceModeRef = useRef<WorkspaceMode>('landing');
-  const threadsRef = useRef<ThreadStore>({});
-  const contextUiStateRef = useRef<ContextUiStateStore>({});
   const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
-  const persistenceTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const sessionIdRef = useSyncedRef(sessionId);
+  const activeContextIdRef = useSyncedRef(activeContextId);
+  const workspaceModeRef = useSyncedRef(workspaceMode);
 
   const railItems = getRailItems();
   const normalizedThreadsByContextId = useMemo(
     () => normalizeRuntimeThreads(threadsByContextId),
     [threadsByContextId],
   );
+  const threadsRef = useSyncedRef(normalizedThreadsByContextId);
   const messagesRemaining = sessionMeta.remaining;
   const currentThread = normalizedThreadsByContextId[activeContextId] ?? createContextThread(activeContextId);
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
@@ -673,67 +677,41 @@ export function PortfolioShell() {
     () => getContextPanelPayloadFromContextId(activeContextId),
     [activeContextId],
   );
-  const showLandingStage = hasHydrated && workspaceMode === 'landing';
-  const showChatStage = hasHydrated && workspaceMode === 'chat';
+  const { selectedRailId, showAssistantReturn, showChatStage, showLandingStage } = usePortfolioStageRouting({
+    activeContextId,
+    hasHydrated,
+    isBootstrapEntryThread: (thread) => isBootstrapEntryThread(thread as ContextThread | undefined),
+    isCaseContextId,
+    threadsByContextId: normalizedThreadsByContextId,
+    workspaceMode,
+  });
 
-  useEffect(() => {
-    sessionIdRef.current = sessionId;
-  }, [sessionId]);
-
-  useEffect(() => {
-    activeContextIdRef.current = activeContextId;
-  }, [activeContextId]);
-
-  useEffect(() => {
-    workspaceModeRef.current = workspaceMode;
-  }, [workspaceMode]);
-
-  useEffect(() => {
-    threadsRef.current = normalizedThreadsByContextId;
-  }, [normalizedThreadsByContextId]);
-
-  useEffect(() => {
-    contextUiStateRef.current = contextUiStateByContextId;
-  }, [contextUiStateByContextId]);
-
-  useEffect(() => {
-    if (!hasHydrated) {
-      return;
-    }
-
-    const payload: PersistedThreadState = {
-      sessionId,
-      activeContextId,
-      threadsByContextId: normalizedThreadsByContextId,
-      contextUiStateByContextId,
-      workspaceMode,
-      sessionMeta,
-    };
-
-    if (persistenceTimeoutRef.current) {
-      globalThis.clearTimeout(persistenceTimeoutRef.current);
-    }
-
-    persistenceTimeoutRef.current = globalThis.setTimeout(() => {
-      persistThreadState(payload);
-      persistenceTimeoutRef.current = null;
-    }, PERSISTENCE_WRITE_DEBOUNCE_MS);
-
-    return () => {
-      if (persistenceTimeoutRef.current) {
-        globalThis.clearTimeout(persistenceTimeoutRef.current);
-        persistenceTimeoutRef.current = null;
-      }
-    };
-  }, [
+  useDebouncedPortfolioPersistence({
     activeContextId,
     contextUiStateByContextId,
-    hasHydrated,
-    normalizedThreadsByContextId,
+    debounceMs: PERSISTENCE_WRITE_DEBOUNCE_MS,
+    enabled: hasHydrated,
+    persist: persistThreadState,
     sessionId,
     sessionMeta,
+    threadsByContextId: normalizedThreadsByContextId,
     workspaceMode,
-  ]);
+  });
+
+  const {
+    clearModal,
+    closeModal,
+    modalPayload,
+    openContactModal,
+    openImageModal,
+  } = usePortfolioModalController<ModalPayload>({
+    buildContactModalPayload,
+    buildImageModalPayload,
+    captureActiveThreadScrollState,
+    getFallbackScrollTop: () => currentThread.scrollState.scrollTop,
+    requestThreadScrollRestore,
+    shouldRestoreScrollAfterModalClose,
+  });
 
   function setServerContextId(contextId: ContextId | null) {
     serverContextIdRef.current = contextId;
@@ -1039,7 +1017,7 @@ export function PortfolioShell() {
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
-    setModalPayload(null);
+    clearModal();
     setError(null);
     setLastFailedRequest(null);
 
@@ -1096,7 +1074,7 @@ export function PortfolioShell() {
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
     captureActiveThreadScrollState();
-    setModalPayload(null);
+    clearModal();
     setActiveContextId(targetContextId);
     setLoadingContextId(targetContextId);
     setError(null);
@@ -1146,7 +1124,7 @@ export function PortfolioShell() {
       appendUserToThread(contextId, options.userText);
     }
 
-    setModalPayload(null);
+    clearModal();
     setLoadingContextId(contextId);
     setError(null);
     setLastFailedRequest(null);
@@ -1190,7 +1168,7 @@ export function PortfolioShell() {
   function restoreExistingContext(contextId: ContextId) {
     const targetThread = threadsRef.current[contextId];
     captureActiveThreadScrollState();
-    setModalPayload(null);
+    clearModal();
     setError(null);
     setLastFailedRequest(null);
     setActiveContextId(contextId);
@@ -1317,27 +1295,10 @@ export function PortfolioShell() {
       if (transitionTimeoutRef.current) {
         globalThis.clearTimeout(transitionTimeoutRef.current);
       }
-      if (persistenceTimeoutRef.current) {
-        globalThis.clearTimeout(persistenceTimeoutRef.current);
-      }
     };
   }, []);
 
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = 'auto';
-
-    const lineHeight = Number.parseFloat(globalThis.getComputedStyle(textarea).lineHeight) || 32;
-    const maxHeight = Math.round(lineHeight * 3);
-    const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
-
-    textarea.style.height = `${Math.max(nextHeight, lineHeight)}px`;
-    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
-  }, [input]);
+  usePortfolioTextareaAutosize(input, textareaRef);
 
   function handleChipClick(chip: PromptChip) {
     if (workspaceModeRef.current === 'landing') {
@@ -1420,17 +1381,12 @@ export function PortfolioShell() {
 
   function handleCta(action: UIAction) {
     if (action.type === 'open_contact_modal') {
-      captureActiveThreadScrollState();
-      setModalPayload(buildContactModalPayload());
+      openContactModal();
       return;
     }
 
     if (action.type === 'open_image_modal') {
-      captureActiveThreadScrollState();
-      const modal = buildImageModalPayload(action.caseId, action.artifactId);
-      if (modal) {
-        setModalPayload(modal);
-      }
+      openImageModal(action.caseId, action.artifactId);
       return;
     }
 
@@ -1458,20 +1414,11 @@ export function PortfolioShell() {
       return;
     }
 
-    captureActiveThreadScrollState();
-    const modal = buildImageModalPayload(targetCaseId, target.artifactId);
-    if (modal) {
-      setModalPayload(modal);
-    }
+    openImageModal(targetCaseId, target.artifactId);
   }
 
   function handleCloseModal() {
-    const snapshot = captureActiveThreadScrollState();
-    setModalPayload(null);
-
-    if (shouldRestoreScrollAfterModalClose()) {
-      requestThreadScrollRestore(snapshot?.scrollTop ?? currentThread.scrollState.scrollTop);
-    }
+    closeModal();
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1499,31 +1446,6 @@ export function PortfolioShell() {
       },
     );
   }
-
-  const selectedRailId = useMemo(() => {
-    if (activeContextId === 'experience') {
-      return 'experience';
-    }
-
-    if (isCaseContextId(activeContextId)) {
-      return activeContextId.replace(/^case:/, '');
-    }
-
-    return null;
-  }, [activeContextId]);
-
-  const showAssistantReturn = useMemo(() => {
-    if (workspaceMode !== 'chat') {
-      return false;
-    }
-
-    const entryThread = normalizedThreadsByContextId.entry;
-    if (!entryThread || isBootstrapEntryThread(entryThread)) {
-      return false;
-    }
-
-    return entryThread.items.some((item) => item.kind === 'user');
-  }, [normalizedThreadsByContextId, workspaceMode]);
 
   return (
     <>
