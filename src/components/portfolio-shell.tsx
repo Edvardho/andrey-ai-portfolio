@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
-import Image from 'next/image';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
@@ -1450,15 +1449,14 @@ export function PortfolioShell() {
   return (
     <>
       <div className="portfolio-desktop-blocker min-h-screen items-center justify-center bg-[#F7F8FC] px-6 py-10">
-        <div className="flex w-full max-w-[424px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-6 py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex w-full max-w-[464px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-[44px] py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
           <div className="relative size-28 shrink-0 overflow-hidden rounded-[20px]" aria-hidden="true">
-            <Image
-              src="/ui/desktop-only-preview.png"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/ui/desktop-only-icon-preview.png"
               alt=""
-              fill
-              sizes="112px"
-              className="max-w-none"
-              style={{ height: '382.69%', left: '-205.13%', top: '-91.35%', width: '510.26%' }}
+              draggable={false}
+              className="absolute inset-0 size-full select-none object-cover"
             />
           </div>
           <div className="flex flex-col items-center gap-3">
