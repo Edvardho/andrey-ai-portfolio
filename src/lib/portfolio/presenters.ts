@@ -688,15 +688,7 @@ export function buildLoadingEnvelope(session: AssistantSession): AssistantEnvelo
     viewType: 'loading',
     presentationVariant: 'loading_row',
     selectedContext: { kind: 'none', id: null, label: null },
-    contentBlocks: [
-      {
-        type: 'lead',
-        title: 'Думаю над маршрутом ответа',
-        body: [
-          'Ассистент не должен стрелять в темноту. Сначала он определяет, какой именно state открыть: кейс, опыт, breadth или контакт.',
-        ],
-      },
-    ],
+    contentBlocks: [],
     contextPanel: {
       ...portfolioContent.entry.contextPanel,
       hidden: true,

@@ -153,25 +153,18 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
         ? buildCaseRouteEnvelope(session, session.selectedContext.id)
         : buildEntryEnvelope(session);
     case 'assistant_intro':
-      return buildAssistantIntroEnvelope(session);
     case 'identity_intro':
-      return buildIdentityIntroEnvelope(session);
     case 'career_summary':
-      return buildCareerSummaryEnvelope(session);
     case 'case_discovery':
-      return buildCaseDiscoveryEnvelope(session);
     case 'mobile_overview':
-      return buildMobileSummaryEnvelope(session);
     case 'strengths_assessment':
-      return buildStrengthsEnvelope(session);
     case 'role_fit_assessment':
-      return buildRoleFitEnvelope(session);
     case 'decision_process':
-      return buildDecisionProcessEnvelope(session);
     case 'evidence_request':
-      return buildEvidenceEnvelope(session);
     case 'risk_objection':
-      return buildRiskEnvelope(session);
+      return session.lastSynthesis
+        ? buildGeneralSynthesisEnvelope(session, session.lastSynthesis)
+        : buildEntryEnvelope(session);
     case 'experience_summary':
       return buildExperienceEnvelope(session, 'summary');
     case 'experience_detail':

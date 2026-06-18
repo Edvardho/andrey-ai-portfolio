@@ -9,6 +9,7 @@ import type {
 } from '@/lib/portfolio/types';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
+import { PortfolioAssistantLoadingRow } from './portfolio-assistant-loading-row';
 import { PortfolioAssistantSectionedReply } from './portfolio-assistant-sectioned-reply';
 import { PortfolioAssistantSynthesisReply } from './portfolio-assistant-synthesis-reply';
 
@@ -33,6 +34,10 @@ export function PortfolioAssistantEnvelopeView({
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
 }) {
+  if (envelope.presentationVariant === 'loading_row') {
+    return <PortfolioAssistantLoadingRow />;
+  }
+
   const isStructuredSummary =
     envelope.presentationVariant === 'case_summary' ||
     envelope.presentationVariant === 'experience_summary';
