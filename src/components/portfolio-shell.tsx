@@ -5,7 +5,7 @@ import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
-import { buildClientEnvelopeForAction } from '@/lib/portfolio/client-seeds';
+import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -493,6 +493,18 @@ function createBootstrapFallbackEnvelope(): AssistantEnvelope {
 function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
   return {
     ...envelope,
+    meta: {
+      ...envelope.meta,
+      assistantReplyState: envelope.meta.assistantReplyState ?? (
+        envelope.meta.responseSource === 'facts_constrained_synthesis'
+          ? 'grounded_answer'
+          : 'authored_reply'
+      ),
+      sessionStoreMode: envelope.meta.sessionStoreMode ?? 'memory',
+      answerType: envelope.meta.answerType ?? null,
+      queryScope: envelope.meta.queryScope ?? null,
+      questionSubject: envelope.meta.questionSubject ?? null,
+    },
     contextPanel: getCurrentContextPanel(envelope),
   };
 }
@@ -876,6 +888,22 @@ export function PortfolioShell() {
     });
   }
 
+  function removeErrorRetryItems(contextId: ContextId) {
+    upsertThread(contextId, (thread) => {
+      const items = thread.items.filter((item) => (
+        item.kind !== 'assistant' || item.envelope.meta.assistantReplyState !== 'error_retry'
+      ));
+      const lastEnvelope = [...items].reverse().find((item) => item.kind === 'assistant')?.envelope ?? null;
+
+      return {
+        ...thread,
+        items,
+        lastEnvelope,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }
+
   function replaceThreadWithEnvelope(contextId: ContextId, envelope: AssistantEnvelope) {
     setThreadsByContextId((current) => ({
       ...current,
@@ -1098,12 +1126,18 @@ export function PortfolioShell() {
       setActiveContextId(nextContextId);
       setServerContextId(nextContextId);
     } catch (caughtError) {
+      const errorEnvelope = buildClientErrorRetryEnvelope(
+        sessionIdRef.current,
+        sessionMeta.used,
+        caughtError instanceof Error ? caughtError.message : undefined,
+      );
       setLastFailedRequest({
         kind: 'fresh-context',
         targetContextId,
         action,
       });
-      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+      appendAssistantToThread(targetContextId, errorEnvelope);
+      setError(null);
     } finally {
       setLoadingContextId(null);
     }
@@ -1150,6 +1184,12 @@ export function PortfolioShell() {
       }
       setLastFailedRequest(null);
     } catch (caughtError) {
+      const targetContextId = options?.forceThreadContextId ?? contextId;
+      const errorEnvelope = buildClientErrorRetryEnvelope(
+        sessionIdRef.current,
+        sessionMeta.used,
+        caughtError instanceof Error ? caughtError.message : undefined,
+      );
       setLastFailedRequest({
         kind: 'chat',
         contextId,
@@ -1158,7 +1198,8 @@ export function PortfolioShell() {
         clearInputOnSuccess: Boolean(options?.clearInputOnSuccess),
         forceThreadContextId: options?.forceThreadContextId,
       });
-      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+      appendAssistantToThread(targetContextId, errorEnvelope);
+      setError(null);
     } finally {
       setLoadingContextId(null);
     }
@@ -1185,12 +1226,14 @@ export function PortfolioShell() {
     setError(null);
 
     if (lastFailedRequest.kind === 'fresh-context') {
+      removeErrorRetryItems(lastFailedRequest.targetContextId);
       void openFreshContext(lastFailedRequest.targetContextId, lastFailedRequest.action, {
         appendUserBubble: false,
       });
       return;
     }
 
+    removeErrorRetryItems(lastFailedRequest.forceThreadContextId ?? lastFailedRequest.contextId);
     void appendAssistantResponse(lastFailedRequest.contextId, lastFailedRequest.body, {
       syncBeforeRequest: lastFailedRequest.syncBeforeRequest,
       clearInputOnSuccess: lastFailedRequest.clearInputOnSuccess,

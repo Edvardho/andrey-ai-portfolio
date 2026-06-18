@@ -126,11 +126,11 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     showcaseTitle: 'Ключевые артефакты',
     showcaseItems: ['Apple onboarding', 'Routing', 'Form Messages', 'Activation path'],
     resultsTitle: 'Что важно понять',
-    resultMetricValues: ['Research', 'Value', 'Anti-case'],
+    resultMetricValues: ['Research', 'Value', 'Выводы'],
     requiredText: [
       'ChatPoint — B2B-платформа для общения бизнеса с клиентами',
       'сложные B2B-флоу',
-      'delivery без проверки ценности',
+      'разработка без проверки ценности',
     ],
     disallowedText: [
       'Альфа-Смарт — семейная подписка Альфа-Банка',

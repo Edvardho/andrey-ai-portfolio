@@ -2,12 +2,14 @@
 
 import type { ReactNode } from 'react';
 
+import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
+
 export function PortfolioAssistantMessageFrame({
   children,
   showFactsBadge = false,
   showHeader = true,
-  showLeadingBadge = true,
-  chrome = 'card',
+  showLeadingBadge = false,
+  chrome = 'bare',
 }: {
   children: ReactNode;
   showFactsBadge?: boolean;
@@ -31,15 +33,16 @@ export function PortfolioAssistantMessageFrame({
       >
         {showHeader ? (
           <>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="text-[18px] font-semibold text-[#11110f]">ИИ-ассистент</div>
-              {showFactsBadge ? (
+            <PortfolioAssistantIdentityHeader
+              badge={
+                showFactsBadge ? (
                 <span className="rounded-full border border-[#d9d1c6] bg-[#faf7f1] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#6b6257]">
                   Только подтвержденные факты
                 </span>
-              ) : null}
-            </div>
-            <div className="mt-7">{children}</div>
+                ) : undefined
+              }
+            />
+            <div className="mt-4">{children}</div>
           </>
         ) : (
           children

@@ -78,7 +78,7 @@ export function PortfolioAssistantCaseSummary({
       </div>
 
       {envelope.chips.length ? (
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-[#EBEDF2] pt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
           ))}

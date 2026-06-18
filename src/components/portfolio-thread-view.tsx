@@ -760,6 +760,8 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
                   onChipClick={onChipClick}
                   onCta={onCta}
                   onOpenArtifact={onOpenArtifact}
+                  canRetryError={canRetryError}
+                  onRetryError={onRetryError}
                   renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
                 />
               </motion.div>

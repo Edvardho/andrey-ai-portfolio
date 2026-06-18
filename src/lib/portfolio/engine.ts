@@ -3,7 +3,6 @@ import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import {
   classifyMessageDeterministically,
   classifyMessageWithModel,
-  type IntentClassification,
   type MessageIntent,
 } from '@/lib/portfolio/intent';
 import {
@@ -17,9 +16,11 @@ import {
   buildContactModalEnvelope,
   buildDecisionProcessEnvelope,
   buildEvidenceEnvelope,
+  buildErrorRetryEnvelope,
   buildEntryEnvelope,
   buildExperienceEnvelope,
   buildExperienceRouteEnvelope,
+  buildGeneralSynthesisEnvelope,
   buildIdentityIntroEnvelope,
   buildImageModalEnvelope,
   buildLimitEnvelope,
@@ -36,12 +37,18 @@ import {
 } from '@/lib/portfolio/presenters';
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
 import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
+import { synthesizeCaseAwareAnswer, synthesizeGeneralAnswer } from '@/lib/portfolio/synthesis';
+import { interpretQuery } from '@/lib/portfolio/query-interpretation';
 import type {
+  AnswerType,
   AnswerMode,
   AssistantEnvelope,
   AssistantSession,
+  CaseFactFacet,
   ChatRequestBody,
+  QueryInterpretation,
   SelectedContext,
+  SynthesisSnapshot,
   UIAction,
   ViewType,
 } from '@/lib/portfolio/types';
@@ -121,6 +128,14 @@ function updateContext(
   };
 }
 
+function buildAssistantAnswerPreview(synthesis: SynthesisSnapshot): string {
+  return [synthesis.intro, ...synthesis.followupParagraphs]
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 280);
+}
+
 function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelope {
   switch (session.currentView) {
     case 'entry':
@@ -189,9 +204,12 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
       return buildNoMatchingEnvelope(session);
     case 'unsupported_request':
       return buildUnsupportedEnvelope(session);
+    case 'general_synthesis':
+      return session.lastSynthesis
+        ? buildGeneralSynthesisEnvelope(session, session.lastSynthesis)
+        : buildEntryEnvelope(session);
     case 'safety_refusal':
     case 'limit_reached':
-    case 'general_synthesis':
     default:
       return buildEntryEnvelope(session);
   }
@@ -208,6 +226,93 @@ async function resolveMessageIntent(
   }
 
   return { session, envelope: policy.buildEnvelope(session) };
+}
+
+async function resolveCaseAwareSynthesis(
+  session: AssistantSession,
+  text: string,
+  caseId: string,
+  facet: CaseFactFacet,
+  answerType: AnswerType,
+  queryScope: QueryInterpretation['scope'],
+  questionSubject: QueryInterpretation['questionSubject'],
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  let synthesis: SynthesisSnapshot;
+  try {
+    const nextSynthesis = await synthesizeCaseAwareAnswer(
+      text,
+      session,
+      caseId,
+      facet,
+      answerType,
+      queryScope,
+      questionSubject,
+    );
+    if (!nextSynthesis) {
+      return { session, envelope: buildAmbiguousEnvelope(session) };
+    }
+    synthesis = nextSynthesis;
+  } catch {
+    return {
+      session,
+      envelope: buildErrorRetryEnvelope(session),
+    };
+  }
+
+  const synthesisSession = await persistSession(session, {
+    currentView: 'general_synthesis',
+    lastSynthesis: synthesis,
+    lastUserQuestion: text,
+    lastAssistantAnswerPreview: buildAssistantAnswerPreview(synthesis),
+    lastQuestionSubject: synthesis.questionSubject,
+    recentHistory: appendHistory(session, `case_synthesis:${caseId}:${facet}`),
+  });
+
+  return {
+    session: synthesisSession,
+    envelope: buildGeneralSynthesisEnvelope(synthesisSession, synthesis),
+  };
+}
+
+async function resolveGlobalSynthesis(
+  session: AssistantSession,
+  text: string,
+  interpretation: QueryInterpretation,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  let synthesis: SynthesisSnapshot;
+  try {
+    if (!interpretation.topic || !interpretation.answerType) {
+      return { session, envelope: buildAmbiguousEnvelope(session) };
+    }
+
+    synthesis = await synthesizeGeneralAnswer(
+      text,
+      session,
+      interpretation.topic,
+      interpretation.answerType,
+      interpretation.scope,
+      interpretation.questionSubject,
+    );
+  } catch {
+    return {
+      session,
+      envelope: buildErrorRetryEnvelope(session),
+    };
+  }
+
+  const synthesisSession = await persistSession(session, {
+    currentView: 'general_synthesis',
+    lastSynthesis: synthesis,
+    lastUserQuestion: text,
+    lastAssistantAnswerPreview: buildAssistantAnswerPreview(synthesis),
+    lastQuestionSubject: synthesis.questionSubject,
+    recentHistory: appendHistory(session, `synthesis:${interpretation.topic}`),
+  });
+
+  return {
+    session: synthesisSession,
+    envelope: buildGeneralSynthesisEnvelope(synthesisSession, synthesis),
+  };
 }
 
 type IntentPolicy =
@@ -229,6 +334,10 @@ function resolveIntentPolicy(intent: MessageIntent): IntentPolicy {
     case 'identity_intro':
       return { threadBehavior: 'stay_current', buildEnvelope: buildIdentityIntroEnvelope };
     case 'experience_overview':
+      return { threadBehavior: 'stay_current', buildEnvelope: buildCareerSummaryEnvelope };
+    case 'portfolio_overview':
+      return { threadBehavior: 'stay_current', buildEnvelope: buildCareerSummaryEnvelope };
+    case 'portfolio_value_request':
       return { threadBehavior: 'stay_current', buildEnvelope: buildCareerSummaryEnvelope };
     case 'case_discovery':
       return {
@@ -262,15 +371,16 @@ function resolveIntentPolicy(intent: MessageIntent): IntentPolicy {
 
 async function resolveIntentClassification(
   session: AssistantSession,
-  classification: IntentClassification,
+  interpretation: QueryInterpretation,
+  text: string,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
-  const { intent, confidence } = classification;
+  const { intent, confidence } = interpretation;
 
-  if (intent.type === 'ambiguous_question') {
+  if (intent.type === 'ambiguous_question' && interpretation.answerType === null) {
     return { session, envelope: buildAmbiguousEnvelope(session) };
   }
 
-  if (confidence === 'low') {
+  if (confidence === 'low' && interpretation.answerType === null) {
     return { session, envelope: buildAmbiguousEnvelope(session) };
   }
 
@@ -281,11 +391,62 @@ async function resolveIntentClassification(
     return { session, envelope: buildAmbiguousEnvelope(session) };
   }
 
+  const isServiceOnlyIntent =
+    intent.type === 'navigation_action'
+    || intent.type === 'assistant_intro'
+    || intent.type === 'missing_case_request'
+    || intent.type === 'unsupported_request'
+    || (intent.type === 'ambiguous_question' && interpretation.answerType === null);
+
+  if (isServiceOnlyIntent) {
+    return resolveMessageIntent(session, intent);
+  }
+
+  if (interpretation.scope === 'current_case_only') {
+    if (
+      !interpretation.factFacet
+      || session.selectedContext.kind !== 'case'
+      || !interpretation.answerType
+    ) {
+      return resolveMessageIntent(session, intent);
+    }
+
+    return resolveCaseAwareSynthesis(
+      session,
+      text,
+      session.selectedContext.id,
+      interpretation.factFacet,
+      interpretation.answerType,
+      interpretation.scope,
+      interpretation.questionSubject,
+    );
+  }
+
+  if (interpretation.scope === 'named_case') {
+    if (!interpretation.targetCaseId || !interpretation.factFacet || !interpretation.answerType) {
+      return resolveMessageIntent(session, intent);
+    }
+
+    return resolveCaseAwareSynthesis(
+      session,
+      text,
+      interpretation.targetCaseId,
+      interpretation.factFacet,
+      interpretation.answerType,
+      interpretation.scope,
+      interpretation.questionSubject,
+    );
+  }
+
+  if (interpretation.answerType && interpretation.topic) {
+    return resolveGlobalSynthesis(session, text, interpretation);
+  }
+
   return resolveMessageIntent(session, intent);
 }
 
 export async function resolveBootstrap(session: AssistantSession): Promise<AssistantEnvelope> {
-  return buildEntryEnvelope(session);
+  return rebuildCurrentViewEnvelope(session);
 }
 
 export async function resolveAction(
@@ -380,16 +541,19 @@ export async function resolveMessage(
   }
 
   const deterministic = classifyMessageDeterministically(text, nextSession);
-  if (deterministic) {
-    return resolveIntentClassification(nextSession, deterministic);
-  }
+  const modelClassification = deterministic
+    ? null
+    : await classifyMessageWithModel(text, nextSession);
 
-  const modelClassification = await classifyMessageWithModel(text, nextSession);
-  if (modelClassification) {
-    return resolveIntentClassification(nextSession, modelClassification);
-  }
+  const interpretation = interpretQuery(
+    nextSession,
+    text,
+    modelClassification
+      ?? deterministic
+      ?? { intent: { type: 'ambiguous_question' }, confidence: 'low' },
+  );
 
-  return { session: nextSession, envelope: buildAmbiguousEnvelope(nextSession) };
+  return resolveIntentClassification(nextSession, interpretation, text);
 }
 
 export async function resolveChatRequest(

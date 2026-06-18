@@ -13,7 +13,7 @@ export function getSupabaseUrl(): string | undefined {
 }
 
 export function getSupabaseServerKey(): string | undefined {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return process.env.SUPABASE_SERVICE_ROLE_KEY;
 }
 
 export function getSessionTableName(): string {

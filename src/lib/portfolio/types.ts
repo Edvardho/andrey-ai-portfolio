@@ -52,6 +52,17 @@ export type SafetyState =
 export type AnswerMode = 'summary' | 'detail';
 
 export type ResponseSource = 'authored' | 'facts_constrained_synthesis';
+export type SessionStoreMode = 'supabase' | 'memory' | 'degraded_memory';
+
+export type AssistantReplyState =
+  | 'thinking'
+  | 'grounded_answer'
+  | 'insufficient_facts'
+  | 'safety_refusal'
+  | 'clarifying_question'
+  | 'navigation_suggestion'
+  | 'error_retry'
+  | 'authored_reply';
 
 export type PresentationVariant =
   | 'case_summary'
@@ -64,19 +75,127 @@ export type PresentationVariant =
 
 export type AssistantRenderMode = 'instant' | 'reveal' | 'progressive_text';
 
+export type AnswerType =
+  | 'candidate_positioning'
+  | 'experience_overview'
+  | 'portfolio_compression'
+  | 'portfolio_value_argument'
+  | 'contribution_breakdown'
+  | 'case_summary'
+  | 'decision_breakdown'
+  | 'proof_map'
+  | 'hiring_argument'
+  | 'failure_postmortem'
+  | 'risk_assessment';
+
+export type AnswerPlan = {
+  answerType: AnswerType;
+  mustStartWith?: string;
+  requiredMoves: string[];
+  avoid: string[];
+  maxParagraphs: number;
+  allowSections: boolean;
+  allowBullets: boolean;
+  targetCaseIds?: string[];
+};
+
+export type QueryScope =
+  | 'global_person'
+  | 'current_case_only'
+  | 'named_case'
+  | 'portfolio_wide';
+
+export type QuestionSubject =
+  | 'candidate_value'
+  | 'interview_decision'
+  | 'candidate_portfolio_value'
+  | 'ai_format_value'
+  | 'assistant_case_navigation'
+  | 'case_contribution'
+  | 'case_evidence'
+  | 'case_strength'
+  | 'risk_check'
+  | 'case_summary'
+  | 'experience_summary';
+
 export type SynthesisTopic =
+  | 'identity'
+  | 'experience'
+  | 'mobile'
+  | 'portfolio_overview'
+  | 'portfolio_value'
   | 'strengths'
   | 'decision_making'
   | 'product_approach'
   | 'collaboration'
-  | 'fit';
+  | 'fit'
+  | 'risks';
+
+export type CaseFactFacet =
+  | 'overview'
+  | 'role'
+  | 'decisions'
+  | 'evidence'
+  | 'strengths'
+  | 'risks';
+
+export type SynthesisAnswerStatus =
+  | 'grounded'
+  | 'insufficient_facts'
+  | 'needs_clarification'
+  | 'navigation_suggested';
 
 export type SynthesisSnapshot = {
   topic: SynthesisTopic;
+  answerType: AnswerType;
+  queryScope: QueryScope;
+  questionSubject: QuestionSubject;
+  answerPlan: AnswerPlan;
   question: string;
+  answerStatus: SynthesisAnswerStatus;
   title: string;
-  paragraphs: string[];
+  intro: string;
+  followupParagraphs: string[];
+  sections: Array<{
+    title: string;
+    body: string;
+  }>;
   bullets: string[];
+  chips?: PromptChip[];
+};
+
+export type QueryInterpretation = {
+  intent: MessageIntent;
+  scope: QueryScope;
+  questionSubject: QuestionSubject;
+  answerType: AnswerType | null;
+  topic: SynthesisTopic | null;
+  factFacet: CaseFactFacet | null;
+  targetCaseId: string | null;
+  confidence: IntentConfidence;
+  matchedCues: string[];
+};
+
+export type CaseFactPack = {
+  caseId: string;
+  recruiterSummary: {
+    intro: string;
+    followup?: string;
+  };
+  whatThisProves: string[];
+  recruiterTakeaway: string[];
+  weaknessAngle: string[];
+  bestAnswerTypes: AnswerType[];
+  overview: string[];
+  role: string[];
+  decisions: string[];
+  constraints: string[];
+  validation: string[];
+  outcomes: string[];
+  evidence: string[];
+  risks: string[];
+  hiringSignal: string[];
+  missing: string[];
 };
 
 export type Metric = {
@@ -481,6 +600,26 @@ export type UIAction =
   | { type: 'open_image_modal'; caseId: string; artifactId: string }
   | { type: 'close_modal' };
 
+export type MessageIntent =
+  | { type: 'navigation_action'; action: UIAction }
+  | { type: 'assistant_intro' }
+  | { type: 'identity_intro' }
+  | { type: 'experience_overview' }
+  | { type: 'portfolio_overview' }
+  | { type: 'portfolio_value_request' }
+  | { type: 'case_discovery'; targetCaseId?: string }
+  | { type: 'mobile_overview' }
+  | { type: 'strengths_assessment' }
+  | { type: 'role_fit_assessment' }
+  | { type: 'decision_process' }
+  | { type: 'evidence_request' }
+  | { type: 'risk_objection' }
+  | { type: 'missing_case_request'; requestedCase?: string }
+  | { type: 'ambiguous_question' }
+  | { type: 'unsupported_request' };
+
+export type IntentConfidence = 'high' | 'medium' | 'low';
+
 export type AssistantEnvelope = {
   sessionId: string;
   uiState: UIState;
@@ -499,6 +638,11 @@ export type AssistantEnvelope = {
     userMessagesUsed: number;
     userMessagesRemaining: number;
     responseSource: ResponseSource;
+    assistantReplyState: AssistantReplyState;
+    sessionStoreMode: SessionStoreMode;
+    answerType?: AnswerType | null;
+    queryScope?: QueryScope | null;
+    questionSubject?: QuestionSubject | null;
   };
 };
 
@@ -510,6 +654,9 @@ export type AssistantSession = {
   answerMode: AnswerMode | null;
   openModal: ModalPayload | null;
   lastSynthesis: SynthesisSnapshot | null;
+  lastUserQuestion: string | null;
+  lastAssistantAnswerPreview: string | null;
+  lastQuestionSubject: QuestionSubject | null;
   recentHistory: string[];
   createdAt: string;
   updatedAt: string;

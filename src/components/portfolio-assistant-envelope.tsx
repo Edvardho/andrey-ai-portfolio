@@ -7,12 +7,10 @@ import type {
   PromptChip,
   UIAction,
 } from '@/lib/portfolio/types';
-import { PortfolioAssistantBulletReply } from './portfolio-assistant-bullet-reply';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
-import { PortfolioAssistantPlainTextReply } from './portfolio-assistant-plain-text-reply';
-import { PortfolioAssistantRefusalReply } from './portfolio-assistant-refusal-reply';
 import { PortfolioAssistantSectionedReply } from './portfolio-assistant-sectioned-reply';
+import { PortfolioAssistantSynthesisReply } from './portfolio-assistant-synthesis-reply';
 
 export function PortfolioAssistantEnvelopeView({
   envelope,
@@ -21,6 +19,8 @@ export function PortfolioAssistantEnvelopeView({
   onChipClick,
   onCta,
   onOpenArtifact,
+  canRetryError = false,
+  onRetryError,
   renderMode = 'instant',
 }: {
   envelope: AssistantEnvelope;
@@ -29,8 +29,30 @@ export function PortfolioAssistantEnvelopeView({
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
+  canRetryError?: boolean;
+  onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
 }) {
+  const isStructuredSummary =
+    envelope.presentationVariant === 'case_summary' ||
+    envelope.presentationVariant === 'experience_summary';
+  const isEntitySectionedReply =
+    envelope.presentationVariant === 'sectioned_reply' &&
+    envelope.selectedContext.kind !== 'none';
+
+  if (!isStructuredSummary && !isEntitySectionedReply) {
+    return (
+      <PortfolioAssistantSynthesisReply
+        envelope={envelope}
+        onChipClick={onChipClick}
+        onCta={onCta}
+        canRetryError={canRetryError}
+        onRetryError={onRetryError}
+        renderMode={renderMode}
+      />
+    );
+  }
+
   switch (envelope.presentationVariant) {
     case 'case_summary':
       return (
@@ -56,16 +78,6 @@ export function PortfolioAssistantEnvelopeView({
           renderMode={renderMode}
         />
       );
-    case 'bullet_reply':
-      return (
-        <PortfolioAssistantBulletReply
-          envelope={envelope}
-          onChipClick={onChipClick}
-          onCta={onCta}
-          onOpenArtifact={onOpenArtifact}
-          renderMode={renderMode}
-        />
-      );
     case 'sectioned_reply':
       return (
         <PortfolioAssistantSectionedReply
@@ -79,20 +91,14 @@ export function PortfolioAssistantEnvelopeView({
         />
       );
     case 'refusal_reply':
-      return (
-        <PortfolioAssistantRefusalReply
-          envelope={envelope}
-          onChipClick={onChipClick}
-          onCta={onCta}
-        />
-      );
-    case 'plain_text_reply':
     default:
       return (
-        <PortfolioAssistantPlainTextReply
+        <PortfolioAssistantSynthesisReply
           envelope={envelope}
           onChipClick={onChipClick}
           onCta={onCta}
+          canRetryError={canRetryError}
+          onRetryError={onRetryError}
           renderMode={renderMode}
         />
       );

@@ -16,7 +16,7 @@ export function PortfolioAssistantIdentityHeader({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/ui/assistant-mark.svg" alt="" aria-hidden="true" className="size-[14px]" />
       </div>
-      <p className="text-[16px] font-bold leading-[1.45] tracking-[0] text-[#202129]">
+      <p className="text-[15px] font-semibold leading-[22px] tracking-[-0.01em] text-[#24272E]">
         ИИ ассистент
       </p>
       {badge}

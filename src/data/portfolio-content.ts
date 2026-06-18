@@ -107,7 +107,7 @@ const alfaDisclosures: DisclosureRow[] = [
     title: 'Довел решение до релиза',
     summary: 'Прошел дизайн-чек, описал состояния и передал макеты в разработку.',
     details: [
-      'На этом кейсе видно не только UX-мышление, но и delivery-дисциплину.',
+      'На этом кейсе видно не только умение проектировать интерфейсы, но и умение доводить работу до релиза.',
       'Финальная ценность кейса — не в количестве экранов, а в том, что сценарий дошел до рынка и принес измеримый результат.',
     ],
     artifactIds: ['alfa-ui'],
@@ -903,8 +903,8 @@ const chatpointDisclosures: DisclosureRow[] = [
     title: 'Что бы я сделал иначе сегодня',
     summary: 'Начал бы с проверки PMF и ценности до очередной enterprise-фичи.',
     details: [
-      'Продукт не взлетел не потому, что интерфейсы были плохими. Команда слишком рано ушла в delivery.',
-      'Сейчас я бы начал с проверки PMF, CJM и приоритизации ценности до проектирования очередной enterprise-фичи.',
+      'Продукт не взлетел не потому, что интерфейсы были плохими. Команда слишком рано сосредоточилась на разработке, не проверив востребованность.',
+      'Сейчас я бы начал с проверки востребованности (PMF), карты пути пользователя (CJM) и приоритизации ценности до проектирования очередной сложной функции.',
     ],
     artifactIds: ['chatpoint-landing', 'chatpoint-purchase-path', 'chatpoint-dialog-window'],
   },
@@ -1023,7 +1023,7 @@ const chatpointStructuredSummary: StructuredCaseSummaryData = {
     {
       id: 'chatpoint-structured-what-i-would-change',
       label: 'Что бы я сделал иначе сегодня',
-      body: 'Продукт не взлетел не потому, что интерфейсы были плохими. Команда слишком рано ушла в delivery. Сейчас я бы начал с проверки PMF, CJM и приоритизации ценности до проектирования очередной enterprise-фичи.',
+      body: 'Продукт не взлетел не потому, что интерфейсы были плохими. Команда слишком рано ушла в разработку. Сейчас я бы начал с проверки востребованности (PMF), карты пути пользователя (CJM) и приоритизации ценности до проектирования очередной сложной функции.',
       layoutType: 'three_cards_scroll',
       rowWidth: 1207,
       peekWidth: 158,
@@ -1129,11 +1129,11 @@ const chatpointStructuredSummary: StructuredCaseSummaryData = {
   ],
   resultsTitle: 'Что важно понять',
   resultsBody:
-    'Почти все сценарии дошли до реализации, но сам продукт закрыли. Сила этого кейса не в успехе платформы, а в зрелом выводе: delivery без проверки ценности приводит к дорогому, но ненужному решению.',
+    'Почти все сценарии дошли до запуска, но сам продукт закрыли. Сила этого кейса не в успехе платформы, а в зрелом выводе: разработка без проверки ценности приводит к созданию дорогого, но невостребованного решения.',
   resultMetrics: [
     { value: 'Research', label: 'решения проверялись на реальных пользователях' },
     { value: 'Value', label: 'спорил за ценность, не только за UI' },
-    { value: 'Anti-case', label: 'понял, где UX уже не спасает продукт' },
+    { value: 'Выводы', label: 'понял, где UX уже не спасает продукт' },
   ],
   footerAction: {
     label: 'Написать Андрею',
@@ -1145,14 +1145,14 @@ const chatpointCase: CaseContent = {
   id: 'chatpoint',
   shortTitle: 'ChatPoint',
   title: 'ChatPoint — B2B платформа для коммуникации, которая не взлетела',
-  railSubtitle: 'Supporting anti-case',
-  shortDescription: 'Сложный B2B onboarding и трезвый anti-case про product value',
+  railSubtitle: 'Честный разбор',
+  shortDescription: 'Сложный B2B-онбординг и честный разбор ошибок проектирования',
   category: 'supporting',
   tags: ['B2B', 'Onboarding', 'Routing', 'Research'],
   summaryTitle: 'Короткий ответ',
   detailTitle: 'Развернутый ответ',
-  routeTitle: 'Почему этот anti-case вообще полезен',
-  resultChips: ['B2B SaaS', 'research-driven', 'anti-case'],
+  routeTitle: 'Почему этот разбор ошибок полезен',
+  resultChips: ['B2B SaaS', 'research-driven', 'анализ ошибок'],
   metrics: [],
   role: 'Product Designer',
   roleDescription: 'Onboarding, enterprise scenarios, research, design review',
@@ -1161,7 +1161,7 @@ const chatpointCase: CaseContent = {
       type: 'lead',
       title: 'Почему кейс не выкинут',
       body: [
-        'ChatPoint не стал флагманским успехом, но он полезен как B2B anti-case: здесь видно onboarding, routing, слабый product process и взрослый вывод о том, почему продукт может проиграть.',
+        'ChatPoint не стал успешным на рынке, но он полезен как честный разбор: здесь показана работа со сложными сценариями и взрослые выводы о том, почему закрыли проект.',
       ],
     },
     {
@@ -1197,12 +1197,12 @@ const chatpointCase: CaseContent = {
         'Инициировал usability testing даже в слабом процессе.',
       ],
     },
-    { type: 'disclosures', title: 'Доказательства и anti-case выводы', items: chatpointDisclosures },
+    { type: 'disclosures', title: 'Доказательства и разбор ошибок', items: chatpointDisclosures },
     { type: 'gallery', title: 'Артефакты', items: makeGallery([
       { id: 'chatpoint-apple-onboarding', title: 'Apple onboarding', description: 'Ключевой user-facing сценарий кейса.' },
       { id: 'chatpoint-viber', title: 'Viber onboarding', description: 'Повторяемый onboarding pattern, а не одноразовый wizard.' },
       { id: 'chatpoint-routing', title: 'Routing', description: 'Сложность продукта beyond onboarding.' },
-      { id: 'chatpoint-form-messages', title: 'Form Messages', description: 'Anti-case внутри кейса.' },
+      { id: 'chatpoint-form-messages', title: 'Form Messages', description: 'Разбор ошибок внутри кейса.' },
     ]) },
     { type: 'cta', label: 'Связаться по этому кейсу', action: { type: 'open_contact_modal', source: 'chatpoint-detail' } },
   ],
@@ -1211,7 +1211,7 @@ const chatpointCase: CaseContent = {
       type: 'lead',
       title: 'Почему этот кейс не стоит пропускать',
       body: [
-        'ChatPoint не про победу на рынке, а про product judgment: сложный B2B onboarding, системная логика и трезвый вывод о том, где команда ушла не туда.',
+        'ChatPoint интересен не историей успеха на рынке, а демонстрацией продуктового мышления: сложный сценарий подключения, системная логика и трезвый вывод о том, почему проект закрыли.',
       ],
     },
     { type: 'chips', title: 'Открыть', items: [
@@ -1238,7 +1238,7 @@ const chatpointCase: CaseContent = {
   gallery: makeGallery([
     { id: 'chatpoint-showcase-apple-onboarding', title: 'Apple onboarding', description: 'Step-by-step вместо длинной инструкции.' },
     { id: 'chatpoint-showcase-routing', title: 'Routing', description: 'Системная логика распределения.' },
-    { id: 'chatpoint-showcase-form-messages', title: 'Form Messages', description: 'Anti-case про удобный UX без доказанной ценности.' },
+    { id: 'chatpoint-showcase-form-messages', title: 'Form Messages', description: 'Пример удобного UX без доказанной ценности.' },
     { id: 'chatpoint-activation-path', title: 'Activation path', description: 'Слишком поздно искали момент продажи ценности.' },
   ]),
   contextPanel: {
@@ -1251,7 +1251,7 @@ const chatpointCase: CaseContent = {
       { value: 'B2B', label: 'сложная операторская система' },
       { value: 'MVP', label: 'быстрый запуск без ясного PMF' },
       { value: 'UX', label: 'onboarding, routing, high-density UI' },
-      { value: 'Learn', label: 'anti-case про product thinking' },
+      { value: 'Выводы', label: 'разбор ошибок продуктового процесса' },
     ],
     role: 'Product Designer',
     roleTitle: 'Моя роль: Product Designer',
@@ -2209,7 +2209,7 @@ const experience: ExperienceContent = {
   ],
   detailBlocks: [
     { type: 'lead', title: 'Как читать этот опыт', body: ['Это не список компаний ради списка. Важно, что каждый этап добавлял слой сложности: enterprise процессы в MTS, флагманский финтех в Альфе и текущий AI/tooling-фокус.'] },
-    { type: 'section', title: 'MTS Digital', body: ['Здесь Андрей вырос на high-density enterprise-интерфейсах, workflows операторов и B2B anti-case вроде ChatPoint.'] },
+    { type: 'section', title: 'MTS Digital', body: ['Здесь Андрей вырос на проектировании сложных корпоративных систем, рабочих процессов операторов и разборе неидеальных проектов вроде ChatPoint.'] },
     { type: 'section', title: 'Альфа-Банк', body: ['Здесь виден более зрелый product ownership: от сильного флагманского кейса Альфа-Смарт до мобильных сценариев с исследованием и межкомандным согласованием.'] },
     { type: 'section', title: 'Positive Technologies', body: ['Текущий фокус — AI, инструменты и системная продуктовая работа, а не просто очередной визуальный refresh.'] },
     { type: 'cta', label: 'Открыть SIEBEL как доказательство', action: { type: 'open_experience_route', caseId: 'siebel' } },
@@ -2239,24 +2239,24 @@ const experience: ExperienceContent = {
 
 const additionalCases: ContextPanelData = {
   title: 'Дополнительные кейсы',
-  subtitle: 'Breadth with signal',
-  tags: ['AI', 'B2B', 'Systems', 'UI craft'],
-  note: 'Это не “остатки портфолио”, а дополнительная ширина: мобильные сценарии, anti-cases и системные B2B-решения.',
+  subtitle: 'Разнообразный опыт',
+  tags: ['AI', 'B2B', 'Systems', 'UX/UI'],
+  note: 'Это не “остатки портфолио”, а дополнительное разнообразие опыта: мобильные сценарии, честные разборы проектов и системные B2B-решения.',
 };
 
 const additionalCasesContent: AdditionalCasesContent = {
   summaryBlocks: [
-    { type: 'lead', title: 'Да, у Андрея есть сильные кейсы и кроме флагманов', body: ['Важно не размывать впечатление количеством. Здесь ценность в ширине сигнала: мобильные сценарии, плотные B2B-интерфейсы, системное мышление и product judgment.'] },
+    { type: 'lead', title: 'Да, у Андрея есть сильные кейсы и кроме флагманов', body: ['Важно не размывать впечатление количеством. Ценность этих проектов в разнообразии задач: мобильные сценарии, сложные интерфейсы для бизнеса, системное мышление и умение принимать продуктовые решения.'] },
     { type: 'disclosures', title: 'Направления', items: [
       { id: 'additional-mobile', title: 'Мобильные сценарии', summary: 'Подписки, семейные сценарии, роли, ветвления и межкомандные зависимости.', details: ['Хороший вход: кейсы про держателей карт, шаринг подписки и UX/UI WannabeLike.'] },
-      { id: 'additional-enterprise', title: 'Плотные B2B-интерфейсы', summary: 'Workflow-heavy продукты с высокой информационной плотностью.', details: ['Главные примеры: SIEBEL и ChatPoint.'] },
-      { id: 'additional-systems', title: 'Системное мышление', summary: 'Не просто локальный UI, а структура, routing, процессы и delivery.', details: ['Это проявляется и в SIEBEL, и в Alpha-Smart, и в mobile кейсах.'] },
-      { id: 'additional-judgment', title: 'Product judgment', summary: 'Умение не только делать фичи, но и видеть, когда продукт идет не туда.', details: ['Лучший пример — ChatPoint как anti-case.'] },
+      { id: 'additional-enterprise', title: 'Плотные B2B-интерфейсы', summary: 'Сложные корпоративные продукты с высокой информационной плотностью.', details: ['Главные примеры: SIEBEL и ChatPoint.'] },
+      { id: 'additional-systems', title: 'Системное мышление', summary: 'Не просто локальный UI, а структура сценариев, процессы и запуск решений.', details: ['Это проявляется и в SIEBEL, и в Alpha-Smart, и в mobile кейсах.'] },
+      { id: 'additional-judgment', title: 'Продуктовое мышление', summary: 'Умение не только делать фичи, но и видеть, когда продукт идет не туда.', details: ['Лучший пример — ChatPoint как пример честного разбора спорного проекта.'] },
     ] },
     { type: 'gallery', title: 'Куда можно открыть следующий шаг', items: makeGallery([
       { id: 'alfa-smart', title: 'Альфа-Смарт', description: 'Флагманский продуктовый кейс.' },
       { id: 'siebel', title: 'SIEBEL', description: 'Enterprise workflow с цифрами.' },
-      { id: 'chatpoint', title: 'ChatPoint', description: 'B2B anti-case с product judgment.' },
+      { id: 'chatpoint', title: 'ChatPoint', description: 'Пример разбора B2B-проекта с анализом ошибок.' },
       { id: 'expenses-card-holders', title: 'Mobile cases', description: 'Ширина мобильной работы.' },
     ]) },
   ],
@@ -2293,8 +2293,8 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Я ИИ-ассистент Андрея',
         body: [
-          'Моя задача: быстро показать, кто такой Андрей, что он делал, где у него сильные и слабые места, какие есть риски и есть ли смысл звать его на интервью.',
-          'Я не заменяю Андрея и не раздуваю портфолио в декоративную болтовню. Я просто экономлю тебе время на первом скрининге.',
+          'Я ИИ-ассистент Андрея. Помогаю быстро понять, насколько его опыт подходит под задачу: кто он, где работал, какие кейсы сильные, где есть ограничения и что стоит открыть первым.',
+          'Я не заменяю интервью и не украшаю портфолио. Моя работа проще: сэкономить время на первом скрининге и не заставлять тебя читать все подряд.',
         ],
       },
       { type: 'cta', label: 'Открыть Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
@@ -2321,8 +2321,8 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Кто такой Андрей',
         body: [
-          'Андрей — продуктовый дизайнер с 5+ годами опыта на стыке B2B и B2C. Его траектория проходит через MTS Digital, Альфа-Банк и Positive Technologies.',
-          'Главный сигнал портфолио не в декоративном UI, а в связке research, системного UX/UI, product judgment и delivery до релиза.',
+          'Андрей — продуктовый дизайнер с 5+ годами опыта. Он работал в MTS Digital, Альфа-Банке и Positive Technologies, проектировал B2B и B2C продукты.',
+          'Главный смысл портфолио: Андрей не только рисует интерфейсы, а разбирает задачу, проектирует сценарии, проверяет решения и доводит их до запуска.',
         ],
       },
       { type: 'cta', label: 'Открыть опыт работы', action: { type: 'open_experience_summary' } },
@@ -2336,7 +2336,7 @@ const hiringGuides: HiringGuidesContent = {
       title: 'Кандидат',
       subtitle: 'Product Designer · 5+ лет',
       tags: ['B2B + B2C', 'Research → release', 'Fintech + Enterprise'],
-      note: 'Хороший вход, если нужно быстро понять, есть ли здесь сигнал для интервью.',
+      note: 'Удобный раздел, чтобы быстро составить первое представление о кандидате.',
       cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'identity' } },
     },
   },
@@ -2347,10 +2347,10 @@ const hiringGuides: HiringGuidesContent = {
     contentBlocks: [
       {
         type: 'lead',
-        title: 'В каком опыте у него главный сигнал',
+        title: 'Где Андрей получил ключевой опыт',
         body: [
-          'Карьерный сигнал Андрея строится вокруг MTS Digital, Альфа-Банка и Positive Technologies, где повторяется один и тот же паттерн: не декоративный UI, а product thinking, workflow-мышление и доведение решения до релиза.',
-          'Если нужен быстрый вывод: это кандидат с опытом на стыке B2B и B2C, особенно сильный там, где важны исследования, системный UX/UI и работа с ограничениями реального продукта.',
+          'Андрей работал 5+ лет продуктовым дизайнером в MTS Digital, Альфа-Банке и Positive Technologies. Основной опыт — B2B и B2C продукты, сложные сценарии, исследования, UX/UI и передача решений в разработку.',
+          'Если нужен короткий вывод: это дизайнер не только про экраны, а про разбор задачи, сценарии, ограничения и доведение решения до релиза.',
         ],
       },
       { type: 'cta', label: 'Открыть опыт работы', action: { type: 'open_experience_summary' } },
@@ -2361,8 +2361,8 @@ const hiringGuides: HiringGuidesContent = {
       { id: 'career-proof', label: 'Где это подтверждается?', message: 'Где это подтверждается?' },
     ],
     contextPanel: {
-      title: 'Career summary',
-      subtitle: 'B2B · B2C · Delivery',
+      title: 'Опыт работы',
+      subtitle: 'B2B · B2C · Реализация решений',
       tags: ['MTS Digital', 'Альфа-Банк', 'Positive Technologies'],
       note: 'Этот pack нужен для короткого hiring-входа, а не чтобы заменять полный canonical screen опыта.',
     },
@@ -2376,8 +2376,8 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Если нужен один сильный кейс, начни с Альфа-Смарт',
         body: [
-          'Это самый плотный и понятный case для первого прохода: здесь одновременно видны продуктовая логика, delivery, метрики и то, как Андрей убирает риск до релиза.',
-          'Если нужно быстро принять решение, лучше сначала открыть сам кейс, а уже потом идти в breadth, anti-case или мобильные сценарии.',
+          'Начни с Альфа-Смарт. Это самый понятный флагманский кейс: продукт дошел до запуска, есть метрики, видна роль Андрея и видно, как он разбирал сложный семейный сценарий до разработки.',
+          'Если времени мало, этот кейс лучше всего показывает связку: задача, сценарий, UX-решение, запуск и результат.',
         ],
       },
       { type: 'cta', label: 'Открыть Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
@@ -2403,7 +2403,7 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Да, мобильный опыт у Андрея есть и он не сводится к одному экрану',
         body: [
-          'Сильный мобильный сигнал здесь не в “нарисовал пару экранов”, а в branching flows, ролях, межкомандных ограничениях и системном UX/UI на стыке mobile и product logic.',
+          'В мобильной разработке Андрей занимался не просто отрисовкой интерфейсов, а проектированием сложных разветвленных сценариев, разграничением ролей, учетом технических ограничений и системным UX/UI на стыке мобильного приложения и продуктовой логики.',
           'Если нужен полный срез, лучше открыть мобильные кейсы отдельно, а не пытаться вытащить всю картину из одного короткого ответа.',
         ],
       },
@@ -2430,17 +2430,17 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Почему его стоит рассматривать',
         body: [
-          'Главный сигнал Андрея: он не сводится к аккуратному UI. По сильным кейсам видно исследование, системный UX/UI и доведение решения до релиза.',
+          'Сильная сторона Андрея — он не начинает с красивого экрана. Сначала разбирает задачу, роли, ограничения и сценарии, а потом уже собирает интерфейс и доводит решение до запуска.',
         ],
       },
       {
         type: 'bullet_list',
         title: 'Что здесь действительно сильное',
         items: [
-          'Альфа-Смарт доказывает product depth и измеримый результат, а не просто визуальный polish.',
-          'SIEBEL показывает workflow-thinking, исследование и проверку решений на реальной операционной работе.',
-          'ChatPoint дает редкий anti-case сигнал: Андрей видит, где delivery без ценности ведет продукт в тупик.',
-          'Мобильные кейсы подтверждают ширину: ветвления, роли, согласование и системный UX/UI, а не набор локальных экранов.',
+          'Альфа-Смарт показывает запуск и измеримый результат, а не просто красивую презентацию.',
+          'SIEBEL показывает работу с реальной операционной болью и сложным рабочим процессом.',
+          'ChatPoint важен как честный разбор ошибки: Андрей не прячет, где продуктовая ценность была проверена слишком поздно.',
+          'Мобильные кейсы показывают ширину: роли, ветвления, межкомандные зависимости и системный UX/UI.',
         ],
       },
     ],
@@ -2450,10 +2450,10 @@ const hiringGuides: HiringGuidesContent = {
       { id: 'strengths-fit', label: 'На какие роли он подойдет?', message: 'На какие роли он подойдет?' },
     ],
     contextPanel: {
-      title: 'Strong signal',
-      subtitle: 'Research · Systems · Delivery',
-      tags: ['Флагман', 'Enterprise', 'Anti-case', 'Mobile breadth'],
-      note: 'Сильная часть Андрея — не одна красивая работа, а повторяющийся паттерн product judgment и системного исполнения.',
+      title: 'Сильные стороны',
+      subtitle: 'Исследования · Системность · Результат',
+      tags: ['Флагманский кейс', 'Enterprise', 'Анализ ошибок', 'Мобильный опыт'],
+      note: 'Сильная сторона Андрея — умение находить суть проблемы, проектировать системные решения и доводить их до релиза.',
     },
   },
   roleFit: {
@@ -2465,28 +2465,28 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'На какой уровень он выглядит',
         body: [
-          'По сигналу портфолио Андрей выглядит как strong middle+ / senior product designer. Это не чисто визуальный UI-специалист и не “просто аккуратный исполнитель”.',
+          'По портфолио видно, что уровень Андрея ближе к strong middle+ / senior. Он умеет проектировать интерфейсы под сложные бизнес-сценарии и технические ограничения, а не просто аккуратно исполнять задачи по макетам.',
         ],
       },
       {
         type: 'section',
-        title: 'Почему сигнал именно такой',
+        title: 'Почему квалификация именно такая',
         body: [
-          'Сигнал держится на product judgment: исследование, workflow-мышление, валидация гипотез и умение доводить решение до релиза, а не только на craft.',
+          'Его квалификация подтверждается умением исследовать потребности пользователей, проектировать сложные сценарии, проверять гипотезы и доводить решения до запуска.',
         ],
       },
       {
         type: 'section',
-        title: 'На какие роли он релевантен',
+        title: 'Подходящие роли',
         body: [
-          'Сильнее всего он выглядит на ролях product designer / senior product designer в fintech, B2B workflow-heavy продуктах и системных mobile сценариях.',
+          'Андрей лучше всего подходит на роли Product Designer или Senior Product Designer в B2B, финтехе, внутренних системах и продуктах со сложными пользовательскими сценариями.',
         ],
       },
       {
         type: 'section',
         title: 'Что честно учитывать',
         body: [
-          'Если нужен дизайнер с главным сигналом в brand/marketing-visual storytelling, это не его сильнейшая часть. Портфолио сильнее доказывает product depth и delivery-дисциплину.',
+          'Если вам нужен дизайнер, специализирующийся в основном на бренд-дизайне, промо-лендингах или визуальном сторителлинге, то это не его основная специализация. Сильная сторона Андрея — глубокая проработка продуктовой логики и доведение работы до запуска.',
         ],
       },
     ],
@@ -2496,10 +2496,10 @@ const hiringGuides: HiringGuidesContent = {
       { id: 'rolefit-risks', label: 'Какие есть риски?', message: 'Какие у него слабые стороны?' },
     ],
     contextPanel: {
-      title: 'Role fit',
-      subtitle: 'Strong middle+ / senior signal',
-      tags: ['Product Designer', 'Fintech', 'Enterprise workflows', 'Mobile systems'],
-      note: 'Это не окончательный hiring verdict, а оценка сигнала по подтвержденному портфолио.',
+      title: 'Подходящие роли',
+      subtitle: 'Уровень ближе к strong middle+ / senior',
+      tags: ['Product Designer', 'Fintech', 'Сложные интерфейсы', 'Мобильные системы'],
+      note: 'Это оценка на основе подтвержденных кейсов и опыта работы в крупных проектах.',
     },
   },
   decisionMakingPatterns: {
@@ -2511,14 +2511,14 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Как Андрей принимает решения',
         body: [
-          'Повторяющийся паттерн один: сначала проблема, роли и ограничения, потом гипотезы и структура решения, а уже потом интерфейс и delivery.',
+          'Андрей работает по продуктовому подходу: сначала понимает проблему, роли и ограничения, потом собирает гипотезы и структуру решения, и только после этого переходит к интерфейсу.',
         ],
       },
       {
         type: 'section',
         title: 'Как исследует',
         body: [
-          'В SIEBEL он не пошел в редизайн по ощущениям, а начал с записей операторов и реальной операционной боли. В Альфа-Смарте сначала раскладывал требования и user flow, а не рисовал экраны вслепую.',
+          'В SIEBEL он не пошел в редизайн по ощущениям, а начал с записей операторов и реальной операционной боли. В Альфа-Смарте сначала раскладывал требования и сценарий, а не рисовал экраны вслепую.',
         ],
       },
       {
@@ -2532,7 +2532,7 @@ const hiringGuides: HiringGuidesContent = {
         type: 'section',
         title: 'Где это лучше всего видно',
         body: [
-          'Лучшие доказательства decision-making лежат в SIEBEL и Альфа-Смарте. ChatPoint добавляет product judgment через anti-case, а не через успех любой ценой.',
+          'Лучшие примеры — SIEBEL и Альфа-Смарт. ChatPoint дополнительно показывает, что Андрей умеет разбирать неудачный продукт без попытки выдать его за победу.',
         ],
       },
     ],
@@ -2542,9 +2542,9 @@ const hiringGuides: HiringGuidesContent = {
       { id: 'decisions-evidence', label: 'Где это подтверждается?', message: 'Где это подтверждается?' },
     ],
     contextPanel: {
-      title: 'Decision making',
-      subtitle: 'Research → hypotheses → release',
-      tags: ['SIEBEL', 'Альфа-Смарт', 'Validation', 'Workflow thinking'],
+      title: 'Принятие решений',
+      subtitle: 'Исследование → гипотезы → запуск',
+      tags: ['SIEBEL', 'Альфа-Смарт', 'Проверка гипотез', 'Сложные сценарии'],
       note: 'Здесь важно, что решения рождались не из вкуса, а из проблем, ролей и проверки на реальном процессе.',
     },
   },
@@ -2557,15 +2557,15 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Где было больше всего проблем',
         body: [
-          'Самый проблемный кейс у Андрея — ChatPoint. Это не история “все получилось”, а нормальный anti-case: сложный B2B-продукт дошел до реализации, но сам продукт в итоге закрыли.',
+          'Самым неоднозначным проектом для Андрея стал ChatPoint. Это пример честного разбора неудачи: сложный продукт для бизнеса дошел до запуска, но в итоге проект был закрыт.',
         ],
       },
       {
         type: 'section',
         title: 'Что там пошло не так',
         body: [
-          'Проблема была не в том, что интерфейс нельзя было собрать. Команда двигалась в delivery, но ценность продукта проверялась слишком поздно: onboarding, routing и Form Messages проектировались, когда главный product-fit уже был под вопросом.',
-          'Поэтому ChatPoint полезен именно как честный сигнал: Андрей не продает его как победу бизнеса, а показывает product judgment — где UX может быть аккуратным, но продукт все равно идет не туда.',
+          'Проблема заключалась не в качестве интерфейса. Команда активно разрабатывала функции, но востребованность продукта проверялась слишком поздно: сценарии подключения пользователей и распределения диалогов проектировались в условиях, когда сама полезность мессенджера была под вопросом.',
+          'Этот кейс полезен тем, что Андрей не пытается скрыть неудачу, а открыто анализирует ошибки проектирования: даже удобный интерфейс не спасет продукт, если не решена его главная задача.',
         ],
       },
       { type: 'cta', label: 'Открыть ChatPoint', action: { type: 'open_case_summary', caseId: 'chatpoint' } },
@@ -2576,10 +2576,10 @@ const hiringGuides: HiringGuidesContent = {
       { id: 'risks-contact', label: 'Как связаться с Андреем?', message: 'Как связаться с Андреем?' },
     ],
     contextPanel: {
-      title: 'ChatPoint anti-case',
-      subtitle: 'B2B · product risk · judgment',
-      tags: ['ChatPoint', 'Anti-case', 'Product judgment'],
-      note: 'Задача ответа — коротко показать неудачу как доказательство трезвого product thinking, а не как слабость портфолио.',
+      title: 'Разбор ChatPoint',
+      subtitle: 'Сложные сценарии · Продуктовые риски',
+      tags: ['ChatPoint', 'Анализ ошибок', 'Продуктовое мышление'],
+      note: 'Цель ответа — показать умение кандидата делать выводы из неудачных проектов, а не только описывать успешные кейсы.',
     },
   },
   evidenceIndex: {
@@ -2591,13 +2591,13 @@ const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Где у него реальные доказательства',
         body: [
-          'Если нужен не общий шум, а доказательства, смотреть надо в конкретные кейсы. Иначе разговор быстро превращается в декоративную болтовню.',
+          'Все выводы о квалификации Андрея подтверждаются конкретными проектами и артефактами в его портфолио.',
         ],
       },
       {
         type: 'evidence_case',
-        title: 'Флагманский product signal',
-        body: ['Альфа-Смарт — главный кейс, если нужна связка продукта, delivery и метрик. Здесь видны требования, гипотезы, тесты и релиз.'],
+        title: 'Проектирование и метрики',
+        body: ['Альфа-Смарт — основной кейс, показывающий полный цикл работы над продуктом: от проработки требований и проведения тестов до запуска и анализа метрик.'],
         case: {
           caseId: 'alfa-smart',
           layoutType: 'single_preview',
@@ -2620,8 +2620,8 @@ const hiringGuides: HiringGuidesContent = {
       },
       {
         type: 'evidence_case',
-        title: 'Enterprise и workflow',
-        body: ['SIEBEL — лучший кейс, если нужно доказательство research-driven workflow redesign и влияния на реальную операционную работу.'],
+        title: 'Сложные интерфейсы и исследования',
+        body: ['SIEBEL — пример того, как на основе реальных исследований был оптимизирован рабочий процесс операторов и сокращено время обработки обращений.'],
         case: {
           caseId: 'siebel',
           layoutType: 'two_cards',
@@ -2657,8 +2657,8 @@ const hiringGuides: HiringGuidesContent = {
       },
       {
         type: 'evidence_case',
-        title: 'Judgment и ограничения',
-        body: ['ChatPoint стоит смотреть не как success-story, а как anti-case, который показывает умение видеть product risk и отсутствие ценности.'],
+        title: 'Анализ рисков и ограничений',
+        body: ['ChatPoint — пример честного разбора ошибок, показывающий умение оценивать риски и востребованность функций до их разработки.'],
         case: {
           caseId: 'chatpoint',
           layoutType: 'three_cards_scroll',
@@ -2709,9 +2709,9 @@ const hiringGuides: HiringGuidesContent = {
       },
       {
         type: 'section',
-        title: 'Ширина мобильной работы',
+        title: 'Опыт в мобильной разработке',
         body: [
-          'Дополнительные mobile кейсы нужны, чтобы доказать breadth: роли, ветвления, межкомандные зависимости и системный UX/UI beyond one flagship.',
+          'Другие мобильные проекты демонстрируют разнообразие задач Андрея: проектирование сценариев под разные роли пользователей, работу с техническими ограничениями и сложную логику взаимодействия.',
         ],
       },
       { type: 'cta', label: 'Открыть Альфа-Смарт', action: { type: 'open_case_summary', caseId: 'alfa-smart' } },
@@ -2725,7 +2725,7 @@ const hiringGuides: HiringGuidesContent = {
       title: 'Evidence index',
       subtitle: 'What to open next',
       tags: ['Альфа-Смарт', 'SIEBEL', 'ChatPoint', 'Mobile breadth'],
-      note: 'Хороший hiring flow здесь простой: сильный кейс, enterprise сигнал, anti-case и только потом breadth.',
+      note: 'Для оценки кандидата рекомендуется последовательно изучить основной кейс (Альфа-Смарт), пример оптимизации внутренних систем (SIEBEL) и разбор ошибок (ChatPoint).',
     },
   },
 };

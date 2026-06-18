@@ -10,6 +10,7 @@ import type {
   AdditionalCasesContent,
   AnswerMode,
   AssistantEnvelope,
+  AssistantReplyState,
   ContentBlock,
   ExperienceContent,
   MobileOverviewContent,
@@ -36,6 +37,7 @@ type SeedEnvelopeOptions = {
   safetyState?: SafetyState;
   nextActions?: UIAction[];
   responseSource?: ResponseSource;
+  assistantReplyState?: AssistantReplyState;
   uiState?: UIState;
 };
 
@@ -56,6 +58,7 @@ function createSeedEnvelope({
   safetyState = 'none',
   nextActions = [],
   responseSource = 'authored',
+  assistantReplyState = 'authored_reply',
   uiState = 'ready',
 }: SeedEnvelopeOptions): AssistantEnvelope {
   return {
@@ -76,8 +79,41 @@ function createSeedEnvelope({
       userMessagesUsed,
       userMessagesRemaining: Math.max(MAX_USER_MESSAGES_PER_SESSION - userMessagesUsed, 0),
       responseSource,
+      assistantReplyState,
+      sessionStoreMode: 'memory',
+      answerType: null,
+      queryScope: null,
+      questionSubject: null,
     },
   };
+}
+
+export function buildClientErrorRetryEnvelope(
+  sessionId: string | null,
+  userMessagesUsed: number,
+  message = 'Не получилось получить ответ. Это техническая ошибка запроса, а не нехватка фактов в портфолио.',
+): AssistantEnvelope {
+  return createSeedEnvelope({
+    sessionId,
+    userMessagesUsed,
+    viewType: 'unsupported_request',
+    presentationVariant: 'refusal_reply',
+    uiState: 'fallback',
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: 'Ответ не загрузился',
+        body: [message],
+      },
+    ],
+    chips: [],
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    assistantReplyState: 'error_retry',
+  });
 }
 
 function buildEntrySeed(sessionId: string | null, userMessagesUsed: number): AssistantEnvelope {
