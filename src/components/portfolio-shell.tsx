@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
@@ -1494,10 +1495,12 @@ export function PortfolioShell() {
       <div className="portfolio-desktop-blocker min-h-screen items-center justify-center bg-[#F7F8FC] px-6 py-10">
         <div className="flex w-full max-w-[464px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-[44px] py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
           <div className="relative size-28 shrink-0 overflow-hidden rounded-[20px]" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/ui/desktop-only-icon-preview.png"
               alt=""
+              width={112}
+              height={112}
+              sizes="112px"
               draggable={false}
               className="absolute inset-0 size-full select-none object-cover"
             />

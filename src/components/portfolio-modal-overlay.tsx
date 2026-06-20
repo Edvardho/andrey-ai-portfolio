@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { ArrowRight, X } from 'lucide-react';
 import type { ModalPayload, ContactOption } from '@/lib/portfolio/types';
 
@@ -38,10 +39,12 @@ function ContactOptionRow({ option }: { option: ContactOption }) {
           icon.bgClass,
         )}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={icon.src}
           alt=""
+          width={52}
+          height={52}
+          sizes="52px"
           aria-hidden="true"
           className={icon.imageClassName}
         />
@@ -132,10 +135,12 @@ export function PortfolioModalOverlay({
         <div className="relative z-10 flex max-w-[calc(100vw-48px)] items-start gap-4">
           <div className="h-[min(736px,calc(100vh-142px))] w-[min(1200px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
             {modal.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={modal.imageUrl}
                 alt={modal.title}
+                width={1200}
+                height={736}
+                sizes="min(1200px, calc(100vw - 116px))"
                 className="block h-full w-full object-contain"
               />
             ) : (

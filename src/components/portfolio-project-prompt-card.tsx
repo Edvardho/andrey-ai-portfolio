@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import Image from 'next/image';
 import type { CSSProperties } from 'react';
 
 export type EntryProjectPromptPreview = {
@@ -14,17 +15,21 @@ export function PortfolioProjectPromptCard({
   title,
   preview,
   onClick,
+  onPrefetch,
   className,
 }: {
   title: string;
   preview: EntryProjectPromptPreview;
   onClick: () => void;
+  onPrefetch?: () => void;
   className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onFocus={onPrefetch}
+      onMouseEnter={onPrefetch}
       className={clsx(
         'group flex h-[322px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-[28px] bg-white text-left shadow-[0px_6px_16px_0px_rgba(0,0,0,0.06)] transition-transform duration-150 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2',
         className,
@@ -36,10 +41,12 @@ export function PortfolioProjectPromptCard({
           style={preview.fillStyle}
         />
         <div className="absolute inset-0 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={preview.src}
             alt={title}
+            width={640}
+            height={508}
+            sizes="320px"
             className={clsx(preview.imageClassName, 'transition-transform duration-200 group-hover:scale-[1.02]')}
           />
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import type { ContextPanelData, SelectedContext } from '@/lib/portfolio/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getCaseById } from '@/data/portfolio-content';
@@ -117,10 +118,13 @@ export function PortfolioContextPanel({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: 'easeInOut' }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={contextPanel.preview.src}
                   alt={contextPanel.title}
+                  width={560}
+                  height={480}
+                  sizes="280px"
+                  priority={selectedContext.kind === 'case'}
                   decoding="async"
                   draggable={false}
                   className={

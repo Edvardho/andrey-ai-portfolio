@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import Image from 'next/image';
 
 import {
   CASE_COLLECTION_SECTION_WIDTH,
@@ -69,18 +70,22 @@ export function PortfolioCaseCollection({
                 borderColor: card.preview.borderColor ?? '#E7EAF2',
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={card.preview.src}
                 alt={card.title ?? 'Case preview'}
+                width={Math.max(card.width, 320)}
+                height={224}
+                sizes={`${Math.max(card.width, 320)}px`}
                 className={card.preview.imageClassName}
               />
               {card.preview.overlaySrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={card.preview.overlaySrc}
                   alt=""
                   aria-hidden="true"
+                  width={Math.max(card.width, 320)}
+                  height={224}
+                  sizes={`${Math.max(card.width, 320)}px`}
                   className={
                     card.preview.overlayImageClassName ??
                     'absolute inset-0 h-full w-full max-w-none object-cover'

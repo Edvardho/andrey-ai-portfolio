@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import Image from 'next/image';
 
 import type { SummaryPreviewConfig } from '@/lib/portfolio/types';
 
@@ -24,8 +25,14 @@ export function PortfolioStructuredIntroPreview({ preview, alt = '', className }
         borderColor: preview.bordered ? (preview.borderColor ?? '#EBEDF2') : undefined,
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={preview.src} alt={alt} className={preview.imageClassName} />
+      <Image
+        src={preview.src}
+        alt={alt}
+        width={112}
+        height={112}
+        sizes="112px"
+        className={preview.imageClassName}
+      />
     </div>
   );
 }

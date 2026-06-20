@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { RailItem, PromptChip } from '@/lib/portfolio/types';
+import { prefetchPortfolioCaseImages } from '@/lib/portfolio/image-prefetch';
 import { PortfolioButton } from './portfolio-button';
 import { PortfolioComposer } from './portfolio-composer';
 import { PortfolioMetadataChip } from './portfolio-metadata-chip';
@@ -207,6 +208,7 @@ export function PortfolioEntryView({
                     title={card.title}
                     preview={preview}
                     onClick={() => onRailClick(item)}
+                    onPrefetch={() => prefetchPortfolioCaseImages(card.id)}
                   />
                 );
               })}

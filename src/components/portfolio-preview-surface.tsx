@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -23,11 +24,12 @@ export function PortfolioPreviewSurface({
 
   if (src && !broken) {
     return (
-      <div className={cx('overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      <div className={cx('relative overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
+        <Image
           src={src}
           alt={title}
+          fill
+          sizes="(min-width: 1280px) 260px, 50vw"
           className="h-full w-full object-cover"
           onError={() => setBroken(true)}
         />

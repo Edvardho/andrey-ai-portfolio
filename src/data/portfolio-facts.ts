@@ -76,9 +76,9 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
     ],
     fallbackBullets: [],
     chips: [
-      { id: 'facts-identity-exp', label: 'Какой у него опыт работы?', message: 'Какой у него опыт работы?' },
+      { id: 'facts-identity-interview', label: 'Почему его стоит звать?', message: 'Почему его стоит звать на интервью?' },
       { id: 'facts-identity-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
-      { id: 'facts-identity-risks', label: 'Какие у него ограничения?', message: 'Какие у него ограничения?' },
+      { id: 'facts-identity-risks', label: 'Где слабое место?', message: 'Окей, а где у него слабое место?' },
     ],
   },
   experience: {

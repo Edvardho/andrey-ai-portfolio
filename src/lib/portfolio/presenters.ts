@@ -61,6 +61,74 @@ function getPromptChipActions(chips: PromptChip[]): UIAction[] {
   return chips.flatMap((chip) => (chip.action ? [chip.action] : []));
 }
 
+function getMessageChipTopic(chip: PromptChip): SynthesisSnapshot['topic'] | null {
+  if (!('message' in chip) || typeof chip.message !== 'string') {
+    return null;
+  }
+
+  const message = chip.message.toLowerCase();
+
+  if (/опыт работы|его опыт|пройдись по.*опыт/.test(message)) {
+    return 'experience';
+  }
+
+  if (/кто такой|расскажи про андрея/.test(message)) {
+    return 'identity';
+  }
+
+  if (/ограничени|слабое место|слабые зоны|риск/.test(message)) {
+    return 'risks';
+  }
+
+  if (/сильн.+кейс|альфа/.test(message)) {
+    return 'strengths';
+  }
+
+  return null;
+}
+
+function getMessageChipQuestionSubject(chip: PromptChip): QuestionSubject | null {
+  if (!('message' in chip) || typeof chip.message !== 'string') {
+    return null;
+  }
+
+  const message = chip.message.toLowerCase();
+
+  if (/интервью|звать|нанять/.test(message)) {
+    return 'interview_decision';
+  }
+
+  if (/слабое место|ограничени|риск/.test(message)) {
+    return 'risk_check';
+  }
+
+  if (/опыт работы|его опыт|пройдись по.*опыт/.test(message)) {
+    return 'experience_summary';
+  }
+
+  return null;
+}
+
+function filterRedundantSynthesisChips(
+  synthesis: SynthesisSnapshot,
+  chips: PromptChip[],
+): PromptChip[] {
+  return chips.filter((chip) => {
+    const chipTopic = getMessageChipTopic(chip);
+    const chipSubject = getMessageChipQuestionSubject(chip);
+
+    if (chipTopic && chipTopic === synthesis.topic) {
+      return false;
+    }
+
+    if (chipSubject && chipSubject === synthesis.questionSubject) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
 function createEnvelope({
   session,
   viewType,
@@ -188,7 +256,7 @@ export function buildGeneralSynthesisEnvelope(
   synthesis: SynthesisSnapshot,
 ): AssistantEnvelope {
   const config = getSynthesisTopicConfig(synthesis.topic);
-  const chips = synthesis.chips ?? config.chips;
+  const chips = filterRedundantSynthesisChips(synthesis, synthesis.chips ?? config.chips);
   const contentBlocks: ContentBlock[] = [
     {
       type: 'lead',

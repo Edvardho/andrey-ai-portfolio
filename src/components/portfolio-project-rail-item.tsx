@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import Image from 'next/image';
 import type { CSSProperties } from 'react';
 
 type RailThumbConfig = {
@@ -96,8 +97,15 @@ export function PortfolioProjectRailItem({
         />
         <div className="absolute inset-0 overflow-hidden rounded-[16px]">
           {thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumb.src} alt="" className={thumb.imageClassName} />
+            <Image
+              src={thumb.src}
+              alt=""
+              width={180}
+              height={180}
+              sizes="56px"
+              className={thumb.imageClassName}
+              priority
+            />
           ) : (
             <div className="flex size-full items-center justify-center bg-[#EEF2FA]">
               <span className="text-[13px] font-semibold uppercase leading-4 tracking-[0.12em] text-[#6B6F7E]">
