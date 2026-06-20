@@ -104,7 +104,7 @@ export function PortfolioProjectRailItem({
               height={180}
               sizes="56px"
               className={thumb.imageClassName}
-              priority
+              priority={selected}
             />
           ) : (
             <div className="flex size-full items-center justify-center bg-[#EEF2FA]">

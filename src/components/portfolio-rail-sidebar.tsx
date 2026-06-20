@@ -1,5 +1,4 @@
 import type { RailItem } from '@/lib/portfolio/types';
-import { prefetchPortfolioCaseImages } from '@/lib/portfolio/image-prefetch';
 import { PortfolioProjectRailItem } from './portfolio-project-rail-item';
 import { PortfolioSessionLimitCard } from './portfolio-session-limit-card';
 
@@ -48,8 +47,6 @@ export function PortfolioRailSidebar({
             key={item.id}
             type="button"
             onClick={() => onRailClick(item)}
-            onFocus={() => prefetchPortfolioCaseImages(item.id)}
-            onMouseEnter={() => prefetchPortfolioCaseImages(item.id)}
             disabled={selectedRailId === item.id}
             aria-current={selectedRailId === item.id ? 'page' : undefined}
             className="w-[280px] cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2 disabled:cursor-default"
