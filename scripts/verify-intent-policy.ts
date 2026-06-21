@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-import { getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
+import { getEntryPrompts, portfolioContent } from '@/data/portfolio-content.server';
 import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   resolveAction,

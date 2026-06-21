@@ -1,10 +1,10 @@
 import {
-  getCaseById,
-  getEntryPrompts,
+  additionalCasesContent,
+  experience,
   getExperienceRoute,
-  getRailItems,
-  portfolioContent,
-} from '@/data/portfolio-content';
+  mobileOverview,
+} from '@/data/portfolio-global-content';
+import { entry, getEntryPrompts, getRailItems } from '@/data/portfolio-index';
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import type {
   AdditionalCasesContent,
@@ -22,6 +22,7 @@ import type {
   UIAction,
   UIState,
   ViewType,
+  CaseContent,
 } from '@/lib/portfolio/types';
 
 type SeedEnvelopeOptions = {
@@ -54,7 +55,7 @@ function createSeedEnvelope({
   answerMode = null,
   contentBlocks = [],
   chips = [],
-  contextPanel = portfolioContent.entry.contextPanel,
+  contextPanel = entry.contextPanel,
   safetyState = 'none',
   nextActions = [],
   responseSource = 'authored',
@@ -109,7 +110,7 @@ export function buildClientErrorRetryEnvelope(
     ],
     chips: [],
     contextPanel: {
-      ...portfolioContent.entry.contextPanel,
+      ...entry.contextPanel,
       hidden: true,
     },
     assistantReplyState: 'error_retry',
@@ -128,12 +129,12 @@ function buildEntrySeed(sessionId: string | null, userMessagesUsed: number): Ass
     contentBlocks: [
       {
         type: 'lead',
-        title: portfolioContent.entry.title,
-        body: [portfolioContent.entry.subtitle],
+        title: entry.title,
+        body: [entry.subtitle],
       },
     ],
     chips,
-    contextPanel: portfolioContent.entry.contextPanel,
+    contextPanel: entry.contextPanel,
     nextActions: getPromptChipActions(chips),
   });
 }
@@ -144,9 +145,9 @@ function buildCaseSeed(
   caseId: string,
   mode: AnswerMode,
   mobile: boolean,
+  caseContent: CaseContent | null,
 ): AssistantEnvelope | null {
-  const caseContent = getCaseById(caseId);
-  if (!caseContent) {
+  if (!caseContent || caseContent.id !== caseId) {
     return null;
   }
 
@@ -172,9 +173,9 @@ function buildCaseRouteSeed(
   sessionId: string | null,
   userMessagesUsed: number,
   caseId: string,
+  caseContent: CaseContent | null,
 ): AssistantEnvelope | null {
-  const caseContent = getCaseById(caseId);
-  if (!caseContent) {
+  if (!caseContent || caseContent.id !== caseId) {
     return null;
   }
 
@@ -219,9 +220,9 @@ function buildExperienceRouteSeed(
   sessionId: string | null,
   userMessagesUsed: number,
   caseId: string,
+  caseContent: CaseContent | null,
 ): AssistantEnvelope | null {
-  const caseContent = getCaseById(caseId);
-  if (!caseContent) {
+  if (!caseContent || caseContent.id !== caseId) {
     return null;
   }
 
@@ -266,33 +267,34 @@ export function buildClientEnvelopeForAction(
   action: UIAction,
   sessionId: string | null,
   userMessagesUsed: number,
+  caseContent: CaseContent | null = null,
 ): AssistantEnvelope | null {
   switch (action.type) {
     case 'open_entry':
       return buildEntrySeed(sessionId, userMessagesUsed);
     case 'open_case_summary':
-      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'summary', false);
+      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'summary', false, caseContent);
     case 'open_case_detail':
-      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'detail', false);
+      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'detail', false, caseContent);
     case 'open_case_route':
-      return buildCaseRouteSeed(sessionId, userMessagesUsed, action.caseId);
+      return buildCaseRouteSeed(sessionId, userMessagesUsed, action.caseId, caseContent);
     case 'open_mobile_case_summary':
-      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'summary', true);
+      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'summary', true, caseContent);
     case 'open_mobile_case_detail':
-      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'detail', true);
+      return buildCaseSeed(sessionId, userMessagesUsed, action.caseId, 'detail', true, caseContent);
     case 'open_experience_summary':
-      return buildExperienceSeed(sessionId, userMessagesUsed, 'summary', portfolioContent.experience);
+      return buildExperienceSeed(sessionId, userMessagesUsed, 'summary', experience);
     case 'open_experience_detail':
-      return buildExperienceSeed(sessionId, userMessagesUsed, 'detail', portfolioContent.experience);
+      return buildExperienceSeed(sessionId, userMessagesUsed, 'detail', experience);
     case 'open_experience_route':
-      return buildExperienceRouteSeed(sessionId, userMessagesUsed, action.caseId);
+      return buildExperienceRouteSeed(sessionId, userMessagesUsed, action.caseId, caseContent);
     case 'open_mobile_experience_overview':
       return buildOverviewSeed(
         sessionId,
         userMessagesUsed,
         'mobile_experience_overview',
         { kind: 'overview', id: 'mobile-experience', label: 'Мобильный опыт' },
-        portfolioContent.mobileOverview,
+        mobileOverview,
       );
     case 'open_additional_cases_overview':
       return buildOverviewSeed(
@@ -300,7 +302,7 @@ export function buildClientEnvelopeForAction(
         userMessagesUsed,
         'additional_cases_overview',
         { kind: 'overview', id: 'additional-cases', label: 'Дополнительные кейсы' },
-        portfolioContent.additionalCases,
+        additionalCasesContent,
       );
     default:
       return null;

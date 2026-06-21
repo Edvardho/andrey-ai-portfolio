@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import type { ContextPanelData, SelectedContext } from '@/lib/portfolio/types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { getCaseById } from '@/data/portfolio-content';
+import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 import { PortfolioMetricRow } from './portfolio-metric-row';
 
@@ -12,7 +12,7 @@ function getCasePreview(caseId: string | null) {
     return null;
   }
 
-  const caseContent = getCaseById(caseId);
+  const caseContent = getLoadedCaseById(caseId);
   if (!caseContent) {
     return null;
   }

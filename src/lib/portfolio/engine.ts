@@ -1,4 +1,4 @@
-import { getCaseById } from '@/data/portfolio-content';
+import { getCaseById } from '@/data/portfolio-content.server';
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import {
   classifyMessageDeterministically,

@@ -6,7 +6,7 @@ import {
   CASE_COLLECTION_SECTION_WIDTH,
   getCaseCollectionContract,
 } from '@/lib/portfolio/case-layout-contract';
-import { portfolioContent } from '@/data/portfolio-content';
+import { portfolioContent } from '@/data/portfolio-content.server';
 import type { ContentBlock } from '@/lib/portfolio/types';
 
 function isThreeCardsEvidenceCase(

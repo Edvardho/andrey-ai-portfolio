@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-import { getCaseById } from '@/data/portfolio-content';
+import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
@@ -36,7 +36,7 @@ export function PortfolioAssistantCaseSummary({
   renderMode = 'instant',
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
-  const activeCase = activeCaseId ? getCaseById(activeCaseId) : null;
+  const activeCase = activeCaseId ? getLoadedCaseById(activeCaseId) : null;
   const reveal = renderMode === 'reveal';
 
   if (activeCase?.structuredSummary) {

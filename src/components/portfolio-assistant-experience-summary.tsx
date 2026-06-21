@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-import { portfolioContent } from '@/data/portfolio-content';
+import { experience } from '@/data/portfolio-global-content';
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
@@ -37,10 +37,10 @@ export function PortfolioAssistantExperienceSummary({
 }: Props) {
   const reveal = renderMode === 'reveal';
 
-  if (envelope.presentationVariant === 'experience_summary' && portfolioContent.experience.structuredSummary) {
+  if (envelope.presentationVariant === 'experience_summary' && experience.structuredSummary) {
     return (
       <PortfolioStructuredExperienceSummary
-        experience={portfolioContent.experience}
+        experience={experience}
         onChipClick={onChipClick}
         onCta={onCta}
         renderMode={renderMode}

@@ -8,7 +8,7 @@ import {
   getHiringGuide,
   getRailItems,
   portfolioContent,
-} from '@/data/portfolio-content';
+} from '@/data/portfolio-content.server';
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {

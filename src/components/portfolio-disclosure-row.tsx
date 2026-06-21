@@ -1,10 +1,10 @@
 'use client';
 
-import { getCaseById } from '@/data/portfolio-content';
+import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import type { ArtifactOpenTarget, DisclosureRow } from '@/lib/portfolio/types';
 
 function getArtifact(caseId: string, artifactId: string) {
-  return getCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
+  return getLoadedCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
 }
 
 export function PortfolioDisclosureRow({
