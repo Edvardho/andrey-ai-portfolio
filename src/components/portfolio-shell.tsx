@@ -5,7 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
-import { getLoadedCaseById, loadCaseById } from '@/data/portfolio-case-loader.client';
+import {
+  getLoadedCaseById,
+  isCaseLoaded,
+  loadCaseById,
+} from '@/data/portfolio-case-loader.client';
 import { additionalCasesContent, experience, mobileOverview } from '@/data/portfolio-global-content';
 import { getContactContent, getEntryPrompts, getRailItems } from '@/data/portfolio-index';
 import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
@@ -190,6 +194,29 @@ function createUserThreadItem(text: string): ThreadItem {
     text,
     hasAnimated: false,
   };
+}
+
+function reportCaseTransitionMetric({
+  caseId,
+  durationMs,
+  mode,
+  path,
+}: {
+  caseId: string;
+  durationMs: number;
+  mode: 'cold' | 'warm';
+  path: 'known-context' | 'restore';
+}) {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  console.debug('[portfolio-case-transition]', {
+    caseId,
+    mode,
+    path,
+    durationMs: Math.round(durationMs),
+  });
 }
 
 function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
@@ -667,6 +694,7 @@ export function PortfolioShell() {
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>(null);
+  const [bootstrappingContextId, setBootstrappingContextId] = useState<ContextId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFailedRequest, setLastFailedRequest] = useState<LastFailedRequest | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -695,6 +723,28 @@ export function PortfolioShell() {
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentCaseId = isCaseContextId(activeContextId) ? activeContextId.replace(/^case:/, '') : null;
   const currentContextPanelPayload = getContextPanelPayloadFromContextId(activeContextId);
+  const currentBootstrappingTitle = useMemo(() => {
+    const contextId = bootstrappingContextId ?? activeContextId;
+
+    if (contextId === 'experience') {
+      return 'Опыт работы';
+    }
+
+    if (contextId === 'mobile-experience') {
+      return 'Мобильный опыт';
+    }
+
+    if (contextId === 'additional-cases') {
+      return 'Дополнительные кейсы';
+    }
+
+    if (!isCaseContextId(contextId)) {
+      return null;
+    }
+
+    const caseId = contextId.replace(/^case:/, '');
+    return railItems.find((item) => item.id === caseId)?.label ?? null;
+  }, [activeContextId, bootstrappingContextId, railItems]);
   const { selectedRailId, showAssistantReturn, showChatStage, showLandingStage } = usePortfolioStageRouting({
     activeContextId,
     isBootstrapEntryThread: (thread) => isBootstrapEntryThread(thread as ContextThread | undefined),
@@ -1033,7 +1083,9 @@ export function PortfolioShell() {
   ): Promise<boolean> {
     const targetContextId = getContextIdFromAction(action);
     const caseId = getCaseIdFromAction(action);
+    const wasCaseCold = Boolean(caseId && !isCaseLoaded(caseId));
     const requestId = ++caseLoadRequestRef.current;
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
@@ -1041,9 +1093,10 @@ export function PortfolioShell() {
     setError(null);
     setLastFailedRequest(null);
 
-    if (targetContextId && caseId && !getLoadedCaseById(caseId)) {
+    if (targetContextId && caseId && !isCaseLoaded(caseId)) {
       captureActiveThreadScrollState();
       setActiveContextId(targetContextId);
+      setBootstrappingContextId(targetContextId);
       setLoadingContextId(targetContextId);
       ensureContextUiState(targetContextId);
       requestThreadTopScroll();
@@ -1108,6 +1161,14 @@ export function PortfolioShell() {
       }
 
       void syncKnownContextInBackground(action);
+      if (caseId) {
+        reportCaseTransitionMetric({
+          caseId,
+          durationMs: (typeof performance !== 'undefined' ? performance.now() : startedAt) - startedAt,
+          mode: wasCaseCold ? 'cold' : 'warm',
+          path: 'known-context',
+        });
+      }
       return true;
     } catch (caughtError) {
       if (requestId !== caseLoadRequestRef.current || !targetContextId) {
@@ -1130,6 +1191,7 @@ export function PortfolioShell() {
       return true;
     } finally {
       if (requestId === caseLoadRequestRef.current) {
+        setBootstrappingContextId(null);
         setLoadingContextId(null);
       }
     }
@@ -1252,12 +1314,15 @@ export function PortfolioShell() {
 
   async function restoreExistingContext(contextId: ContextId) {
     const targetThread = threadsRef.current[contextId];
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     if (isCaseContextId(contextId)) {
       const caseId = contextId.replace(/^case:/, '');
       const requestId = ++caseLoadRequestRef.current;
-      if (!getLoadedCaseById(caseId)) {
+      const wasCaseCold = !isCaseLoaded(caseId);
+      if (!isCaseLoaded(caseId)) {
         captureActiveThreadScrollState();
         setActiveContextId(contextId);
+        setBootstrappingContextId(contextId);
         setLoadingContextId(contextId);
         requestThreadTopScroll();
         try {
@@ -1280,6 +1345,7 @@ export function PortfolioShell() {
           return;
         } finally {
           if (requestId === caseLoadRequestRef.current) {
+            setBootstrappingContextId(null);
             setLoadingContextId(null);
           }
         }
@@ -1287,8 +1353,16 @@ export function PortfolioShell() {
           return;
         }
       }
+
+      reportCaseTransitionMetric({
+        caseId,
+        durationMs: (typeof performance !== 'undefined' ? performance.now() : startedAt) - startedAt,
+        mode: wasCaseCold ? 'cold' : 'warm',
+        path: 'restore',
+      });
     } else {
       caseLoadRequestRef.current += 1;
+      setBootstrappingContextId(null);
     }
 
     captureActiveThreadScrollState();
@@ -1653,6 +1727,8 @@ export function PortfolioShell() {
                       contextPanelPayload={currentContextPanelPayload}
                       composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
+                      caseBootstrapping={bootstrappingContextId === activeContextId}
+                      caseBootstrappingTitle={currentBootstrappingTitle}
                     />
                   ) : null}
                 </AnimatePresence>

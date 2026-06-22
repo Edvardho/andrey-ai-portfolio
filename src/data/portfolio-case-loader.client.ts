@@ -19,6 +19,14 @@ export function getLoadedCaseById(caseId: string): CaseContent | undefined {
   return isCaseId(caseId) ? resolvedCases.get(caseId) : undefined;
 }
 
+export function isCaseLoaded(caseId: string): boolean {
+  return isCaseId(caseId) && resolvedCases.has(caseId);
+}
+
+export function isCaseLoading(caseId: string): boolean {
+  return isCaseId(caseId) && pendingCases.has(caseId);
+}
+
 export async function loadCaseById(caseId: string): Promise<CaseContent | null> {
   if (!isCaseId(caseId)) {
     return null;

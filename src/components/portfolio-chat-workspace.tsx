@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type RefObject } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import type {
   ArtifactOpenTarget,
@@ -22,6 +22,10 @@ import type { ThreadScrollState } from '@/lib/portfolio/response-scroll-policy';
 import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
 import { PortfolioContextPanel } from './portfolio-context-panel';
+import {
+  PortfolioCaseWorkspaceSkeleton,
+  PortfolioContextPanelSkeleton,
+} from './portfolio-case-workspace-skeleton';
 import { PortfolioComposer } from './portfolio-composer';
 import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 
@@ -75,6 +79,8 @@ export function PortfolioChatWorkspace({
   contextPanelPayload,
   composerLayoutId,
   startTransitionSource,
+  caseBootstrapping,
+  caseBootstrappingTitle,
 }: {
   railItems: RailItem[];
   selectedRailId: string | null;
@@ -112,9 +118,11 @@ export function PortfolioChatWorkspace({
   contextPanelPayload: ContextPanelPayload | null;
   composerLayoutId: string;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
+  caseBootstrapping: boolean;
+  caseBootstrappingTitle?: string | null;
 }) {
   const animateStageEntry = Boolean(startTransitionSource);
-  const showContextPanel = Boolean(contextPanelPayload && !contextPanelPayload.contextPanel.hidden);
+  const showContextPanel = caseBootstrapping || Boolean(contextPanelPayload && !contextPanelPayload.contextPanel.hidden);
   const [contextDrawerContextId, setContextDrawerContextId] = useState<ContextId | null>(null);
   const isContextDrawerOpen = showContextPanel && contextDrawerContextId === currentThread.contextId;
   const delayContextPanelReveal = shouldDelayContextPanelReveal(
@@ -190,7 +198,7 @@ export function PortfolioChatWorkspace({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
-          {showContextPanel ? (
+          {showContextPanel && !caseBootstrapping ? (
             <div className="portfolio-narrow-context-trigger justify-end px-6 pt-5">
               <button
                 type="button"
@@ -202,30 +210,56 @@ export function PortfolioChatWorkspace({
             </div>
           ) : null}
 
-          <PortfolioThreadView
-            ref={threadViewRef}
-            contextId={currentThread.contextId}
-            items={currentThread.items}
-            scrollState={currentThread.scrollState}
-            hasPlayedInitialReveal={currentThread.hasPlayedInitialReveal}
-            loading={loading}
-            error={error}
-            canRetryError={canRetryError}
-            onRetryError={onRetryError}
-            onClearError={onClearError}
-            stickToBottomSignal={stickToBottomSignal}
-            scrollToTopSignal={scrollToTopSignal}
-            restoreThreadScrollSignal={restoreThreadScrollSignal}
-            restoreThreadScrollTop={restoreThreadScrollTop}
-            expandedDisclosureIds={expandedDisclosureIds}
-            onToggleDisclosure={onToggleDisclosure}
-            onChipClick={onChipClick}
-            onCta={onCta}
-            onOpenArtifact={onOpenArtifact}
-            onMarkAnimatedItems={onMarkAnimatedItems}
-            onScrollStateChange={onThreadScrollStateChange}
-            startTransitionSource={startTransitionSource}
-          />
+          <div className="relative min-h-0 flex-1">
+            <AnimatePresence initial={false} mode="sync">
+              {caseBootstrapping ? (
+                <motion.div
+                  key={`boot:${currentThread.contextId}`}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22, ease: WORKSPACE_EASE }}
+                >
+                  <PortfolioCaseWorkspaceSkeleton title={caseBootstrappingTitle} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`thread:${currentThread.contextId}`}
+                  className="absolute inset-0"
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.22, ease: WORKSPACE_EASE }}
+                >
+                  <PortfolioThreadView
+                    ref={threadViewRef}
+                    contextId={currentThread.contextId}
+                    items={currentThread.items}
+                    scrollState={currentThread.scrollState}
+                    hasPlayedInitialReveal={currentThread.hasPlayedInitialReveal}
+                    loading={loading}
+                    error={error}
+                    canRetryError={canRetryError}
+                    onRetryError={onRetryError}
+                    onClearError={onClearError}
+                    stickToBottomSignal={stickToBottomSignal}
+                    scrollToTopSignal={scrollToTopSignal}
+                    restoreThreadScrollSignal={restoreThreadScrollSignal}
+                    restoreThreadScrollTop={restoreThreadScrollTop}
+                    expandedDisclosureIds={expandedDisclosureIds}
+                    onToggleDisclosure={onToggleDisclosure}
+                    onChipClick={onChipClick}
+                    onCta={onCta}
+                    onOpenArtifact={onOpenArtifact}
+                    onMarkAnimatedItems={onMarkAnimatedItems}
+                    onScrollStateChange={onThreadScrollStateChange}
+                    startTransitionSource={startTransitionSource}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <motion.div
             className="flex w-full flex-col items-center gap-2 px-6 pb-4"
@@ -253,22 +287,40 @@ export function PortfolioChatWorkspace({
         <div className="portfolio-wide-context-divider bg-[#EBEDF2]" aria-hidden="true" />
 
         <div className="portfolio-context-column min-h-0 pl-6 pt-6">
-          {showContextPanel && contextPanelPayload ? (
-            <motion.div
-              initial={animateStageEntry ? { opacity: 0, x: 32 } : false}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{
-                duration: portfolioResponseAnimationConfig.sidebarReveal.animation.durationMs / 1000,
-                ease: WORKSPACE_EASE,
-                delay: getContextPanelRevealDelayMs(delayContextPanelReveal) / 1000,
-              }}
-            >
-              <PortfolioContextPanel
-                contextPanel={contextPanelPayload.contextPanel}
-                selectedContext={contextPanelPayload.selectedContext}
-              />
-            </motion.div>
-          ) : null}
+          <AnimatePresence initial={false} mode="sync">
+            {caseBootstrapping ? (
+              <motion.div
+                key={`panel-boot:${currentThread.contextId}`}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{
+                  duration: portfolioResponseAnimationConfig.sidebarReveal.animation.durationMs / 1000,
+                  ease: WORKSPACE_EASE,
+                  delay: getContextPanelRevealDelayMs(delayContextPanelReveal) / 1000,
+                }}
+              >
+                <PortfolioContextPanelSkeleton title={caseBootstrappingTitle} />
+              </motion.div>
+            ) : showContextPanel && contextPanelPayload ? (
+              <motion.div
+                key={`panel:${currentThread.contextId}`}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{
+                  duration: portfolioResponseAnimationConfig.sidebarReveal.animation.durationMs / 1000,
+                  ease: WORKSPACE_EASE,
+                  delay: getContextPanelRevealDelayMs(delayContextPanelReveal) / 1000,
+                }}
+              >
+                <PortfolioContextPanel
+                  contextPanel={contextPanelPayload.contextPanel}
+                  selectedContext={contextPanelPayload.selectedContext}
+                />
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
 
