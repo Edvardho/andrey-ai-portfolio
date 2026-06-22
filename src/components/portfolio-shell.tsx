@@ -499,28 +499,6 @@ function persistThreadState(payload: PersistedThreadState) {
   }
 }
 
-function createClientFallbackSessionId() {
-  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
-    return `local-${globalThis.crypto.randomUUID()}`;
-  }
-
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createBootstrapFallbackEnvelope(): AssistantEnvelope {
-  const envelope = buildClientEnvelopeForAction(
-    { type: 'open_entry' },
-    createClientFallbackSessionId(),
-    DEFAULT_SESSION_META.used,
-  );
-
-  if (!envelope) {
-    throw new Error('Failed to create local bootstrap fallback.');
-  }
-
-  return envelope;
-}
-
 function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
   return {
     ...envelope,
@@ -688,7 +666,7 @@ export function PortfolioShell() {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
-  const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
+  const [loadingContextId, setLoadingContextId] = useState<ContextId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFailedRequest, setLastFailedRequest] = useState<LastFailedRequest | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -719,7 +697,6 @@ export function PortfolioShell() {
   const currentContextPanelPayload = getContextPanelPayloadFromContextId(activeContextId);
   const { selectedRailId, showAssistantReturn, showChatStage, showLandingStage } = usePortfolioStageRouting({
     activeContextId,
-    hasHydrated,
     isBootstrapEntryThread: (thread) => isBootstrapEntryThread(thread as ContextThread | undefined),
     isCaseContextId,
     threadsByContextId: normalizedThreadsByContextId,
@@ -1003,17 +980,6 @@ export function PortfolioShell() {
 
     if (!response.ok) {
       throw new Error(`Chat request failed with ${response.status}`);
-    }
-
-    return (await response.json()) as AssistantEnvelope;
-  }
-
-  async function fetchBootstrapEnvelope(nextSessionId?: string | null): Promise<AssistantEnvelope> {
-    const query = nextSessionId ? `?sessionId=${encodeURIComponent(nextSessionId)}` : '';
-    const response = await fetch(`/api/assistant/bootstrap${query}`);
-
-    if (!response.ok) {
-      throw new Error(`Bootstrap failed with ${response.status}`);
     }
 
     return (await response.json()) as AssistantEnvelope;
@@ -1371,25 +1337,7 @@ export function PortfolioShell() {
   useEffect(() => {
     let cancelled = false;
 
-    async function hydrateFromBootstrapEnvelope(
-      envelope: AssistantEnvelope,
-      options: { workspaceMode: WorkspaceMode; serverContextId: ContextId | null },
-    ) {
-      await ensureEnvelopeCaseLoaded(envelope);
-      const contextId = getContextIdFromEnvelope(envelope);
-
-      setSessionId(envelope.sessionId);
-      updateSessionMeta(envelope);
-      replaceThreadWithEnvelope(contextId, envelope);
-      ensureContextUiState(contextId);
-      setActiveContextId(contextId);
-      setWorkspaceMode(options.workspaceMode);
-      setServerContextId(options.serverContextId);
-      setHasHydrated(true);
-    }
-
     async function bootstrap() {
-      setLoadingContextId('entry');
       setError(null);
 
       try {
@@ -1426,7 +1374,6 @@ export function PortfolioShell() {
                 setWorkspaceMode(persistedWorkspaceMode);
                 setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
                 setServerContextId(null);
-                setLoadingContextId(null);
                 setHasHydrated(true);
               }
               return;
@@ -1436,27 +1383,14 @@ export function PortfolioShell() {
           clearPersistedThreadState();
         }
 
-        const envelope = await fetchBootstrapEnvelope();
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setHasHydrated(true);
         }
-
-        await hydrateFromBootstrapEnvelope(envelope, {
-          workspaceMode: 'landing',
-          serverContextId: getContextIdFromEnvelope(envelope),
-        });
       } catch (caughtError) {
         if (!cancelled) {
-          console.warn('Bootstrap failed; using local portfolio seed.', caughtError);
-          await hydrateFromBootstrapEnvelope(createBootstrapFallbackEnvelope(), {
-            workspaceMode: 'landing',
-            serverContextId: null,
-          });
+          console.warn('Portfolio state hydration failed; continuing with local shell.', caughtError);
+          setHasHydrated(true);
           setError(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingContextId(null);
         }
       }
     }
@@ -1723,7 +1657,6 @@ export function PortfolioShell() {
                   ) : null}
                 </AnimatePresence>
 
-                {!hasHydrated ? <div className="absolute inset-0 bg-white" aria-hidden="true" /> : null}
               </LayoutGroup>
             </div>
           </div>

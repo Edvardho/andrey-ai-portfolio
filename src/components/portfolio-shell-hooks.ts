@@ -97,14 +97,12 @@ export function useDebouncedPortfolioPersistence<ContextId extends string, Threa
 
 export function usePortfolioStageRouting<ContextId extends string>({
   activeContextId,
-  hasHydrated,
   isBootstrapEntryThread,
   isCaseContextId,
   threadsByContextId,
   workspaceMode,
 }: {
   activeContextId: ContextId;
-  hasHydrated: boolean;
   isBootstrapEntryThread: (thread: ThreadLike | undefined) => boolean;
   isCaseContextId: (contextId: ContextId) => boolean;
   threadsByContextId: Record<string, ThreadLike>;
@@ -138,8 +136,8 @@ export function usePortfolioStageRouting<ContextId extends string>({
   return {
     selectedRailId,
     showAssistantReturn,
-    showChatStage: hasHydrated && workspaceMode === 'chat',
-    showLandingStage: hasHydrated && workspaceMode === 'landing',
+    showChatStage: workspaceMode === 'chat',
+    showLandingStage: workspaceMode === 'landing',
   };
 }
 
