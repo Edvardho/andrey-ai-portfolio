@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
 import type { ContextPanelData, SelectedContext } from '@/lib/portfolio/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
+import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 import { PortfolioMetricRow } from './portfolio-metric-row';
 
 function getCasePreview(caseId: string | null) {
@@ -118,7 +118,7 @@ export function PortfolioContextPanel({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.18, ease: 'easeInOut' }}
               >
-                <Image
+                <PortfolioFadeInImage
                   src={contextPanel.preview.src}
                   alt={contextPanel.title}
                   width={560}
@@ -130,6 +130,7 @@ export function PortfolioContextPanel({
                   className={
                     contextPanel.preview.imageClassName ?? 'absolute inset-0 h-full w-full object-cover'
                   }
+                  overlayClassName="bg-white/20"
                 />
               </motion.div>
             ) : null}

@@ -1,7 +1,6 @@
 'use client';
 
 import clsx from 'clsx';
-import Image from 'next/image';
 
 import {
   CASE_COLLECTION_SECTION_WIDTH,
@@ -12,6 +11,7 @@ import type {
   CaseCollectionLayoutType,
   StructuredSummaryDisclosureCard,
 } from '@/lib/portfolio/types';
+import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 
 function buildArtifactTarget(
   artifactId: string | undefined,
@@ -70,16 +70,17 @@ export function PortfolioCaseCollection({
                 borderColor: card.preview.borderColor ?? '#E7EAF2',
               }}
             >
-              <Image
+              <PortfolioFadeInImage
                 src={card.preview.src}
                 alt={card.title ?? 'Case preview'}
                 width={Math.max(card.width, 320)}
                 height={224}
                 sizes={`${Math.max(card.width, 320)}px`}
                 className={card.preview.imageClassName}
+                overlayClassName="bg-white/18"
               />
               {card.preview.overlaySrc ? (
-                <Image
+                <PortfolioFadeInImage
                   src={card.preview.overlaySrc}
                   alt=""
                   aria-hidden="true"
@@ -90,6 +91,7 @@ export function PortfolioCaseCollection({
                     card.preview.overlayImageClassName ??
                     'absolute inset-0 h-full w-full max-w-none object-cover'
                   }
+                  overlayClassName="bg-white/10"
                 />
               ) : null}
             </div>

@@ -1,7 +1,7 @@
 import clsx from 'clsx';
-import Image from 'next/image';
 
 import type { SummaryPreviewConfig } from '@/lib/portfolio/types';
+import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 
 type Props = {
   preview: SummaryPreviewConfig;
@@ -25,13 +25,14 @@ export function PortfolioStructuredIntroPreview({ preview, alt = '', className }
         borderColor: preview.bordered ? (preview.borderColor ?? '#EBEDF2') : undefined,
       }}
     >
-      <Image
+      <PortfolioFadeInImage
         src={preview.src}
         alt={alt}
         width={112}
         height={112}
         sizes="112px"
         className={preview.imageClassName}
+        overlayClassName="bg-white/14"
       />
     </div>
   );

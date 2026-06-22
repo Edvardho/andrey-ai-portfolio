@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { useState } from 'react';
+import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -25,7 +25,7 @@ export function PortfolioPreviewSurface({
   if (src && !broken) {
     return (
       <div className={cx('relative overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
-        <Image
+        <PortfolioFadeInImage
           src={src}
           alt={title}
           fill
