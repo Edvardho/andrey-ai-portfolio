@@ -1,11 +1,14 @@
 'use client';
 
+import clsx from 'clsx';
 import type { ContextPanelData, SelectedContext } from '@/lib/portfolio/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 import { PortfolioMetricRow } from './portfolio-metric-row';
+
+export const PORTFOLIO_CONTEXT_PANEL_BASE_CLASS = 'h-full overflow-hidden bg-white';
 
 function getCasePreview(caseId: string | null) {
   if (!caseId) {
@@ -40,9 +43,11 @@ function splitTagsIntoRows(tags: string[]) {
 export function PortfolioContextPanel({
   contextPanel,
   selectedContext,
+  paddingMode = 'internal',
 }: {
   contextPanel: ContextPanelData;
   selectedContext: SelectedContext;
+  paddingMode?: 'internal' | 'none';
 }) {
   const tagRows = splitTagsIntoRows(contextPanel.tags);
   const previewKey = contextPanel.preview?.src
@@ -88,7 +93,12 @@ export function PortfolioContextPanel({
   }
 
   return (
-    <aside className="overflow-hidden bg-white">
+    <aside
+      className={clsx(
+        PORTFOLIO_CONTEXT_PANEL_BASE_CLASS,
+        paddingMode === 'internal' && 'px-6 pt-6 pb-6',
+      )}
+    >
       {contextPanel.headerLabel ? (
         <div className="text-[15px] font-medium leading-[1.45] text-[#202129]">{contextPanel.headerLabel}</div>
       ) : null}

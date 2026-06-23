@@ -97,8 +97,11 @@ textarea {
     grid-template-columns: 298px 1px minmax(0, 1fr) 1px 304px;
   }
 
-  .portfolio-wide-context-divider,
   .portfolio-context-column {
+    display: flex;
+  }
+
+  .portfolio-wide-context-divider {
     display: block;
   }
 

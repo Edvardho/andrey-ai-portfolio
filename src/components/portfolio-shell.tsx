@@ -723,28 +723,6 @@ export function PortfolioShell() {
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentCaseId = isCaseContextId(activeContextId) ? activeContextId.replace(/^case:/, '') : null;
   const currentContextPanelPayload = getContextPanelPayloadFromContextId(activeContextId);
-  const currentBootstrappingTitle = useMemo(() => {
-    const contextId = bootstrappingContextId ?? activeContextId;
-
-    if (contextId === 'experience') {
-      return 'Опыт работы';
-    }
-
-    if (contextId === 'mobile-experience') {
-      return 'Мобильный опыт';
-    }
-
-    if (contextId === 'additional-cases') {
-      return 'Дополнительные кейсы';
-    }
-
-    if (!isCaseContextId(contextId)) {
-      return null;
-    }
-
-    const caseId = contextId.replace(/^case:/, '');
-    return railItems.find((item) => item.id === caseId)?.label ?? null;
-  }, [activeContextId, bootstrappingContextId, railItems]);
   const { selectedRailId, showAssistantReturn, showChatStage, showLandingStage } = usePortfolioStageRouting({
     activeContextId,
     isBootstrapEntryThread: (thread) => isBootstrapEntryThread(thread as ContextThread | undefined),
@@ -1728,7 +1706,6 @@ export function PortfolioShell() {
                       composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
                       caseBootstrapping={bootstrappingContextId === activeContextId}
-                      caseBootstrappingTitle={currentBootstrappingTitle}
                     />
                   ) : null}
                 </AnimatePresence>
