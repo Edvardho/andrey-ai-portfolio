@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-import { getCaseById } from '@/data/portfolio-content';
+import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
@@ -36,7 +36,7 @@ export function PortfolioAssistantCaseSummary({
   renderMode = 'instant',
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
-  const activeCase = activeCaseId ? getCaseById(activeCaseId) : null;
+  const activeCase = activeCaseId ? getLoadedCaseById(activeCaseId) : null;
   const reveal = renderMode === 'reveal';
 
   if (activeCase?.structuredSummary) {
@@ -78,7 +78,7 @@ export function PortfolioAssistantCaseSummary({
       </div>
 
       {envelope.chips.length ? (
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-[#EBEDF2] pt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
           ))}

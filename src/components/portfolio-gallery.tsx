@@ -1,9 +1,9 @@
 import type { ArtifactOpenTarget, GalleryItem } from '@/lib/portfolio/types';
-import { getCaseById } from '@/data/portfolio-content';
+import { getLoadedCaseById } from '@/data/portfolio-case-loader.client';
 import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 
 function getArtifact(caseId: string, artifactId: string) {
-  return getCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
+  return getLoadedCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
 }
 
 export function PortfolioGallery({

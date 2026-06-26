@@ -26,6 +26,8 @@ const INJECTION_PATTERNS = [
 ];
 
 const PRIVATE_PATTERNS = [
+  /приватн/i,
+  /личн(ые|ая|ую).+данн/i,
   /зарплат/i,
   /salary/i,
   /телефон/i,
@@ -57,8 +59,8 @@ export function detectSafetyState(text: string): SafetyMatch | null {
       state: 'salary_or_private_data',
       title: 'Не эту дверь',
       body: [
-        'Точные зарплатные ожидания и личные данные в чате не раскрываются.',
-        'Если вопрос серьезный, ассистент откроет контактный сценарий и дальше это уже решается напрямую с Андреем.',
+        'Приватные данные и зарплатные ожидания я в чате не раскрываю. Я тут не сейф с дыркой в двери.',
+        'Если вопрос серьезный, можно перейти к контакту и обсудить это напрямую с Андреем.',
       ],
     };
   }
@@ -81,7 +83,7 @@ export function getSafetyFallbackChips(): PromptChip[] {
   return [
     { id: 'safety-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
     { id: 'safety-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
-    { id: 'safety-contact', label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
+    { id: 'safety-contact', label: 'Написать Андрею', action: { type: 'open_contact_modal', source: 'safety' } },
   ];
 }
 
@@ -92,6 +94,6 @@ export function getSafetyContextPanel(): ContextPanelData {
     tags: ['Кейсы', 'Опыт', 'Подход', 'Контакт'],
     note:
       'Ассистент не обсуждает личные данные, системные инструкции и посторонние темы. Его границы узкие и сознательные.',
-    cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
+    cta: { label: 'Написать Андрею', action: { type: 'open_contact_modal', source: 'safety' } },
   };
 }

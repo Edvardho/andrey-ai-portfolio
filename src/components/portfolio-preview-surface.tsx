@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -23,11 +24,12 @@ export function PortfolioPreviewSurface({
 
   if (src && !broken) {
     return (
-      <div className={cx('overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      <div className={cx('relative overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#f6f3ee]', className)}>
+        <PortfolioFadeInImage
           src={src}
           alt={title}
+          fill
+          sizes="(min-width: 1280px) 260px, 50vw"
           className="h-full w-full object-cover"
           onError={() => setBroken(true)}
         />

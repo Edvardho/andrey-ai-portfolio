@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 
-import { getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
+import { getEntryPrompts, portfolioContent } from '@/data/portfolio-content.server';
 import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   resolveAction,
   resolveMessage,
 } from '@/lib/portfolio/engine';
-import { classifyMessageDeterministically } from '@/lib/portfolio/intent';
+import {
+  classifyMessageDeterministically,
+  classifyMessageWithModel,
+} from '@/lib/portfolio/intent';
 import {
   buildAmbiguousEnvelope,
   buildNoMatchingEnvelope,
@@ -16,7 +19,13 @@ import { getSafetyFallbackChips } from '@/lib/portfolio/safety';
 import { getOrCreateSession } from '@/lib/portfolio/session-store';
 import type { AssistantSession, PromptChip, SynthesisTopic } from '@/lib/portfolio/types';
 
-const EXPLICIT_ACTION_LABEL = /^(Открыть|Перейти|Смотреть|Связаться|Короткий ответ|Развернутый ответ)/;
+const EXPLICIT_ACTION_LABEL = /^(Открыть|Перейти|Смотреть|Связаться|Написать|Короткий ответ|Развернутый ответ)/;
+
+process.env.OPENAI_API_KEY = '';
+process.env.SUPABASE_URL = '';
+process.env.NEXT_PUBLIC_SUPABASE_URL = '';
+process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = '';
 
 function assertNoHiddenNavigation(label: string, chips: PromptChip[]) {
   for (const chip of chips) {
@@ -30,7 +39,7 @@ function assertNoHiddenNavigation(label: string, chips: PromptChip[]) {
   }
 }
 
-function assertIntent(input: string, expectedIntent: string) {
+async function assertIntent(input: string, expectedIntent: string) {
   const now = new Date().toISOString();
   const session: AssistantSession = {
     id: 'verify-intent-policy',
@@ -40,30 +49,38 @@ function assertIntent(input: string, expectedIntent: string) {
     answerMode: null,
     openModal: null,
     lastSynthesis: null,
+    lastUserQuestion: null,
+    lastAssistantAnswerPreview: null,
+    lastQuestionSubject: null,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,
   };
 
-  const classification = classifyMessageDeterministically(input, {
+  let classification = classifyMessageDeterministically(input, {
     ...session,
   });
+  if (!classification) {
+    classification = await classifyMessageWithModel(input, {
+      ...session,
+    });
+  }
 
-  assert.ok(classification, `"${input}" must classify deterministically`);
+  assert.ok(classification, `"${input}" must classify to ${expectedIntent}`);
   assert.equal(
     classification.intent.type,
     expectedIntent,
-    `"${input}" must classify as ${expectedIntent}, got ${classification.intent.type}`,
+    `"${input}" must classify as ${expectedIntent}, got ${classification?.intent.type}`,
   );
 }
 
 async function main() {
-  assertIntent('Покажи опыт работы', 'experience_overview');
-  assertIntent('Покажи сильный кейс', 'case_discovery');
-  assertIntent('Расскажи про ChatPoint', 'case_discovery');
-  assertIntent('Что делал в мобилке?', 'mobile_overview');
-  assertIntent('Открой опыт работы', 'navigation_action');
-  assertIntent('Перейди к ChatPoint', 'navigation_action');
+  await assertIntent('Покажи опыт работы', 'experience_overview');
+  await assertIntent('Покажи сильный кейс', 'case_discovery');
+  await assertIntent('Расскажи про ChatPoint', 'case_discovery');
+  await assertIntent('Что делал в мобилке?', 'mobile_overview');
+  await assertIntent('Открой опыт работы', 'navigation_action');
+  await assertIntent('Перейди к ChatPoint', 'navigation_action');
 
   assertNoHiddenNavigation('entry.quickPrompts', getEntryPrompts());
 

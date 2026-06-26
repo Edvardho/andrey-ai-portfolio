@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 
-import { portfolioContent } from '@/data/portfolio-content';
+import { experience } from '@/data/portfolio-global-content';
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
@@ -37,10 +37,10 @@ export function PortfolioAssistantExperienceSummary({
 }: Props) {
   const reveal = renderMode === 'reveal';
 
-  if (envelope.presentationVariant === 'experience_summary' && portfolioContent.experience.structuredSummary) {
+  if (envelope.presentationVariant === 'experience_summary' && experience.structuredSummary) {
     return (
       <PortfolioStructuredExperienceSummary
-        experience={portfolioContent.experience}
+        experience={experience}
         onChipClick={onChipClick}
         onCta={onCta}
         renderMode={renderMode}
@@ -74,7 +74,7 @@ export function PortfolioAssistantExperienceSummary({
       </div>
 
       {envelope.chips.length ? (
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-[#EBEDF2] pt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
           ))}

@@ -39,6 +39,10 @@ async function main() {
   assert.equal(limitEnvelope.viewType, 'limit_reached');
   assert.equal(limitEnvelope.safetyState, 'limit_reached');
 
+  const { envelope: identityEnvelope } = await resolveMessage(bootstrapSession, 'Кто такой Андрей?');
+  assert.equal(identityEnvelope.viewType, 'general_synthesis');
+  assert.equal(identityEnvelope.meta.responseSource, 'facts_constrained_synthesis');
+
   const { envelope: noMatchEnvelope } = await resolveMessage(bootstrapSession, 'Покажи кейс про космический кейс, которого нет');
   assert.equal(noMatchEnvelope.viewType, 'no_matching_case');
 

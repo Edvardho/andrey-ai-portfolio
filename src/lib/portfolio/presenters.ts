@@ -1,3 +1,4 @@
+import { getCaseFactPack } from '@/data/portfolio-case-facts';
 import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   getCaseById,
@@ -7,11 +8,14 @@ import {
   getHiringGuide,
   getRailItems,
   portfolioContent,
-} from '@/data/portfolio-content';
+} from '@/data/portfolio-content.server';
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {
+  AnswerType,
   AnswerMode,
   AssistantEnvelope,
+  AssistantReplyState,
   AssistantSession,
   ContactOption,
   ContentBlock,
@@ -22,6 +26,8 @@ import type {
   SafetyState,
   SelectedContext,
   SynthesisSnapshot,
+  QueryScope,
+  QuestionSubject,
   UIAction,
   UIState,
   ViewType,
@@ -41,14 +47,86 @@ type BaseEnvelopeOptions = {
   safetyState?: SafetyState;
   nextActions?: UIAction[];
   responseSource?: ResponseSource;
+  assistantReplyState?: AssistantReplyState;
+  answerType?: AnswerType | null;
+  queryScope?: QueryScope | null;
+  questionSubject?: QuestionSubject | null;
 };
 
 type HiringGuideOverrides = Partial<
-  Pick<BaseEnvelopeOptions, 'viewType' | 'presentationVariant' | 'contentBlocks' | 'chips' | 'nextActions'>
+  Pick<BaseEnvelopeOptions, 'viewType' | 'presentationVariant' | 'contentBlocks' | 'chips' | 'nextActions' | 'assistantReplyState'>
 >;
 
 function getPromptChipActions(chips: PromptChip[]): UIAction[] {
   return chips.flatMap((chip) => (chip.action ? [chip.action] : []));
+}
+
+function getMessageChipTopic(chip: PromptChip): SynthesisSnapshot['topic'] | null {
+  if (!('message' in chip) || typeof chip.message !== 'string') {
+    return null;
+  }
+
+  const message = chip.message.toLowerCase();
+
+  if (/опыт работы|его опыт|пройдись по.*опыт/.test(message)) {
+    return 'experience';
+  }
+
+  if (/кто такой|расскажи про андрея/.test(message)) {
+    return 'identity';
+  }
+
+  if (/ограничени|слабое место|слабые зоны|риск/.test(message)) {
+    return 'risks';
+  }
+
+  if (/сильн.+кейс|альфа/.test(message)) {
+    return 'strengths';
+  }
+
+  return null;
+}
+
+function getMessageChipQuestionSubject(chip: PromptChip): QuestionSubject | null {
+  if (!('message' in chip) || typeof chip.message !== 'string') {
+    return null;
+  }
+
+  const message = chip.message.toLowerCase();
+
+  if (/интервью|звать|нанять/.test(message)) {
+    return 'interview_decision';
+  }
+
+  if (/слабое место|ограничени|риск/.test(message)) {
+    return 'risk_check';
+  }
+
+  if (/опыт работы|его опыт|пройдись по.*опыт/.test(message)) {
+    return 'experience_summary';
+  }
+
+  return null;
+}
+
+function filterRedundantSynthesisChips(
+  synthesis: SynthesisSnapshot,
+  chips: PromptChip[],
+): PromptChip[] {
+  return chips.filter((chip) => {
+    const chipTopic = getMessageChipTopic(chip);
+    const chipSubject = getMessageChipQuestionSubject(chip);
+
+    if (chipTopic && chipTopic === synthesis.topic) {
+      return false;
+    }
+
+    if (chipSubject && chipSubject === synthesis.questionSubject) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function createEnvelope({
@@ -65,6 +143,10 @@ function createEnvelope({
   safetyState = 'none',
   nextActions = [],
   responseSource = 'authored',
+  assistantReplyState = 'authored_reply',
+  answerType = null,
+  queryScope = null,
+  questionSubject = null,
 }: BaseEnvelopeOptions): AssistantEnvelope {
   return {
     sessionId: session.id,
@@ -84,8 +166,27 @@ function createEnvelope({
       userMessagesUsed: session.userMessageCount,
       userMessagesRemaining: Math.max(MAX_USER_MESSAGES_PER_SESSION - session.userMessageCount, 0),
       responseSource,
+      assistantReplyState,
+      sessionStoreMode: getSessionStoreMode(),
+      answerType,
+      queryScope,
+      questionSubject,
     },
   };
+}
+
+function getReplyStateForSynthesis(status: SynthesisSnapshot['answerStatus']): AssistantReplyState {
+  switch (status) {
+    case 'insufficient_facts':
+      return 'insufficient_facts';
+    case 'needs_clarification':
+      return 'clarifying_question';
+    case 'navigation_suggested':
+      return 'navigation_suggestion';
+    case 'grounded':
+    default:
+      return 'grounded_answer';
+  }
 }
 
 export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope {
@@ -155,12 +256,18 @@ export function buildGeneralSynthesisEnvelope(
   synthesis: SynthesisSnapshot,
 ): AssistantEnvelope {
   const config = getSynthesisTopicConfig(synthesis.topic);
+  const chips = filterRedundantSynthesisChips(synthesis, synthesis.chips ?? config.chips);
   const contentBlocks: ContentBlock[] = [
     {
       type: 'lead',
-      title: synthesis.title,
-      body: synthesis.paragraphs,
+      title: '',
+      body: [synthesis.intro, ...synthesis.followupParagraphs],
     },
+    ...synthesis.sections.map((section) => ({
+      type: 'section' as const,
+      title: section.title,
+      body: [section.body],
+    })),
   ];
 
   if (synthesis.bullets.length) {
@@ -187,10 +294,14 @@ export function buildGeneralSynthesisEnvelope(
     viewType: 'general_synthesis',
     presentationVariant: synthesis.bullets.length ? 'bullet_reply' : 'plain_text_reply',
     contentBlocks,
-    chips: config.chips,
+    chips,
     contextPanel,
-    nextActions: getPromptChipActions(config.chips),
+    nextActions: getPromptChipActions(chips),
     responseSource: 'facts_constrained_synthesis',
+    assistantReplyState: getReplyStateForSynthesis(synthesis.answerStatus),
+    answerType: synthesis.answerType,
+    queryScope: synthesis.queryScope,
+    questionSubject: synthesis.questionSubject,
   });
 }
 
@@ -307,6 +418,7 @@ function buildHiringGuideEnvelope(
       hidden: true,
     },
     nextActions: overrides.nextActions ?? getPromptChipActions(chips),
+    assistantReplyState: overrides.assistantReplyState ?? 'authored_reply',
   });
 }
 
@@ -314,35 +426,27 @@ function getCaseDiscoveryBlocks(targetCaseId?: string): ContentBlock[] {
   const guide = getHiringGuide('caseDiscovery');
   const normalizedTargetCaseId = targetCaseId && getCaseById(targetCaseId) ? targetCaseId : 'alfa-smart';
   const caseContent = getCaseById(normalizedTargetCaseId);
+  const caseFacts = getCaseFactPack(normalizedTargetCaseId);
 
-  if (!caseContent || normalizedTargetCaseId === 'alfa-smart') {
+  if (!caseContent || !caseFacts) {
     return guide.contentBlocks;
   }
 
-  return guide.contentBlocks.map((block, index) => {
-    if (index === 0 && block.type === 'lead') {
-      return {
-        ...block,
-        title: `Если нужен один релевантный кейс, начни с ${caseContent.shortTitle}`,
-        body: [
-          `${caseContent.shortTitle} — самый прямой ответ на этот запрос. Я могу коротко объяснить логику здесь, а полный сигнал лежит в самом кейсе.`,
-          caseContent.id === 'chatpoint'
-            ? 'Это не success-story ради галочки, а полезный anti-case: видно, где Андрей видел продуктовый риск и не прятался за delivery.'
-            : 'Если нужна полная картина, лучше открыть сам кейс, а не пытаться выжать весь контекст из одного короткого ответа.',
-        ],
-      } satisfies ContentBlock;
-    }
-
-    if (block.type === 'cta') {
-      return {
-        ...block,
-        label: caseContent.id === 'chatpoint' ? `Перейти к ${caseContent.shortTitle}` : `Открыть ${caseContent.shortTitle}`,
-        action: { type: 'open_case_summary', caseId: caseContent.id },
-      } satisfies ContentBlock;
-    }
-
-    return block;
-  });
+  return [
+    {
+      type: 'lead',
+      title: `Кратко про ${caseContent.shortTitle}`,
+      body: [
+        caseFacts.recruiterSummary.intro,
+        caseFacts.recruiterSummary.followup ?? 'Если нужна полная картина, лучше открыть сам кейс и посмотреть его целиком.',
+      ].filter(Boolean),
+    },
+    {
+      type: 'cta',
+      label: `Открыть ${caseContent.shortTitle}`,
+      action: { type: 'open_case_summary', caseId: caseContent.id },
+    },
+  ];
 }
 
 export function buildIdentityIntroEnvelope(session: AssistantSession): AssistantEnvelope {
@@ -354,7 +458,9 @@ export function buildAssistantIntroEnvelope(session: AssistantSession): Assistan
 }
 
 export function buildCareerSummaryEnvelope(session: AssistantSession): AssistantEnvelope {
-  return buildHiringGuideEnvelope(session, 'careerSummary');
+  return buildHiringGuideEnvelope(session, 'careerSummary', {
+    assistantReplyState: 'navigation_suggestion',
+  });
 }
 
 export function buildCaseDiscoveryEnvelope(
@@ -363,11 +469,14 @@ export function buildCaseDiscoveryEnvelope(
 ): AssistantEnvelope {
   return buildHiringGuideEnvelope(session, 'caseDiscovery', {
     contentBlocks: getCaseDiscoveryBlocks(targetCaseId ?? undefined),
+    assistantReplyState: 'navigation_suggestion',
   });
 }
 
 export function buildMobileSummaryEnvelope(session: AssistantSession): AssistantEnvelope {
-  return buildHiringGuideEnvelope(session, 'mobileSummary');
+  return buildHiringGuideEnvelope(session, 'mobileSummary', {
+    assistantReplyState: 'navigation_suggestion',
+  });
 }
 
 export function buildStrengthsEnvelope(session: AssistantSession): AssistantEnvelope {
@@ -476,6 +585,7 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
       cta: { label: 'Открыть контакты', action: { type: 'open_contact_modal', source: 'limit' } },
     },
     nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'safety_refusal',
   });
 }
 
@@ -509,6 +619,7 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
       hidden: true,
     },
     nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'clarifying_question',
   });
 }
 
@@ -545,6 +656,7 @@ export function buildNoMatchingEnvelope(
       hidden: true,
     },
     nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'insufficient_facts',
   });
 }
 
@@ -568,8 +680,8 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
         type: 'lead',
         title: 'Этот вопрос вне границ ассистента',
         body: [
-          'Я не изображаю всезнающий чат обо всем на свете. Моя работа уже: помочь быстро оценить Андрея по опыту, кейсам, сильным сторонам, ограничениям и доказательствам.',
-          'Если тебе нужен реальный hiring signal, лучше вернуться в эти границы, а не устраивать мне викторину по биткоину или погоде.',
+          'Я тут не для того, чтобы развлекать тебя случайными байками. За этим лучше к КВН, Comedy Club или в любую соцсеть, где алгоритм уже потерял надежду.',
+          'Моя зона уже: быстро оценить Андрея по опыту, кейсам, сильным сторонам, ограничениям и доказательствам.',
         ],
       },
     ],
@@ -579,6 +691,7 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
       hidden: true,
     },
     nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'safety_refusal',
   });
 }
 
@@ -603,10 +716,36 @@ export function buildSafetyEnvelope(
       subtitle: 'Safety',
       tags: ['Кейсы', 'Опыт', 'Контакт'],
       note: 'Ассистент держит узкий scope специально: так меньше шума и выше доверие к ответам.',
-      cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'safety' } },
+      cta: { label: 'Написать Андрею', action: { type: 'open_contact_modal', source: 'safety' } },
       hidden: true,
     },
     nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'safety_refusal',
+  });
+}
+
+export function buildErrorRetryEnvelope(session: AssistantSession): AssistantEnvelope {
+  return createEnvelope({
+    session,
+    uiState: 'fallback',
+    viewType: 'unsupported_request',
+    presentationVariant: 'refusal_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: 'Ответ не загрузился',
+        body: [
+          'Это техническая ошибка запроса, а не нехватка фактов в портфолио. Можно повторить попытку.',
+        ],
+      },
+    ],
+    chips: [],
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    assistantReplyState: 'error_retry',
   });
 }
 
@@ -617,19 +756,12 @@ export function buildLoadingEnvelope(session: AssistantSession): AssistantEnvelo
     viewType: 'loading',
     presentationVariant: 'loading_row',
     selectedContext: { kind: 'none', id: null, label: null },
-    contentBlocks: [
-      {
-        type: 'lead',
-        title: 'Думаю над маршрутом ответа',
-        body: [
-          'Ассистент не должен стрелять в темноту. Сначала он определяет, какой именно state открыть: кейс, опыт, breadth или контакт.',
-        ],
-      },
-    ],
+    contentBlocks: [],
     contextPanel: {
       ...portfolioContent.entry.contextPanel,
       hidden: true,
     },
+    assistantReplyState: 'thinking',
   });
 }
 

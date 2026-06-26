@@ -1,3 +1,23 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+// Load .env.local for script execution context
+const envPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf-8');
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const idx = trimmed.indexOf('=');
+      if (idx !== -1) {
+        const key = trimmed.substring(0, idx).trim();
+        const val = trimmed.substring(idx + 1).trim();
+        process.env[key] = val;
+      }
+    }
+  }
+}
+
 import {
   batch1CuratedFixtures,
   batch3ExploratoryFixtures,

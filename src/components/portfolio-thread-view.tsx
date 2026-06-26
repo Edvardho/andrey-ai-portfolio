@@ -726,7 +726,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   });
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       <div
         ref={threadViewportRef}
         onScroll={handleScroll}
@@ -734,9 +734,9 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         onTouchMove={handleManualScrollIntent}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
-        className="min-h-0 h-full overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
       >
-        <div ref={threadContentRef} className="space-y-7 px-6">
+        <div ref={threadContentRef} className="space-y-7 px-6 pb-6">
           {!items.length && !loading && !error ? (
             <div className="w-full max-w-[798px] rounded-[24px] border border-[#EBEDF2] bg-[#FCFDFF] px-5 py-4 text-[15px] leading-6 text-[#5E606A]">
               Задайте вопрос ассистенту или выберите кейс слева.
@@ -760,6 +760,8 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
                   onChipClick={onChipClick}
                   onCta={onCta}
                   onOpenArtifact={onOpenArtifact}
+                  canRetryError={canRetryError}
+                  onRetryError={onRetryError}
                   renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
                 />
               </motion.div>

@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import Image from 'next/image';
 import type { CSSProperties } from 'react';
 
 export type EntryProjectPromptPreview = {
@@ -36,10 +37,12 @@ export function PortfolioProjectPromptCard({
           style={preview.fillStyle}
         />
         <div className="absolute inset-0 overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={preview.src}
             alt={title}
+            width={640}
+            height={508}
+            sizes="320px"
             className={clsx(preview.imageClassName, 'transition-transform duration-200 group-hover:scale-[1.02]')}
           />
         </div>

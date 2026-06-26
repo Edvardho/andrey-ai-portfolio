@@ -1,11 +1,18 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
-import { getCaseById, getContactContent, getRailItems, getEntryPrompts, portfolioContent } from '@/data/portfolio-content';
-import { buildClientEnvelopeForAction } from '@/lib/portfolio/client-seeds';
+import {
+  getLoadedCaseById,
+  isCaseLoaded,
+  loadCaseById,
+} from '@/data/portfolio-case-loader.client';
+import { additionalCasesContent, experience, mobileOverview } from '@/data/portfolio-global-content';
+import { getContactContent, getEntryPrompts, getRailItems } from '@/data/portfolio-index';
+import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -103,6 +110,13 @@ type LastFailedRequest =
       kind: 'fresh-context';
       targetContextId: ContextId;
       action: UIAction;
+    }
+  | {
+      kind: 'case-module';
+      targetContextId: ContextId;
+      action: UIAction;
+      userLabel?: string;
+      appendUserBubble?: boolean;
     };
 
 const THREAD_STORAGE_KEY = 'ai-portfolio-context-threads-v2';
@@ -141,6 +155,12 @@ function getContextIdFromEnvelope(envelope: AssistantEnvelope): ContextId {
   return 'entry';
 }
 
+async function ensureEnvelopeCaseLoaded(envelope: AssistantEnvelope) {
+  if (envelope.selectedContext.kind === 'case') {
+    await loadCaseById(envelope.selectedContext.id);
+  }
+}
+
 function resolveReplyThreadContextId(
   currentContextId: ContextId,
   body: ChatRequestBody,
@@ -174,6 +194,29 @@ function createUserThreadItem(text: string): ThreadItem {
     text,
     hasAnimated: false,
   };
+}
+
+function reportCaseTransitionMetric({
+  caseId,
+  durationMs,
+  mode,
+  path,
+}: {
+  caseId: string;
+  durationMs: number;
+  mode: 'cold' | 'warm';
+  path: 'known-context' | 'restore';
+}) {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  console.debug('[portfolio-case-transition]', {
+    caseId,
+    mode,
+    path,
+    durationMs: Math.round(durationMs),
+  });
 }
 
 function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
@@ -229,6 +272,21 @@ function getContextIdFromAction(action: UIAction): ContextId | null {
       return 'mobile-experience';
     case 'open_additional_cases_overview':
       return 'additional-cases';
+    default:
+      return null;
+  }
+}
+
+function getCaseIdFromAction(action: UIAction): string | null {
+  switch (action.type) {
+    case 'open_case_summary':
+    case 'open_case_detail':
+    case 'open_case_route':
+    case 'open_mobile_case_summary':
+    case 'open_mobile_case_detail':
+    case 'open_experience_route':
+    case 'open_image_modal':
+      return action.caseId;
     default:
       return null;
   }
@@ -356,7 +414,7 @@ function buildImageModalPayload(caseId: string, artifactId: string): ModalPayloa
 }
 
 function getArtifact(caseId: string, artifactId: string): Artifact | undefined {
-  return getCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
+  return getLoadedCaseById(caseId)?.artifacts.find((artifact) => artifact.id === artifactId);
 }
 
 function isBootstrapEntryThread(thread: ContextThread | undefined): boolean {
@@ -405,17 +463,17 @@ function inferWorkspaceMode(
 
 function getCurrentContextPanel(envelope: AssistantEnvelope): AssistantEnvelope['contextPanel'] {
   if (envelope.selectedContext.kind === 'case') {
-    return getCaseById(envelope.selectedContext.id)?.contextPanel ?? envelope.contextPanel;
+    return getLoadedCaseById(envelope.selectedContext.id)?.contextPanel ?? envelope.contextPanel;
   }
 
   if (envelope.selectedContext.kind === 'experience') {
-    return portfolioContent.experience.contextPanel;
+    return experience.contextPanel;
   }
 
   if (envelope.selectedContext.kind === 'overview') {
     return envelope.selectedContext.id === 'mobile-experience'
-      ? portfolioContent.mobileOverview.contextPanel
-      : portfolioContent.additionalCases.contextPanel;
+      ? mobileOverview.contextPanel
+      : additionalCasesContent.contextPanel;
   }
 
   return envelope.contextPanel;
@@ -468,31 +526,21 @@ function persistThreadState(payload: PersistedThreadState) {
   }
 }
 
-function createClientFallbackSessionId() {
-  if (typeof globalThis.crypto !== 'undefined' && typeof globalThis.crypto.randomUUID === 'function') {
-    return `local-${globalThis.crypto.randomUUID()}`;
-  }
-
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createBootstrapFallbackEnvelope(): AssistantEnvelope {
-  const envelope = buildClientEnvelopeForAction(
-    { type: 'open_entry' },
-    createClientFallbackSessionId(),
-    DEFAULT_SESSION_META.used,
-  );
-
-  if (!envelope) {
-    throw new Error('Failed to create local bootstrap fallback.');
-  }
-
-  return envelope;
-}
-
 function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
   return {
     ...envelope,
+    meta: {
+      ...envelope.meta,
+      assistantReplyState: envelope.meta.assistantReplyState ?? (
+        envelope.meta.responseSource === 'facts_constrained_synthesis'
+          ? 'grounded_answer'
+          : 'authored_reply'
+      ),
+      sessionStoreMode: envelope.meta.sessionStoreMode ?? 'memory',
+      answerType: envelope.meta.answerType ?? null,
+      queryScope: envelope.meta.queryScope ?? null,
+      questionSubject: envelope.meta.questionSubject ?? null,
+    },
     contextPanel: getCurrentContextPanel(envelope),
   };
 }
@@ -504,7 +552,7 @@ function getContextPanelPayloadFromContextId(contextId: ContextId): ContextPanel
 
   if (contextId === 'experience') {
     return {
-      contextPanel: portfolioContent.experience.contextPanel,
+      contextPanel: experience.contextPanel,
       selectedContext: {
         kind: 'experience',
         id: 'experience',
@@ -515,7 +563,7 @@ function getContextPanelPayloadFromContextId(contextId: ContextId): ContextPanel
 
   if (contextId === 'mobile-experience') {
     return {
-      contextPanel: portfolioContent.mobileOverview.contextPanel,
+      contextPanel: mobileOverview.contextPanel,
       selectedContext: {
         kind: 'overview',
         id: 'mobile-experience',
@@ -526,7 +574,7 @@ function getContextPanelPayloadFromContextId(contextId: ContextId): ContextPanel
 
   if (contextId === 'additional-cases') {
     return {
-      contextPanel: portfolioContent.additionalCases.contextPanel,
+      contextPanel: additionalCasesContent.contextPanel,
       selectedContext: {
         kind: 'overview',
         id: 'additional-cases',
@@ -540,7 +588,7 @@ function getContextPanelPayloadFromContextId(contextId: ContextId): ContextPanel
   }
 
   const caseId = contextId.replace(/^case:/, '');
-  const caseContent = getCaseById(caseId);
+  const caseContent = getLoadedCaseById(caseId);
 
   if (!caseContent) {
     return null;
@@ -645,7 +693,8 @@ export function PortfolioShell() {
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
   const [input, setInput] = useState('');
-  const [loadingContextId, setLoadingContextId] = useState<ContextId | null>('entry');
+  const [loadingContextId, setLoadingContextId] = useState<ContextId | null>(null);
+  const [bootstrappingContextId, setBootstrappingContextId] = useState<ContextId | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFailedRequest, setLastFailedRequest] = useState<LastFailedRequest | null>(null);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -658,6 +707,7 @@ export function PortfolioShell() {
   const threadViewRef = useRef<PortfolioThreadViewHandle | null>(null);
   const serverContextIdRef = useRef<ContextId | null>(null);
   const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+  const caseLoadRequestRef = useRef(0);
   const sessionIdRef = useSyncedRef(sessionId);
   const activeContextIdRef = useSyncedRef(activeContextId);
   const workspaceModeRef = useSyncedRef(workspaceMode);
@@ -672,13 +722,9 @@ export function PortfolioShell() {
   const currentThread = normalizedThreadsByContextId[activeContextId] ?? createContextThread(activeContextId);
   const currentContextUiState = contextUiStateByContextId[activeContextId] ?? DEFAULT_CONTEXT_UI_STATE;
   const currentCaseId = isCaseContextId(activeContextId) ? activeContextId.replace(/^case:/, '') : null;
-  const currentContextPanelPayload = useMemo(
-    () => getContextPanelPayloadFromContextId(activeContextId),
-    [activeContextId],
-  );
+  const currentContextPanelPayload = getContextPanelPayloadFromContextId(activeContextId);
   const { selectedRailId, showAssistantReturn, showChatStage, showLandingStage } = usePortfolioStageRouting({
     activeContextId,
-    hasHydrated,
     isBootstrapEntryThread: (thread) => isBootstrapEntryThread(thread as ContextThread | undefined),
     isCaseContextId,
     threadsByContextId: normalizedThreadsByContextId,
@@ -876,6 +922,22 @@ export function PortfolioShell() {
     });
   }
 
+  function removeErrorRetryItems(contextId: ContextId) {
+    upsertThread(contextId, (thread) => {
+      const items = thread.items.filter((item) => (
+        item.kind !== 'assistant' || item.envelope.meta.assistantReplyState !== 'error_retry'
+      ));
+      const lastEnvelope = [...items].reverse().find((item) => item.kind === 'assistant')?.envelope ?? null;
+
+      return {
+        ...thread,
+        items,
+        lastEnvelope,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }
+
   function replaceThreadWithEnvelope(contextId: ContextId, envelope: AssistantEnvelope) {
     setThreadsByContextId((current) => ({
       ...current,
@@ -951,17 +1013,6 @@ export function PortfolioShell() {
     return (await response.json()) as AssistantEnvelope;
   }
 
-  async function fetchBootstrapEnvelope(nextSessionId?: string | null): Promise<AssistantEnvelope> {
-    const query = nextSessionId ? `?sessionId=${encodeURIComponent(nextSessionId)}` : '';
-    const response = await fetch(`/api/assistant/bootstrap${query}`);
-
-    if (!response.ok) {
-      throw new Error(`Bootstrap failed with ${response.status}`);
-    }
-
-    return (await response.json()) as AssistantEnvelope;
-  }
-
   async function ensureServerContextSynced(contextId: ContextId) {
     if (!sessionIdRef.current || serverContextIdRef.current === contextId) {
       return;
@@ -990,6 +1041,7 @@ export function PortfolioShell() {
         sessionId: sessionIdRef.current ?? undefined,
         input: { type: 'action', action },
       });
+      await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
 
       setSessionId(envelope.sessionId);
@@ -1003,16 +1055,15 @@ export function PortfolioShell() {
     }
   }
 
-  function openKnownContextLocally(
+  async function openKnownContextLocally(
     action: UIAction,
     options?: { userLabel?: string; appendUserBubble?: boolean },
-  ): boolean {
-    const localEnvelope = buildClientEnvelopeForAction(action, sessionIdRef.current, sessionMeta.used);
-    if (!localEnvelope) {
-      return false;
-    }
-
-    const targetContextId = getContextIdFromEnvelope(localEnvelope);
+  ): Promise<boolean> {
+    const targetContextId = getContextIdFromAction(action);
+    const caseId = getCaseIdFromAction(action);
+    const wasCaseCold = Boolean(caseId && !isCaseLoaded(caseId));
+    const requestId = ++caseLoadRequestRef.current;
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
 
@@ -1020,48 +1071,108 @@ export function PortfolioShell() {
     setError(null);
     setLastFailedRequest(null);
 
-    if (targetContextId !== activeContextId) {
+    if (targetContextId && caseId && !isCaseLoaded(caseId)) {
       captureActiveThreadScrollState();
-      const items: ThreadItem[] = [];
-      if (shouldAppendUserBubble && userLabel) {
-        items.push(createUserThreadItem(userLabel));
-      }
-      items.push(createAssistantThreadItem(localEnvelope));
-
-      setThreadsByContextId((current) => ({
-        ...current,
-        [targetContextId]: {
-          contextId: targetContextId,
-          items,
-          lastEnvelope: localEnvelope,
-          initialized: true,
-          hasPlayedInitialReveal: false,
-          restoredFromStorage: false,
-          lastAnimatedAssistantMessageId: null,
-          scrollState: normalizeThreadScrollState(
-            {
-              isNearBottom: false,
-              hasUnseenAssistantContent: false,
-              lastSeenAssistantItemId: getLastAssistantItemId(items),
-            },
-            items,
-          ),
-          updatedAt: new Date().toISOString(),
-        },
-      }));
-      ensureContextUiState(targetContextId);
       setActiveContextId(targetContextId);
-      requestThreadTopScroll();
-    } else {
-      if (shouldAppendUserBubble && userLabel) {
-        appendUserToThread(targetContextId, userLabel);
-      }
-      appendAssistantToThread(targetContextId, localEnvelope);
+      setBootstrappingContextId(targetContextId);
+      setLoadingContextId(targetContextId);
       ensureContextUiState(targetContextId);
+      requestThreadTopScroll();
     }
 
-    void syncKnownContextInBackground(action);
-    return true;
+    try {
+      const caseContent = caseId ? await loadCaseById(caseId) : null;
+      if (requestId !== caseLoadRequestRef.current) {
+        return true;
+      }
+
+      const localEnvelope = buildClientEnvelopeForAction(
+        action,
+        sessionIdRef.current,
+        sessionMeta.used,
+        caseContent,
+      );
+      if (!localEnvelope) {
+        return false;
+      }
+
+      const resolvedContextId = getContextIdFromEnvelope(localEnvelope);
+
+      if (resolvedContextId !== activeContextIdRef.current || !threadsRef.current[resolvedContextId]?.initialized) {
+        captureActiveThreadScrollState();
+        const items: ThreadItem[] = [];
+        if (shouldAppendUserBubble && userLabel) {
+          items.push(createUserThreadItem(userLabel));
+        }
+        items.push(createAssistantThreadItem(localEnvelope));
+
+        setThreadsByContextId((current) => ({
+          ...current,
+          [resolvedContextId]: {
+            contextId: resolvedContextId,
+            items,
+            lastEnvelope: localEnvelope,
+            initialized: true,
+            hasPlayedInitialReveal: false,
+            restoredFromStorage: false,
+            lastAnimatedAssistantMessageId: null,
+            scrollState: normalizeThreadScrollState(
+              {
+                isNearBottom: false,
+                hasUnseenAssistantContent: false,
+                lastSeenAssistantItemId: getLastAssistantItemId(items),
+              },
+              items,
+            ),
+            updatedAt: new Date().toISOString(),
+          },
+        }));
+        ensureContextUiState(resolvedContextId);
+        setActiveContextId(resolvedContextId);
+        requestThreadTopScroll();
+      } else {
+        if (shouldAppendUserBubble && userLabel) {
+          appendUserToThread(resolvedContextId, userLabel);
+        }
+        appendAssistantToThread(resolvedContextId, localEnvelope);
+        ensureContextUiState(resolvedContextId);
+      }
+
+      void syncKnownContextInBackground(action);
+      if (caseId) {
+        reportCaseTransitionMetric({
+          caseId,
+          durationMs: (typeof performance !== 'undefined' ? performance.now() : startedAt) - startedAt,
+          mode: wasCaseCold ? 'cold' : 'warm',
+          path: 'known-context',
+        });
+      }
+      return true;
+    } catch (caughtError) {
+      if (requestId !== caseLoadRequestRef.current || !targetContextId) {
+        return true;
+      }
+
+      const errorEnvelope = buildClientErrorRetryEnvelope(
+        sessionIdRef.current,
+        sessionMeta.used,
+        caughtError instanceof Error ? caughtError.message : 'Не удалось загрузить кейс.',
+      );
+      setLastFailedRequest({
+        kind: 'case-module',
+        targetContextId,
+        action,
+        userLabel,
+        appendUserBubble: shouldAppendUserBubble,
+      });
+      replaceThreadWithEnvelope(targetContextId, errorEnvelope);
+      return true;
+    } finally {
+      if (requestId === caseLoadRequestRef.current) {
+        setBootstrappingContextId(null);
+        setLoadingContextId(null);
+      }
+    }
   }
 
   async function openFreshContext(
@@ -1090,6 +1201,7 @@ export function PortfolioShell() {
         sessionId: sessionIdRef.current ?? undefined,
         input: { type: 'action', action },
       });
+      await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
 
       setSessionId(envelope.sessionId);
@@ -1098,12 +1210,18 @@ export function PortfolioShell() {
       setActiveContextId(nextContextId);
       setServerContextId(nextContextId);
     } catch (caughtError) {
+      const errorEnvelope = buildClientErrorRetryEnvelope(
+        sessionIdRef.current,
+        sessionMeta.used,
+        caughtError instanceof Error ? caughtError.message : undefined,
+      );
       setLastFailedRequest({
         kind: 'fresh-context',
         targetContextId,
         action,
       });
-      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+      appendAssistantToThread(targetContextId, errorEnvelope);
+      setError(null);
     } finally {
       setLoadingContextId(null);
     }
@@ -1137,6 +1255,7 @@ export function PortfolioShell() {
       }
 
       const envelope = await fetchChatEnvelope(body);
+      await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
       const targetContextId = options?.forceThreadContextId ?? resolveReplyThreadContextId(contextId, body, envelope);
 
@@ -1150,6 +1269,12 @@ export function PortfolioShell() {
       }
       setLastFailedRequest(null);
     } catch (caughtError) {
+      const targetContextId = options?.forceThreadContextId ?? contextId;
+      const errorEnvelope = buildClientErrorRetryEnvelope(
+        sessionIdRef.current,
+        sessionMeta.used,
+        caughtError instanceof Error ? caughtError.message : undefined,
+      );
       setLastFailedRequest({
         kind: 'chat',
         contextId,
@@ -1158,14 +1283,66 @@ export function PortfolioShell() {
         clearInputOnSuccess: Boolean(options?.clearInputOnSuccess),
         forceThreadContextId: options?.forceThreadContextId,
       });
-      setError(caughtError instanceof Error ? caughtError.message : 'Unknown error');
+      appendAssistantToThread(targetContextId, errorEnvelope);
+      setError(null);
     } finally {
       setLoadingContextId(null);
     }
   }
 
-  function restoreExistingContext(contextId: ContextId) {
+  async function restoreExistingContext(contextId: ContextId) {
     const targetThread = threadsRef.current[contextId];
+    const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
+    if (isCaseContextId(contextId)) {
+      const caseId = contextId.replace(/^case:/, '');
+      const requestId = ++caseLoadRequestRef.current;
+      const wasCaseCold = !isCaseLoaded(caseId);
+      if (!isCaseLoaded(caseId)) {
+        captureActiveThreadScrollState();
+        setActiveContextId(contextId);
+        setBootstrappingContextId(contextId);
+        setLoadingContextId(contextId);
+        requestThreadTopScroll();
+        try {
+          await loadCaseById(caseId);
+        } catch (caughtError) {
+          if (requestId === caseLoadRequestRef.current) {
+            const action = targetThread ? getSyncActionForContext(targetThread) : getCanonicalActionForCase(caseId);
+            const errorEnvelope = buildClientErrorRetryEnvelope(
+              sessionIdRef.current,
+              sessionMeta.used,
+              caughtError instanceof Error ? caughtError.message : 'Не удалось загрузить кейс.',
+            );
+            replaceThreadWithEnvelope(contextId, errorEnvelope);
+            setLastFailedRequest({
+              kind: 'case-module',
+              targetContextId: contextId,
+              action: action ?? getCanonicalActionForCase(caseId),
+            });
+          }
+          return;
+        } finally {
+          if (requestId === caseLoadRequestRef.current) {
+            setBootstrappingContextId(null);
+            setLoadingContextId(null);
+          }
+        }
+        if (requestId !== caseLoadRequestRef.current) {
+          return;
+        }
+      }
+
+      reportCaseTransitionMetric({
+        caseId,
+        durationMs: (typeof performance !== 'undefined' ? performance.now() : startedAt) - startedAt,
+        mode: wasCaseCold ? 'cold' : 'warm',
+        path: 'restore',
+      });
+    } else {
+      caseLoadRequestRef.current += 1;
+      setBootstrappingContextId(null);
+    }
+
     captureActiveThreadScrollState();
     clearModal();
     setError(null);
@@ -1185,12 +1362,23 @@ export function PortfolioShell() {
     setError(null);
 
     if (lastFailedRequest.kind === 'fresh-context') {
+      removeErrorRetryItems(lastFailedRequest.targetContextId);
       void openFreshContext(lastFailedRequest.targetContextId, lastFailedRequest.action, {
         appendUserBubble: false,
       });
       return;
     }
 
+    if (lastFailedRequest.kind === 'case-module') {
+      removeErrorRetryItems(lastFailedRequest.targetContextId);
+      void openKnownContextLocally(lastFailedRequest.action, {
+        userLabel: lastFailedRequest.userLabel,
+        appendUserBubble: lastFailedRequest.appendUserBubble,
+      });
+      return;
+    }
+
+    removeErrorRetryItems(lastFailedRequest.forceThreadContextId ?? lastFailedRequest.contextId);
     void appendAssistantResponse(lastFailedRequest.contextId, lastFailedRequest.body, {
       syncBeforeRequest: lastFailedRequest.syncBeforeRequest,
       clearInputOnSuccess: lastFailedRequest.clearInputOnSuccess,
@@ -1201,24 +1389,7 @@ export function PortfolioShell() {
   useEffect(() => {
     let cancelled = false;
 
-    function hydrateFromBootstrapEnvelope(
-      envelope: AssistantEnvelope,
-      options: { workspaceMode: WorkspaceMode; serverContextId: ContextId | null },
-    ) {
-      const contextId = getContextIdFromEnvelope(envelope);
-
-      setSessionId(envelope.sessionId);
-      updateSessionMeta(envelope);
-      replaceThreadWithEnvelope(contextId, envelope);
-      ensureContextUiState(contextId);
-      setActiveContextId(contextId);
-      setWorkspaceMode(options.workspaceMode);
-      setServerContextId(options.serverContextId);
-      setHasHydrated(true);
-    }
-
     async function bootstrap() {
-      setLoadingContextId('entry');
       setError(null);
 
       try {
@@ -1244,6 +1415,9 @@ export function PortfolioShell() {
               persistedWorkspaceMode === 'chat';
 
             if (shouldHydratePersistedState) {
+              if (isCaseContextId(persistedActiveContext)) {
+                await loadCaseById(persistedActiveContext.replace(/^case:/, ''));
+              }
               if (!cancelled) {
                 setSessionId(persisted.sessionId ?? null);
                 setThreadsByContextId(persistedThreads);
@@ -1252,7 +1426,6 @@ export function PortfolioShell() {
                 setWorkspaceMode(persistedWorkspaceMode);
                 setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
                 setServerContextId(null);
-                setLoadingContextId(null);
                 setHasHydrated(true);
               }
               return;
@@ -1262,27 +1435,14 @@ export function PortfolioShell() {
           clearPersistedThreadState();
         }
 
-        const envelope = await fetchBootstrapEnvelope();
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          setHasHydrated(true);
         }
-
-        hydrateFromBootstrapEnvelope(envelope, {
-          workspaceMode: 'landing',
-          serverContextId: getContextIdFromEnvelope(envelope),
-        });
       } catch (caughtError) {
         if (!cancelled) {
-          console.warn('Bootstrap failed; using local portfolio seed.', caughtError);
-          hydrateFromBootstrapEnvelope(createBootstrapFallbackEnvelope(), {
-            workspaceMode: 'landing',
-            serverContextId: null,
-          });
+          console.warn('Portfolio state hydration failed; continuing with local shell.', caughtError);
+          setHasHydrated(true);
           setError(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingContextId(null);
         }
       }
     }
@@ -1299,7 +1459,7 @@ export function PortfolioShell() {
 
   usePortfolioTextareaAutosize(input, textareaRef);
 
-  function handleChipClick(chip: PromptChip) {
+  async function handleChipClick(chip: PromptChip) {
     if (workspaceModeRef.current === 'landing') {
       startWorkspaceTransition('chip');
     }
@@ -1323,11 +1483,11 @@ export function PortfolioShell() {
 
     const targetContextId = getContextIdFromAction(chip.action);
     if (targetContextId && targetContextId !== activeContextId && threadsRef.current[targetContextId]?.initialized) {
-      restoreExistingContext(targetContextId);
+      await restoreExistingContext(targetContextId);
       return;
     }
 
-    if (openKnownContextLocally(chip.action, { userLabel: chip.label, appendUserBubble: true })) {
+    if (await openKnownContextLocally(chip.action, { userLabel: chip.label, appendUserBubble: true })) {
       return;
     }
 
@@ -1341,7 +1501,7 @@ export function PortfolioShell() {
     );
   }
 
-  function handleRailClick(item: RailItem) {
+  async function handleRailClick(item: RailItem) {
     if (workspaceModeRef.current === 'landing') {
       startWorkspaceTransition('case');
     }
@@ -1354,7 +1514,7 @@ export function PortfolioShell() {
     }
 
     if (threadsRef.current[targetContextId]?.initialized) {
-      restoreExistingContext(targetContextId);
+      await restoreExistingContext(targetContextId);
       return;
     }
 
@@ -1363,7 +1523,7 @@ export function PortfolioShell() {
         ? ({ type: 'open_experience_summary' } as UIAction)
         : getCanonicalActionForCase(item.id);
 
-    if (openKnownContextLocally(action, { appendUserBubble: false })) {
+    if (await openKnownContextLocally(action, { appendUserBubble: false })) {
       return;
     }
 
@@ -1375,16 +1535,17 @@ export function PortfolioShell() {
       return;
     }
 
-    restoreExistingContext('entry');
+    void restoreExistingContext('entry');
   }
 
-  function handleCta(action: UIAction) {
+  async function handleCta(action: UIAction) {
     if (action.type === 'open_contact_modal') {
       openContactModal();
       return;
     }
 
     if (action.type === 'open_image_modal') {
+      await loadCaseById(action.caseId);
       openImageModal(action.caseId, action.artifactId);
       return;
     }
@@ -1392,11 +1553,11 @@ export function PortfolioShell() {
     const targetContextId = getContextIdFromAction(action);
 
     if (targetContextId && targetContextId !== activeContextId && threadsRef.current[targetContextId]?.initialized) {
-      restoreExistingContext(targetContextId);
+      await restoreExistingContext(targetContextId);
       return;
     }
 
-    if (openKnownContextLocally(action, { appendUserBubble: false })) {
+    if (await openKnownContextLocally(action, { appendUserBubble: false })) {
       return;
     }
 
@@ -1406,13 +1567,14 @@ export function PortfolioShell() {
     });
   }
 
-  function handleOpenArtifact(target: ArtifactOpenTarget) {
+  async function handleOpenArtifact(target: ArtifactOpenTarget) {
     const targetCaseId = target.caseId ?? currentCaseId;
 
     if (!targetCaseId) {
       return;
     }
 
+    await loadCaseById(targetCaseId);
     openImageModal(targetCaseId, target.artifactId);
   }
 
@@ -1451,10 +1613,12 @@ export function PortfolioShell() {
       <div className="portfolio-desktop-blocker min-h-screen items-center justify-center bg-[#F7F8FC] px-6 py-10">
         <div className="flex w-full max-w-[464px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-[44px] py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
           <div className="relative size-28 shrink-0 overflow-hidden rounded-[20px]" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/ui/desktop-only-icon-preview.png"
               alt=""
+              width={112}
+              height={112}
+              sizes="112px"
               draggable={false}
               className="absolute inset-0 size-full select-none object-cover"
             />
@@ -1541,11 +1705,11 @@ export function PortfolioShell() {
                       contextPanelPayload={currentContextPanelPayload}
                       composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
+                      caseBootstrapping={bootstrappingContextId === activeContextId}
                     />
                   ) : null}
                 </AnimatePresence>
 
-                {!hasHydrated ? <div className="absolute inset-0 bg-white" aria-hidden="true" /> : null}
               </LayoutGroup>
             </div>
           </div>

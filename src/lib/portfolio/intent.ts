@@ -3,97 +3,27 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 import { getOpenAIKey, getOpenAIModel } from '@/lib/portfolio/config';
-import type { AssistantSession, UIAction } from '@/lib/portfolio/types';
+import {
+  extractExplicitCaseRequest,
+  findCaseId,
+  hasExplicitNavigationVerb,
+  mobileCaseIds,
+  normalizeRequestedCase,
+} from '@/lib/portfolio/query-interpretation';
+import type {
+  AssistantSession,
+  IntentConfidence,
+  MessageIntent,
+  UIAction,
+} from '@/lib/portfolio/types';
+import { logOpenAICallStart, logOpenAICallEnd } from './logger';
 
-export type MessageIntent =
-  | { type: 'navigation_action'; action: UIAction }
-  | { type: 'assistant_intro' }
-  | { type: 'identity_intro' }
-  | { type: 'experience_overview' }
-  | { type: 'case_discovery'; targetCaseId?: string }
-  | { type: 'mobile_overview' }
-  | { type: 'strengths_assessment' }
-  | { type: 'role_fit_assessment' }
-  | { type: 'decision_process' }
-  | { type: 'evidence_request' }
-  | { type: 'risk_objection' }
-  | { type: 'missing_case_request'; requestedCase?: string }
-  | { type: 'ambiguous_question' }
-  | { type: 'unsupported_request' };
-
-export type IntentConfidence = 'high' | 'medium' | 'low';
+export type { MessageIntent, IntentConfidence } from '@/lib/portfolio/types';
 
 export type IntentClassification = {
   intent: MessageIntent;
   confidence: IntentConfidence;
 };
-
-const caseAliases: Array<{ caseId: string; patterns: RegExp[] }> = [
-  {
-    caseId: 'alfa-smart',
-    patterns: [
-      /альфа/i,
-      /смарт/i,
-      /флагман/i,
-      /сильн(ый|ого|ом|ые|ых)?.+кейс/i,
-      /сам(ый|ого|ом)?.+сильн(ый|ого|ом)?.+кейс/i,
-      /подписк/i,
-    ],
-  },
-  { caseId: 'siebel', patterns: [/siebel/i, /оператор/i, /мтс/i] },
-  { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /anti-case/i] },
-  { caseId: 'expenses-card-holders', patterns: [/держател/i, /расход/i, /истори/i] },
-  { caseId: 'subscription-sharing', patterns: [/шаринг/i, /подписк.+ссыл/i, /приглаш/i] },
-  { caseId: 'ux-ui-wannabelike', patterns: [/wannabelike/i, /superapp/i, /миш/i, /структур/i, /ux\/ui/i] },
-];
-
-const mobileCaseIds = new Set(['expenses-card-holders', 'subscription-sharing', 'ux-ui-wannabelike', 'alfa-smart']);
-
-function hasExplicitNavigationVerb(text: string): boolean {
-  return /(?:^|[\s.,!?;:()«»"'/-])(открой|перейди|смотри|смотреть|разверни|отведи|переключи)(?=$|[\s.,!?;:()«»"'/-])/i.test(
-    text,
-  );
-}
-
-function findCaseId(text: string): string | null {
-  const lowered = text.toLowerCase();
-
-  for (const alias of caseAliases) {
-    if (alias.patterns.some((pattern) => pattern.test(lowered))) {
-      return alias.caseId;
-    }
-  }
-
-  return null;
-}
-
-function normalizeRequestedCase(raw: string | undefined): string | undefined {
-  if (!raw) {
-    return undefined;
-  }
-
-  return raw
-    .replace(/^[«"'\s]+|[»"'?.!,\s]+$/g, '')
-    .replace(/^(про|о|по)\s+/i, '')
-    .trim();
-}
-
-function extractExplicitCaseRequest(text: string): string | undefined {
-  const trimmed = text.trim();
-  const explicitRequest = /(покажи|расскажи|открой|есть ли|дай|был(?:\s+ли)?)/i.test(trimmed);
-  const caseWord = /(кейс|case|проект)/i.test(trimmed);
-
-  if (!explicitRequest || !caseWord) {
-    return undefined;
-  }
-
-  const match = trimmed.match(/(?:кейс|case|проект)(?:\s+про|\s+о|\s+по)?\s+(.+)/i);
-  if (match?.[1]) {
-    return normalizeRequestedCase(match[1]);
-  }
-
-  return undefined;
-}
 
 function buildNavigationAction(
   action: string,
@@ -150,6 +80,22 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
+    /почему это портфолио вообще стоит смотреть|зачем смотреть это портфолио|что дает такой формат портфолио|зачем (?:мне )?читать кейсы через ассистента|зачем (?:мне )?смотреть кейсы через ассистента|почему смотреть это портфолио, а не обычный лендинг|что я пойму по этому портфолио|чем полезен такой формат/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'portfolio_value_request' }, confidence: 'high' };
+  }
+
+  if (
+    /сожми весь опыт|сожми.+по каждому кейсу|по каждому кейсу дай|по всем кейсам дай|кратко расскажи про андрея.+по каждому кейсу|дай выжимку по кейсам|краткое саммари по всем кейсам|кратко по всем кейсам|расскажи кратко о кейсах андр[её]я|расскажи емко о кейсах андр[её]я|кратко расскажи о кейсах|емко расскажи о кейсах|дай краткий обзор кейсов/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'portfolio_overview' }, confidence: 'high' };
+  }
+
+  if (
     /кто такой андрей|что это за кандидат|что за кандидат|расскажи про андрея|представ(ь|ьте).+андре|ну и кто такой андрей|что за чел|это вообще кто|короче кто он|что он за тип как спец/i.test(
       lowered,
     )
@@ -158,7 +104,7 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
-    /какой опыт работы|где он работал|с какими доменами работал|какие компании|где он успел поработать|что у него по опыту|в каких темах он вообще варился|по доменам что у него|что у него по карьере|какой у него бэкграунд/i.test(
+    /покажи опыт работы|какой опыт работы|какой у него опыт работы|расскажи сжато об опыте работы|расскажи кратко об опыте работы|кратко расскажи об опыте работы|сжато расскажи об опыте работы|расскажи кратко про опыт работы|расскажи сжато про опыт работы|кратко про его опыт работы|сжато про его опыт работы|кратко пройдись по его опыту|пройдись по его опыту|где он работал|с какими доменами работал|какие компании|где он успел поработать|что у него по опыту|в каких темах он вообще варился|по доменам что у него|что у него по карьере|какой у него бэкграунд/i.test(
       lowered,
     )
   ) {
@@ -166,7 +112,7 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
-    /что делал в мобилк|что он делал в мобилк|делал мобильн|есть мобильн(ый|ые) кейс|мобильн(ый|ые) кейс|mobile/i.test(
+    /покажи мобильные кейсы|что делал в мобилк|что он делал в мобилк|делал мобильн|есть мобильн(ый|ые) кейс|мобильн(ый|ые) кейс|mobile/i.test(
       lowered,
     )
   ) {
@@ -185,27 +131,22 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
-    /почему его стоит позвать|почему его стоит звать|почему звать на интервью|в чем его сильная сторона|сильные стороны|и в чем он реально хорош|почему мне его дальше тащить|что в нем цепляет как в кандидате|окей а где сильный сигнал|что в нем сильного|почему мне вообще тратить на него слот|с чего ты взял что его надо звать|почему его не отсеять после первого скрининга|звать его или нет/i.test(
+    /неудачн(ый|ого|ом)?\s+кейс|слаб(ый|ого|ом)?\s+кейс|плох(ой|ого|ом)?\s+кейс|провальн(ый|ого|ом)?\s+кейс/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: 'chatpoint' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /почему его стоит позвать|почему его стоит звать|почему звать на интервью|в чем его сильная сторона|сильные стороны|и в чем он реально хорош|почему мне его дальше тащить|что в нем цепляет как в кандидате|окей а где сильный сигнал|что в нем сильного|почему мне вообще тратить на него слот|с чего ты взял что его надо звать|почему его не отсеять после первого скрининга|звать его или нет|позвоночник|чем андрей лучше других дизайнеров|чем он лучше других дизайнеров|чем отличается от других дизайнеров|почему андрей лучше других дизайнеров|почему он лучше других дизайнеров|расскажи почему андрей лучше других дизайнеров|расскажи почему он лучше других дизайнеров/i.test(
       lowered,
     )
   ) {
     return { intent: { type: 'strengths_assessment' }, confidence: 'high' };
-  }
-
-  if (
-    /на какой он уровень|на какие роли он подойдет|senior|middle|lead|куда его лучше приземлять|на какую роль он норм|где здесь senior сигнал|продуктов[а-яa-z-]*\s+позвоноч[а-яa-z-]*|какой у него потолок по роли|на какую команду он лучше зайдет/i.test(
-      lowered,
-    )
-  ) {
-    return { intent: { type: 'role_fit_assessment' }, confidence: 'high' };
-  }
-
-  if (
-    /как он принимает решения|как он вообще решения принимает|как валидирует|как исследует|продуктовый подход|product thinking|он продуктом думает|пиксели красит|что у него с research|как он проверяет что не ерунду сделал|что у него есть кроме аккуратного ui|он умеет не только рисовать/i.test(
-      lowered,
-    )
-  ) {
-    return { intent: { type: 'decision_process' }, confidence: 'high' };
   }
 
   if (
@@ -224,8 +165,28 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
     return { intent: { type: 'risk_objection' }, confidence: 'high' };
   }
 
+  if (/почему.+закрыл|почему.+не взлет|почему.+не полетел|почему.+провал/i.test(lowered)) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
   if (
-    /что думаешь|биткоин|биток|битка|крипт|нефть|погода|новости|политика|сериал|кино/i.test(
+    /на какой он уровень|на какие роли он подойдет|senior|middle|lead|куда его лучше приземлять|на какую роль он норм|где здесь senior сигнал|продуктов[а-яa-z-]*\s+позвоноч[а-яa-z-]*|какой у него потолок по роли|на какую команду он лучше зайдет/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'role_fit_assessment' }, confidence: 'high' };
+  }
+
+  if (
+    /как он принимает решения|как он вообще решения принимает|как андрей принимал решения|как принимал решения в этом кейсе|как валидирует|как исследует|как андрей работает над задач|как работает над задач|как он работает над задач|продуктовый подход|product thinking|он продуктом думает|пиксели красит|что у него с research|как он проверяет что не ерунду сделал|что у него есть кроме аккуратного ui|он умеет не только рисовать/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'decision_process' }, confidence: 'high' };
+  }
+
+  if (
+    /что думаешь|расскажи что-нибудь|покажи что-нибудь интересное|удиви|развлеки|биткоин|биток|битка|крипт|нефть|погода|новости|политика|сериал|кино/i.test(
       lowered,
     )
   ) {
@@ -252,6 +213,72 @@ export function classifyMessageDeterministically(
   if (/контакт|связа|написа/i.test(lowered)) {
     return {
       intent: { type: 'navigation_action', action: { type: 'open_contact_modal', source: 'message' } },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /почему это портфолио вообще стоит смотреть|зачем смотреть это портфолио|что дает такой формат портфолио|зачем (?:мне )?читать кейсы через ассистента|зачем (?:мне )?смотреть кейсы через ассистента|почему смотреть это портфолио, а не обычный лендинг|что я пойму по этому портфолио|чем полезен такой формат/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'portfolio_value_request' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /сожми весь опыт|сожми.+по каждому кейсу|по каждому кейсу дай|по всем кейсам дай|кратко расскажи про андрея.+по каждому кейсу|дай выжимку по кейсам|краткое саммари по всем кейсам|кратко по всем кейсам|расскажи кратко о кейсах андр[её]я|расскажи емко о кейсах андр[её]я|расскажи сжато о кейсах андр[её]я|кратко расскажи о кейсах|емко расскажи о кейсах|сжато расскажи о кейсах|дай краткий обзор кейсов/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'portfolio_overview' },
+      confidence: 'high',
+    };
+  }
+
+  if (/кто такой андрей|что это за кандидат|что за кандидат|расскажи про андрея|ну и кто такой андрей|что за чел|это вообще кто|короче кто он|что он за тип как спец/i.test(lowered)) {
+    return {
+      intent: { type: 'identity_intro' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /расскажи сжато об опыте работы|расскажи кратко об опыте работы|кратко расскажи об опыте работы|сжато расскажи об опыте работы|расскажи кратко про опыт работы|расскажи сжато про опыт работы|кратко про его опыт работы|сжато про его опыт работы|кратко пройдись по его опыту|пройдись по его опыту/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'experience_overview' },
+      confidence: 'high',
+    };
+  }
+
+  if (/в чем у него позвоночник|чем андрей лучше других дизайнеров|чем он лучше других дизайнеров|чем отличается от других дизайнеров|почему андрей лучше других дизайнеров|почему он лучше других дизайнеров|расскажи почему андрей лучше других дизайнеров|расскажи почему он лучше других дизайнеров/i.test(lowered)) {
+    return {
+      intent: { type: 'strengths_assessment' },
+      confidence: 'high',
+    };
+  }
+
+  if (/был у него неудачный кейс|есть неудачный кейс|был слабый кейс|есть слабый кейс|был плохой кейс|есть плохой кейс|был провальный кейс|есть провальный кейс/i.test(lowered)) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: 'chatpoint' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    session.selectedContext.kind === 'case' &&
+    /что здесь сделал андрей|что он здесь сделал|что он тут сделал|что делал андрей в этом кейсе|какая была роль|в чем была его роль|расскажи про этот кейс|расскажи про него|дай краткое саммари по кейсу|краткое саммари по кейсу|краткое summary по кейсу|дай саммари по кейсу|краткую выжимку по кейсу/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: session.selectedContext.id },
       confidence: 'high',
     };
   }
@@ -328,14 +355,6 @@ export function classifyMessageDeterministically(
     };
   }
 
-  if (/(опыт работы|career|компани|домены)/i.test(lowered)) {
-    return { intent: { type: 'experience_overview' }, confidence: 'high' };
-  }
-
-  if (/(мобил|mobile)/i.test(lowered)) {
-    return { intent: { type: 'mobile_overview' }, confidence: 'high' };
-  }
-
   if (
     caseId &&
     /(покажи|расскажи|какой|какие|что|есть|нужен|хочу|интересует|сильн(ый|ого|ом)? кейс)/i.test(
@@ -391,6 +410,8 @@ const classificationSchema = z.object({
     'assistant_intro',
     'identity_intro',
     'experience_overview',
+    'portfolio_overview',
+    'portfolio_value_request',
     'case_discovery',
     'mobile_overview',
     'strengths_assessment',
@@ -403,10 +424,10 @@ const classificationSchema = z.object({
     'unsupported_request',
   ]),
   confidence: z.enum(['high', 'medium', 'low']),
-  action: classifierActionSchema.optional(),
-  caseId: z.string().optional(),
-  requestedCase: z.string().optional(),
-  source: z.string().optional(),
+  action: classifierActionSchema.nullable(),
+  caseId: z.string().nullable(),
+  requestedCase: z.string().nullable(),
+  source: z.string().nullable(),
 });
 
 const CLASSIFIER_PROMPT = `
@@ -427,6 +448,8 @@ const CLASSIFIER_PROMPT = `
 - assistant_intro
 - identity_intro
 - experience_overview
+- portfolio_overview
+- portfolio_value_request
 - case_discovery
 - mobile_overview
 - strengths_assessment
@@ -443,11 +466,13 @@ const CLASSIFIER_PROMPT = `
 - Если пользователь спрашивает, кто такой сам ассистент, что он умеет, чем полезен -> assistant_intro.
 - Если пользователь спрашивает, кто такой Андрей, что это за кандидат, просит кратко представить -> identity_intro.
 - Если пользователь спрашивает про опыт, компании, домены -> experience_overview.
+- Если пользователь просит сжать весь опыт и кратко пройтись по кейсам одним ответом -> portfolio_overview.
+- Если пользователь спрашивает, зачем вообще смотреть это портфолио или что дает такой формат -> portfolio_value_request.
 - Если пользователь просит показать или рассказать про кейс, но не просит явно перейти на экран -> case_discovery.
 - Если пользователь спрашивает про мобильный опыт или мобильные кейсы без явного перехода -> mobile_overview.
 - Если пользователь спрашивает про сильные стороны или почему стоит звать на интервью -> strengths_assessment.
 - Если пользователь спрашивает про уровень, seniority или fit для роли -> role_fit_assessment.
-- Если пользователь спрашивает, как Андрей принимает решения, исследует или валидирует -> decision_process.
+- Если пользователь спрашивает, как Андрей принимает решения, работает над задачей, исследует или валидирует -> decision_process.
 - Если пользователь просит доказательства, подтверждения, артефакты или спрашивает, где это видно -> evidence_request.
 - Если пользователь спрашивает про слабые стороны, ограничения, риски -> risk_objection.
 - Если пользователь просит конкретный кейс, которого нет в известном списке -> missing_case_request.
@@ -467,6 +492,15 @@ Confidence:
 - "Что это за кандидат?" -> identity_intro, medium
 - "что за кандидат" -> identity_intro, medium
 - "где он успел поработать" -> experience_overview, high
+- "Расскажи сжато об опыте работы Андрея" -> experience_overview, high
+- "Кратко расскажи про его опыт работы" -> experience_overview, high
+- "Кратко пройдись по его опыту" -> experience_overview, high
+- "Сожми весь опыт и по каждому кейсу дай по паре строк" -> portfolio_overview, high
+- "Расскажи сжато о кейсах Андрея" -> portfolio_overview, high
+- "Почему это портфолио вообще стоит смотреть?" -> portfolio_value_request, high
+- "Что дает такой формат портфолио?" -> portfolio_value_request, high
+- "Зачем читать кейсы через ассистента?" -> portfolio_value_request, high
+- "Зачем мне смотреть кейсы через ассистента?" -> portfolio_value_request, high
 - "Покажи опыт работы" -> experience_overview, high
 - "Покажи сильный кейс" -> case_discovery, high
 - "Расскажи про ChatPoint" -> case_discovery, high, caseId=chatpoint
@@ -476,17 +510,27 @@ Confidence:
 - "Почему его стоит позвать?" -> strengths_assessment, high
 - "почему мне вообще тратить на него слот?" -> strengths_assessment, high
 - "с чего ты взял что его надо звать?" -> strengths_assessment, high
+- "чем он сильнее обычного продуктового дизайнера?" -> strengths_assessment, high
+- "что в нем не банально?" -> strengths_assessment, high
+- "почему его не отсеять после первого скрининга?" -> strengths_assessment, high
+- "окей а где сильный сигнал" -> strengths_assessment, high
 - "он вообще на senior тянет?" -> role_fit_assessment, high
 - "где здесь senior сигнал?" -> role_fit_assessment, high
 - "если мне нужен человек с продуктовым позвоночником, это про него?" -> role_fit_assessment, high
+- "пока выглядит как нормальный мидл, почему это не так?" -> role_fit_assessment, high
 - "он продуктом думает или только пиксели красит" -> decision_process, high
+- "Как Андрей работает над задачей?" -> decision_process, high
 - "что у него есть кроме аккуратного ui?" -> decision_process, high
 - "окей а пруфы где" -> evidence_request, high
 - "где видно что он влияет на продукт?" -> evidence_request, high
 - "какой кейс лучше открыть первым для оценки?" -> evidence_request, high
+- "на чем вообще основан вывод про senior?" -> evidence_request, high
+- "где смотреть если мне важен research?" -> evidence_request, high
 - "а риск какой если брать" -> risk_objection, high
 - "что меня должно смутить как нанимающего?" -> risk_objection, high
 - "где он может не вывезти?" -> risk_objection, high
+- "если сравнивать с сильным senior, где у него зазор?" -> risk_objection, high
+- "есть ощущение что он больше про execution, это так?" -> risk_objection, high
 - "что думаешь про нефть" -> unsupported_request, high
 - "Расскажи подробнее" -> ambiguous_question, low
 
@@ -514,12 +558,45 @@ export async function classifyMessageWithModel(
     session.selectedContext.label ?? 'none',
   ).replace('{message}', text);
 
+  const developerPromptChars = CLASSIFIER_PROMPT.length;
+  const userMessageChars = text.length;
+  const schemaChars = 400;
+  const totalPayloadChars = prompt.length + schemaChars;
+
+  const callId = logOpenAICallStart({
+    route: 'classifyMessageWithModel',
+    model: getOpenAIModel(),
+    systemPromptChars: 0,
+    developerPromptChars,
+    userMessageChars,
+    ragContextChars: 0,
+    historyChars: 0,
+    schemaChars,
+    totalPayloadChars,
+    estimatedInputChars: Math.round(totalPayloadChars / 4),
+    userMessagePreview: text.slice(0, 200),
+    retrievedChunksCount: 0,
+    messagesCount: 1,
+  });
+
+  const startTime = Date.now();
   try {
-    const { output } = await generateText({
+    const result = await generateText({
       model: openai(getOpenAIModel()),
       temperature: 0,
       output: Output.object({ schema: classificationSchema }),
       prompt,
+    });
+
+    const { output, usage, response } = result;
+
+    logOpenAICallEnd(callId, {
+      requestId: response.id,
+      status: 'success',
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cachedInputTokens: usage.inputTokenDetails?.cacheReadTokens,
+      durationMs: Date.now() - startTime,
     });
 
     switch (output.intent) {
@@ -528,7 +605,11 @@ export async function classifyMessageWithModel(
           return null;
         }
 
-        const action = buildNavigationAction(output.action, output.caseId, output.source);
+        const action = buildNavigationAction(
+          output.action,
+          output.caseId ?? undefined,
+          output.source ?? undefined,
+        );
         return action
           ? { intent: { type: 'navigation_action', action }, confidence: output.confidence }
           : null;
@@ -536,6 +617,8 @@ export async function classifyMessageWithModel(
       case 'assistant_intro':
       case 'identity_intro':
       case 'experience_overview':
+      case 'portfolio_overview':
+      case 'portfolio_value_request':
       case 'mobile_overview':
       case 'strengths_assessment':
       case 'role_fit_assessment':
@@ -555,13 +638,18 @@ export async function classifyMessageWithModel(
         };
       case 'missing_case_request':
         return {
-          intent: { type: 'missing_case_request', requestedCase: normalizeRequestedCase(output.requestedCase) },
+          intent: { type: 'missing_case_request', requestedCase: normalizeRequestedCase(output.requestedCase ?? undefined) },
           confidence: output.confidence,
         };
       default:
         return null;
     }
-  } catch {
+  } catch (error: unknown) {
+    logOpenAICallEnd(callId, {
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - startTime,
+    });
     return classifyMessageWithFallbackHeuristics(text);
   }
 }

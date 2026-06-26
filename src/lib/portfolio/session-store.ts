@@ -6,9 +6,15 @@ import {
   getSupabaseUrl,
   hasSupabaseConfig,
 } from '@/lib/portfolio/config';
-import type { AssistantSession, SelectedContext, ViewType } from '@/lib/portfolio/types';
+import type {
+  AssistantSession,
+  SelectedContext,
+  SessionStoreMode,
+  ViewType,
+} from '@/lib/portfolio/types';
 
 type SessionStore = {
+  mode: SessionStoreMode;
   get(sessionId: string): Promise<AssistantSession | null>;
   save(session: AssistantSession): Promise<void>;
 };
@@ -26,6 +32,9 @@ function createEmptySession(sessionId: string): AssistantSession {
     answerMode: null,
     openModal: null,
     lastSynthesis: null,
+    lastUserQuestion: null,
+    lastAssistantAnswerPreview: null,
+    lastQuestionSubject: null,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,
@@ -33,9 +42,11 @@ function createEmptySession(sessionId: string): AssistantSession {
 }
 
 class MemorySessionStore implements SessionStore {
+  readonly mode: SessionStoreMode;
   private sessions: Map<string, AssistantSession>;
 
-  constructor() {
+  constructor(mode: SessionStoreMode = 'memory') {
+    this.mode = mode;
     const globalStore = globalThis as typeof globalThis & {
       [GLOBAL_KEY]?: Map<string, AssistantSession>;
     };
@@ -54,9 +65,9 @@ class MemorySessionStore implements SessionStore {
 }
 
 class SupabaseSessionStore implements SessionStore {
+  readonly mode: SessionStoreMode = 'supabase';
   private client: SupabaseClient;
   private tableName: string;
-  private fallbackStore: MemorySessionStore;
 
   constructor() {
     const url = getSupabaseUrl();
@@ -68,48 +79,46 @@ class SupabaseSessionStore implements SessionStore {
 
     this.client = createClient(url, serverKey);
     this.tableName = getSessionTableName();
-    this.fallbackStore = new MemorySessionStore();
   }
 
   async get(sessionId: string): Promise<AssistantSession | null> {
-    try {
-      const { data, error } = await this.client
-        .from(this.tableName)
-        .select('session_id, session_payload')
-        .eq('session_id', sessionId)
-        .maybeSingle();
+    const { data, error } = await this.client
+      .from(this.tableName)
+      .select('session_id, session_payload')
+      .eq('session_id', sessionId)
+      .maybeSingle();
 
-      if (error || !data?.session_payload) {
-        return this.fallbackStore.get(sessionId);
-      }
-
-      return data.session_payload as AssistantSession;
-    } catch {
-      return this.fallbackStore.get(sessionId);
+    if (error) {
+      throw error;
     }
+
+    return (data?.session_payload as AssistantSession | undefined) ?? null;
   }
 
   async save(session: AssistantSession): Promise<void> {
-    try {
-      const { error } = await this.client.from(this.tableName).upsert(
-        {
-          session_id: session.id,
-          session_payload: session,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'session_id' },
-      );
+    const { error } = await this.client.from(this.tableName).upsert(
+      {
+        session_id: session.id,
+        session_payload: session,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'session_id' },
+    );
 
-      if (error) {
-        await this.fallbackStore.save(session);
-      }
-    } catch {
-      await this.fallbackStore.save(session);
+    if (error) {
+      throw error;
     }
   }
 }
 
 let sessionStoreSingleton: SessionStore | null = null;
+let degradedStoreReason: string | null = null;
+
+function switchToDegradedMemoryStore(reason: string): SessionStore {
+  degradedStoreReason = reason;
+  sessionStoreSingleton = new MemorySessionStore('degraded_memory');
+  return sessionStoreSingleton;
+}
 
 export function getSessionStore(): SessionStore {
   if (sessionStoreSingleton) {
@@ -121,7 +130,7 @@ export function getSessionStore(): SessionStore {
       sessionStoreSingleton = new SupabaseSessionStore();
       return sessionStoreSingleton;
     } catch {
-      // Fall back to in-memory storage if Supabase is not usable in local MVP.
+      return switchToDegradedMemoryStore('supabase_init_failed');
     }
   }
 
@@ -129,17 +138,56 @@ export function getSessionStore(): SessionStore {
   return sessionStoreSingleton;
 }
 
+export function getSessionStoreMode(): SessionStoreMode {
+  return getSessionStore().mode;
+}
+
+export function getSessionStoreDiagnostics() {
+  return {
+    mode: getSessionStoreMode(),
+    degradedReason: degradedStoreReason,
+  };
+}
+
+async function safeStoreGet(sessionId: string): Promise<AssistantSession | null> {
+  const store = getSessionStore();
+
+  try {
+    return await store.get(sessionId);
+  } catch (error) {
+    if (store.mode === 'supabase') {
+      return switchToDegradedMemoryStore('supabase_read_failed').get(sessionId);
+    }
+
+    throw error;
+  }
+}
+
+async function safeStoreSave(session: AssistantSession): Promise<void> {
+  const store = getSessionStore();
+
+  try {
+    await store.save(session);
+  } catch (error) {
+    if (store.mode === 'supabase') {
+      await switchToDegradedMemoryStore('supabase_write_failed').save(session);
+      return;
+    }
+
+    throw error;
+  }
+}
+
 export async function getOrCreateSession(sessionId?: string): Promise<AssistantSession> {
   const safeSessionId = sessionId?.trim() || crypto.randomUUID();
-  const store = getSessionStore();
-  const existing = await store.get(safeSessionId);
+  const existing = await safeStoreGet(safeSessionId);
 
   if (existing) {
     return existing;
   }
 
   const created = createEmptySession(safeSessionId);
-  await store.save(created);
+  await safeStoreSave(created);
   return created;
 }
 
@@ -153,7 +201,7 @@ export async function persistSession(
     updatedAt: new Date().toISOString(),
   };
 
-  await getSessionStore().save(updated);
+  await safeStoreSave(updated);
   return updated;
 }
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { portfolioContent } from '@/data/portfolio-content';
+import { portfolioContent } from '@/data/portfolio-content.server';
 
 const summary = portfolioContent.experience.structuredSummary;
 
