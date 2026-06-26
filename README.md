@@ -129,9 +129,12 @@ Returns an `AssistantEnvelope` with explicit UI intent instead of freeform chat 
 
 ## Content model
 
-The source of truth lives in:
+The source of truth is split by responsibility:
 
-- `/src/data/portfolio-content.ts`
-- `/src/lib/portfolio/types.ts`
+- `/src/data/portfolio-index.ts` — lightweight index for entry and case discovery.
+- `/src/data/cases/*.ts` — per-case presentation content, images, and layout metadata.
+- `/src/data/portfolio-case-facts.ts` — normalized AI fact layer for case-aware synthesis.
+- `/src/data/portfolio-facts.ts` — global person-level facts and synthesis topics.
+- `/src/lib/portfolio/types.ts` — shared contracts for the assistant and UI state.
 
-Legacy flat project data is intentionally deprecated.
+Legacy flat `portfolio-content.ts` is intentionally removed.

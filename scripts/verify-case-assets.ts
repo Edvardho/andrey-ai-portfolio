@@ -75,6 +75,15 @@ async function main() {
         failures.push(`${relativePath}: image metadata is unreadable`);
       }
 
+      if (metadata.width && metadata.height) {
+        const longSide = Math.max(metadata.width, metadata.height);
+        if (longSide > rule.maxLongSide) {
+          failures.push(
+            `${relativePath}: long side ${longSide}px exceeds ${getCaseAssetKind(file.name)} limit ${rule.maxLongSide}px`,
+          );
+        }
+      }
+
       if (stats.size > rule.maxBytes && !allowReason) {
         failures.push(
           `${relativePath}: ${formatBytes(stats.size)} exceeds ${getCaseAssetKind(file.name)} budget ${formatBytes(rule.maxBytes)}`,

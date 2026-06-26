@@ -28,9 +28,9 @@
 
 1. Если нужно заменить изображение без изменения верстки, положи новый файл поверх старого с тем же именем.
 2. Если у нового изображения другой crop, масштаб или композиция, одной замены файла может быть недостаточно.
-3. Геометрия изображения задается в `src/data/portfolio-content.ts` через `imageClassName`, `overlayImageClassName`, `backgroundColor` и `borderColor`.
+3. Геометрия изображения задается в case-модулях внутри `src/data/cases/*.ts` через `imageClassName`, `overlayImageClassName`, `backgroundColor` и `borderColor`.
 4. Не переименовывай файлы, если не готов одновременно обновить все ссылки на этот файл в коде.
-5. Старые папки `public/entry`, `public/context-panel` и `public/structured-summary` пока оставлены как архивный источник. Рабочий контракт для кейсов теперь находится в `public/cases`.
+5. Рабочий контракт для кейсов находится в `public/cases`. Если меняется crop или композиция, править нужно не только файл, но и соответствующий case-модуль в `src/data/cases/*.ts`.
 
 ## Automated Replacement Workflow
 
@@ -68,8 +68,8 @@ find public/cases/<caseId> -maxdepth 1 -type f | sort
 - `rail.png` — максимум 360px по длинной стороне.
 - `entry.png`, `context.png`, `intro-preview.png` — максимум 960px по длинной стороне.
 - `showcase-*`, `disclosure-*`, `*-overlay.png` — максимум 1800px по длинной стороне.
-- Формат файла сохраняется прежним, чтобы не переписывать ссылки в `src/data/portfolio-content.ts`.
-- Если новая картинка с другим crop/composition, после замены может понадобиться правка `imageClassName` в `src/data/portfolio-content.ts`.
+- Формат файла сохраняется прежним, чтобы не переписывать ссылки в case-модулях `src/data/cases/*.ts`.
+- Если новая картинка с другим crop/composition, после замены может понадобиться правка `imageClassName` в соответствующем файле из `src/data/cases/*.ts`.
 
 ## Batch Optimization
 
