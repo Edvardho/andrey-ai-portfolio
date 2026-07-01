@@ -30,6 +30,11 @@ import { THREAD_EASE, WORKSPACE_EASE } from './portfolio-motion';
 import { PortfolioUserBubble } from './portfolio-user-bubble';
 import { PortfolioAssistantEnvelopeView } from './portfolio-assistant-envelope';
 import { PortfolioAssistantLoadingRow } from './portfolio-assistant-loading-row';
+import {
+  portfolioFocusRing,
+  portfolioPrimaryAction,
+  portfolioSoftSurfaceBorder,
+} from './portfolio-interaction-styles';
 
 export type ThreadItem =
   | { id: string; kind: 'user'; text: string; hasAnimated: boolean }
@@ -792,7 +797,11 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
                   <button
                     type="button"
                     onClick={onRetryError}
-                    className="h-8 cursor-pointer rounded-full bg-[#1A1C22] px-4 text-[13px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                    className={[
+                      'h-8 cursor-pointer rounded-full border px-4 text-[13px] font-medium leading-5 transition-colors duration-150',
+                      portfolioPrimaryAction,
+                      portfolioFocusRing,
+                    ].join(' ')}
                   >
                     Повторить
                   </button>
@@ -822,7 +831,11 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.18, ease: WORKSPACE_EASE }}
             onClick={handleJumpToLatest}
-            className="absolute bottom-5 left-1/2 z-10 flex size-[56px] -translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-[#EBEDF2] bg-white text-[#11110F] shadow-[0px_12px_24px_rgba(17,15,11,0.14)] transition hover:bg-[#FCFDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'absolute bottom-5 left-1/2 z-10 flex size-[56px] -translate-x-1/2 cursor-pointer items-center justify-center rounded-full text-[#11110F] shadow-[0px_12px_24px_rgba(17,15,11,0.14)] transition-colors duration-150',
+              portfolioSoftSurfaceBorder,
+              portfolioFocusRing,
+            ].join(' ')}
             aria-label="Прокрутить к последнему сообщению"
           >
             <ArrowDown className="size-[26px]" strokeWidth={1.9} />

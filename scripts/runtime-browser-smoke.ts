@@ -218,7 +218,7 @@ async function main() {
     resetRuntimeSmokeState(state);
 
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
-    await page.getByText('Макаревич Андрей').waitFor({ state: 'visible', timeout: 15_000 });
+    await page.getByText('Андрей Макаревич').waitFor({ state: 'visible', timeout: 15_000 });
     await assertHealthy(page, state, 'initial landing load');
 
     await page.getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i }).click();

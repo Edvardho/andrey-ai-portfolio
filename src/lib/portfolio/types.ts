@@ -7,6 +7,7 @@ export type CaseCategory =
 
 export type ViewType =
   | 'entry'
+  | 'candidate_fast_review'
   | 'case_summary'
   | 'case_detail'
   | 'case_route'
@@ -65,6 +66,7 @@ export type AssistantReplyState =
   | 'authored_reply';
 
 export type PresentationVariant =
+  | 'candidate_fast_review'
   | 'case_summary'
   | 'experience_summary'
   | 'plain_text_reply'
@@ -76,6 +78,7 @@ export type PresentationVariant =
 export type AssistantRenderMode = 'instant' | 'reveal' | 'progressive_text';
 
 export type AnswerType =
+  | 'candidate_fast_review'
   | 'candidate_positioning'
   | 'experience_overview'
   | 'portfolio_compression'
@@ -83,6 +86,7 @@ export type AnswerType =
   | 'contribution_breakdown'
   | 'case_summary'
   | 'decision_breakdown'
+  | 'outcome_summary'
   | 'proof_map'
   | 'hiring_argument'
   | 'failure_postmortem'
@@ -106,21 +110,36 @@ export type QueryScope =
   | 'portfolio_wide';
 
 export type QuestionSubject =
+  | 'candidate_fast_review'
   | 'candidate_value'
+  | 'candidate_motivation'
   | 'interview_decision'
   | 'candidate_portfolio_value'
   | 'ai_format_value'
   | 'assistant_case_navigation'
+  | 'design_process'
+  | 'case_problem'
+  | 'case_research'
+  | 'case_decisions'
+  | 'case_constraints'
+  | 'case_outcomes'
   | 'case_contribution'
   | 'case_evidence'
   | 'case_strength'
   | 'risk_check'
+  | 'collaboration_process'
+  | 'stakeholder_feedback'
+  | 'prioritization'
+  | 'impact_measurement'
+  | 'design_system_work'
+  | 'learning_adaptation'
   | 'case_summary'
   | 'experience_summary';
 
 export type SynthesisTopic =
   | 'identity'
   | 'experience'
+  | 'web'
   | 'mobile'
   | 'portfolio_overview'
   | 'portfolio_value'
@@ -133,8 +152,12 @@ export type SynthesisTopic =
 
 export type CaseFactFacet =
   | 'overview'
+  | 'problem'
   | 'role'
+  | 'research'
   | 'decisions'
+  | 'constraints'
+  | 'outcomes'
   | 'evidence'
   | 'strengths'
   | 'risks';
@@ -357,6 +380,37 @@ export type StructuredExperienceSummaryData = {
   casePromptSection: {
     title: string;
     chips: PromptChip[];
+  };
+  footerAction: {
+    label: string;
+    action: UIAction;
+  };
+};
+
+export type StructuredCandidateFastReviewDisclosureItem =
+  StructuredSummaryDisclosureItem & {
+    caseId: string;
+    subtitle: string;
+  };
+
+export type StructuredCandidateFastReviewData = {
+  intro: {
+    title: string;
+    body: string[];
+  };
+  projectScope: {
+    title: string;
+    body: string[];
+  };
+  watchOrder: {
+    title: string;
+    body: string[];
+  };
+  disclosureTitle: string;
+  disclosures: StructuredCandidateFastReviewDisclosureItem[];
+  hiringLeadNote: {
+    title: string;
+    body: string[];
   };
   footerAction: {
     label: string;

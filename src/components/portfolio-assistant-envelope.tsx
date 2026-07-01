@@ -8,6 +8,7 @@ import type {
   UIAction,
 } from '@/lib/portfolio/types';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
+import { PortfolioAssistantCandidateFastReview } from './portfolio-assistant-candidate-fast-review';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
 import { PortfolioAssistantLoadingRow } from './portfolio-assistant-loading-row';
 import { PortfolioAssistantSectionedReply } from './portfolio-assistant-sectioned-reply';
@@ -36,6 +37,18 @@ export function PortfolioAssistantEnvelopeView({
 }) {
   if (envelope.presentationVariant === 'loading_row') {
     return <PortfolioAssistantLoadingRow />;
+  }
+
+  if (envelope.presentationVariant === 'candidate_fast_review') {
+    return (
+      <PortfolioAssistantCandidateFastReview
+        expandedDisclosureIds={expandedDisclosureIds}
+        onToggleDisclosure={onToggleDisclosure}
+        onCta={onCta}
+        onOpenArtifact={onOpenArtifact}
+        renderMode={renderMode}
+      />
+    );
   }
 
   const isStructuredSummary =

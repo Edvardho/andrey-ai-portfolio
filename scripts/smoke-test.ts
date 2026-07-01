@@ -8,7 +8,11 @@ async function main() {
   const bootstrapEnvelope = await resolveBootstrap(bootstrapSession);
 
   assert.equal(bootstrapEnvelope.viewType, 'entry');
-  assert.equal(bootstrapEnvelope.chips.length > 0, true);
+  assert.equal(bootstrapEnvelope.chips.length, 0);
+
+  const { envelope: fastReviewEnvelope } = await resolveMessage(bootstrapSession, 'Быстро оценить Андрея по кейсам');
+  assert.equal(fastReviewEnvelope.viewType, 'candidate_fast_review');
+  assert.equal(fastReviewEnvelope.meta.responseSource, 'authored');
 
   const { session: alfaSession, envelope: alfaEnvelope } = await resolveAction(bootstrapSession, {
     type: 'open_case_summary',

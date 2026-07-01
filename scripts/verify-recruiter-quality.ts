@@ -52,6 +52,21 @@ function assertNotContains(label: string, text: string, parts: string[]) {
 async function main() {
   const base = await getOrCreateSession(`verify-recruiter-quality-${Date.now()}`);
 
+  const fastReview = await resolveMessage(base, 'Расскажи коротко про Андрея');
+  const fastReviewText = extractText(fastReview.envelope);
+  assert.equal(fastReview.envelope.viewType, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.presentationVariant, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.meta.responseSource, 'authored');
+  assert.equal(fastReview.envelope.meta.answerType, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.meta.questionSubject, 'candidate_fast_review');
+  assertContainsAll('Candidate fast review', fastReviewText, [
+    'кто такой андрей',
+    'альфа-смарт',
+    'siebel',
+    'chatpoint',
+    'если вы нанимающий лид',
+  ]);
+
   const chatpoint = await resolveMessage(base, 'Расскажи про ChatPoint');
   const chatpointText = extractText(chatpoint.envelope);
   assert.equal(chatpoint.envelope.viewType, 'general_synthesis');
@@ -103,6 +118,19 @@ async function main() {
   assert.equal(experience.envelope.meta.answerType, 'experience_overview');
   assertContainsAll('Experience summary', experienceText, ['mts', 'альфа', 'positive']);
   assertNotContains('Experience summary', experienceText, ['ориентир']);
+
+  const webExperience = await resolveMessage(base, 'Что делал в web?');
+  const webExperienceText = extractText(webExperience.envelope);
+  assert.equal(webExperience.envelope.viewType, 'general_synthesis');
+  assert.equal(webExperience.envelope.meta.answerType, 'experience_overview');
+  assertContainsAll('Web experience', webExperienceText, ['siebel', 'chatpoint', 'positive']);
+
+  const designerMotivation = await resolveMessage(base, 'Нравится ли Андрею работа дизайнером?');
+  const designerMotivationText = extractText(designerMotivation.envelope);
+  assert.equal(designerMotivation.envelope.viewType, 'general_synthesis');
+  assert.equal(designerMotivation.envelope.meta.questionSubject, 'candidate_motivation');
+  assert.match(designerMotivationText, /^Да\./, 'Designer motivation: should start with a direct yes');
+  assertContainsAll('Designer motivation', designerMotivationText, ['кейсы', 'доказательства']);
 
   const compression = await resolveMessage(
     base,
@@ -265,6 +293,13 @@ async function main() {
     'флагман',
     'proof',
   ]);
+
+  const chatpointMistake = await resolveMessage(base, 'Какую ошибку совершил Андрей на ChatPoint?');
+  const chatpointMistakeText = extractText(chatpointMistake.envelope);
+  assert.equal(chatpointMistake.envelope.meta.answerType, 'risk_assessment');
+  assert.equal(chatpointMistake.envelope.meta.questionSubject, 'risk_check');
+  assert.equal(chatpointMistake.envelope.meta.queryScope, 'named_case');
+  assertContainsAll('ChatPoint mistake', chatpointMistakeText, ['chatpoint', 'owner', 'функционал', 'ценност']);
 
   console.log('Recruiter quality contract passed.');
 }

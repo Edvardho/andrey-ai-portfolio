@@ -4,24 +4,22 @@ import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
+import { candidateFastReview } from '@/data/portfolio-candidate-review';
+import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
   ArtifactOpenTarget,
   AssistantRenderMode,
-  CaseContent,
   UIAction,
 } from '@/lib/portfolio/types';
-import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 
-import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
+import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioCaseCollection } from './portfolio-case-collection';
 import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
-import { PortfolioStructuredIntroPreview } from './portfolio-structured-intro-preview';
-const SUMMARY_BODY_TEXT_16_CLASS =
-  'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]';
+
+const BODY_CLASS = 'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]';
 
 type Props = {
-  caseContent: CaseContent;
   expandedDisclosureIds: string[];
   onToggleDisclosure: (id: string) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
@@ -29,12 +27,12 @@ type Props = {
   renderMode?: AssistantRenderMode;
 };
 
-function SummarySection({ title, body }: { title: string; body: string }) {
+function TextSection({ title, body }: { title: string; body: string[] }) {
   return (
     <section className="w-full max-w-[798px] space-y-[10px]">
       <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">{title}</h4>
-      <div className={clsx('space-y-0', SUMMARY_BODY_TEXT_16_CLASS)}>
-        {body.split('\n').map((paragraph) => (
+      <div className={clsx('space-y-3', BODY_CLASS)}>
+        {body.map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
       </div>
@@ -42,20 +40,14 @@ function SummarySection({ title, body }: { title: string; body: string }) {
   );
 }
 
-export function PortfolioStructuredCaseSummary({
-  caseContent,
+export function PortfolioAssistantCandidateFastReview({
   expandedDisclosureIds,
   onToggleDisclosure,
   onOpenArtifact,
   onCta,
   renderMode = 'instant',
 }: Props) {
-  const summary = caseContent.structuredSummary;
   const reveal = renderMode === 'reveal';
-
-  if (!summary) {
-    return null;
-  }
 
   function getRevealProps(order: number, y = 4) {
     if (!reveal) {
@@ -82,47 +74,43 @@ export function PortfolioStructuredCaseSummary({
           <PortfolioAssistantIdentityHeader />
         </motion.div>
 
-        <motion.section className="flex w-full max-w-[798px] gap-4" {...getRevealProps(1)}>
-          <PortfolioStructuredIntroPreview
-            preview={summary.intro.preview}
-            alt={summary.intro.title}
-          />
-          <div className="min-w-0 flex-1 space-y-2 text-[#202332]">
-            <h3 className="text-[20px] font-semibold leading-7">{summary.intro.title}</h3>
-            <p className={SUMMARY_BODY_TEXT_16_CLASS}>
-              {summary.intro.body}
-            </p>
-          </div>
-        </motion.section>
+        <motion.div {...getRevealProps(1)}>
+          <TextSection title={candidateFastReview.intro.title} body={candidateFastReview.intro.body} />
+        </motion.div>
 
-        {summary.sections.map((section, index) => (
-          <motion.div key={section.title} {...getRevealProps(2 + index)}>
-            <SummarySection title={section.title} body={section.body} />
-          </motion.div>
-        ))}
+        <motion.div {...getRevealProps(2)}>
+          <TextSection title={candidateFastReview.projectScope.title} body={candidateFastReview.projectScope.body} />
+        </motion.div>
+
+        <motion.div {...getRevealProps(3)}>
+          <TextSection title={candidateFastReview.watchOrder.title} body={candidateFastReview.watchOrder.body} />
+        </motion.div>
 
         <motion.section className="w-full max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(4)}>
           <h4 className="text-[16px] font-semibold leading-[22px] text-[#202332]">
-            {summary.disclosureTitle}
+            {candidateFastReview.disclosureTitle}
           </h4>
           <div className="space-y-1">
-            {summary.disclosures.map((item, index) => {
+            {candidateFastReview.disclosures.map((item, index) => {
               const expanded = expandedDisclosureIds.includes(item.id);
-              const isLastDisclosure = index === summary.disclosures.length - 1;
+              const isLastDisclosure = index === candidateFastReview.disclosures.length - 1;
 
               return (
                 <div key={item.id} className="rounded-[20px]">
                   <motion.button
                     type="button"
                     onClick={() => onToggleDisclosure(item.id)}
-                    className="flex h-8 w-full cursor-pointer items-center text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                    className="flex min-h-12 w-full cursor-pointer items-center py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
                     {...getRevealProps(5 + index, 4)}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-[10px]">
                       <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#F1F2FF] text-[12px] font-medium leading-4 text-[#434650]">
                         {index + 1}
                       </div>
-                      <p className="truncate text-[16px] leading-6 text-[#202332]">{item.label}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[16px] leading-6 text-[#202332]">{item.label}</p>
+                        <p className="truncate text-[13px] leading-5 text-[#8F95A7]">{item.subtitle}</p>
+                      </div>
                     </div>
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white">
                       <ChevronDown
@@ -144,7 +132,7 @@ export function PortfolioStructuredCaseSummary({
                       {item.layoutType !== 'text_only' && item.cards?.length ? (
                         <PortfolioCaseCollection
                           items={item.cards}
-                          caseId={caseContent.id}
+                          caseId={item.caseId}
                           layoutType={item.layoutType}
                           rowWidth={item.rowWidth}
                           peekWidth={item.peekWidth}
@@ -160,51 +148,24 @@ export function PortfolioStructuredCaseSummary({
           </div>
         </motion.section>
 
-        <motion.section className="w-full max-w-[798px] overflow-visible space-y-[10px]" {...getRevealProps(9)}>
-          <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
-            {summary.showcaseTitle}
-          </h4>
-          <PortfolioCaseCollection
-            items={summary.showcaseItems}
-            caseId={caseContent.id}
-            layoutType="three_cards_scroll"
-            rowWidth={summary.showcaseRowWidth}
-            peekWidth={summary.showcasePeekWidth}
-            onOpenArtifact={onOpenArtifact}
+        <motion.div {...getRevealProps(9)}>
+          <TextSection
+            title={candidateFastReview.hiringLeadNote.title}
+            body={candidateFastReview.hiringLeadNote.body}
           />
-        </motion.section>
+        </motion.div>
 
-        <motion.section className="w-full max-w-[798px] space-y-[10px]" {...getRevealProps(10)}>
-          <h4 className="text-[16px] font-semibold leading-[1.45] text-[#202129]">
-            {summary.resultsTitle}
-          </h4>
-          <p className={SUMMARY_BODY_TEXT_16_CLASS}>{summary.resultsBody}</p>
-          {summary.resultMetrics.length ? (
-            <div className="flex flex-wrap gap-3 pt-3">
-              {summary.resultMetrics.map((metric) => (
-                <div
-                  key={`${metric.value}-${metric.label}`}
-                  className="flex min-h-[76px] w-[212px] shrink-0 flex-col gap-[6px] rounded-[18px] border border-[#E7EAF2] bg-[#FAFBFF] px-4 py-[14px]"
-                >
-                  <p className="text-[18px] font-semibold leading-6 text-[#202332]">{metric.value}</p>
-                  <p className="text-[13px] leading-[18px] text-[#8F95A7]">{metric.label}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </motion.section>
-
-        <motion.div className="flex items-start" {...getRevealProps(11)}>
+        <motion.div className="flex items-start" {...getRevealProps(10)}>
           <button
             type="button"
-            onClick={() => onCta(summary.footerAction.action)}
+            onClick={() => onCta(candidateFastReview.footerAction.action)}
             className={[
               'flex h-8 cursor-pointer items-center rounded-full border px-[14px] text-[14px] font-medium leading-5 transition-colors duration-150',
               portfolioPrimaryAction,
               portfolioFocusRing,
             ].join(' ')}
           >
-            {summary.footerAction.label}
+            {candidateFastReview.footerAction.label}
           </button>
         </motion.div>
       </div>

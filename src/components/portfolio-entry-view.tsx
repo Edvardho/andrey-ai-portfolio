@@ -3,14 +3,14 @@
 import type { RefObject } from 'react';
 import { useRef } from 'react';
 import { motion } from 'framer-motion';
-import type { RailItem, PromptChip } from '@/lib/portfolio/types';
-import { PortfolioButton } from './portfolio-button';
+import type { RailItem } from '@/lib/portfolio/types';
+import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 import { PortfolioComposer } from './portfolio-composer';
+import { portfolioFocusRing } from './portfolio-interaction-styles';
 import { PortfolioMetadataChip } from './portfolio-metadata-chip';
 import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 import type { EntryProjectPromptPreview } from './portfolio-project-prompt-card';
 import { PortfolioProjectPromptCard } from './portfolio-project-prompt-card';
-import { PortfolioPromptChip } from './portfolio-prompt-chip';
 
 type EntryProjectCard = {
   id: string;
@@ -20,26 +20,26 @@ type EntryProjectCard = {
 const entryProjectPreviewMap: Record<string, EntryProjectPromptPreview> = {
   'alfa-smart': {
     src: '/cases/alfa-smart/entry.png',
-    imageClassName: 'absolute h-[190.25%] w-[82.02%] max-w-none left-[7.04%] top-0',
+    imageClassName: 'absolute h-[197.58%] w-[81.05%] max-w-none left-[9.47%] top-[-1.37%]',
     fillClassName: 'bg-[#D1D7E3]',
   },
   'expenses-card-holders': {
     src: '/cases/expenses-card-holders/entry.png',
-    imageClassName: 'absolute h-[184.88%] w-[76.59%] max-w-none left-[9.75%] top-[-0.08%]',
+    imageClassName: 'absolute h-[211.44%] w-[84.11%] max-w-none left-[7.94%] top-0',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(157, 180, 225) 0%, rgb(227, 210, 209) 96.702%)',
     },
   },
   'subscription-sharing': {
     src: '/cases/subscription-sharing/entry.png',
-    imageClassName: 'absolute h-[182.07%] w-[74.45%] max-w-none left-[12.77%] top-[1.95%]',
+    imageClassName: 'absolute h-[220.02%] w-[83.23%] max-w-none left-[8.39%] top-[-3.62%]',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(227, 210, 209) 0%, rgb(194, 215, 202) 96.702%)',
     },
   },
   'ux-ui-wannabelike': {
     src: '/cases/ux-ui-wannabelike/entry.png',
-    imageClassName: 'absolute h-[223.85%] w-full max-w-none left-0 top-0',
+    imageClassName: 'absolute h-[241.99%] w-full max-w-none left-0 top-[-5.21%]',
     fillStyle: {
       backgroundImage: 'linear-gradient(140.182deg, rgb(211, 227, 209) 0%, rgb(32, 40, 56) 96.702%)',
     },
@@ -92,6 +92,13 @@ const metadataChips = [
   { id: 'ai', label: 'AI products', iconSrc: '/entry/icon-ai.svg' },
 ];
 
+const carouselControlClassName = [
+  'inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-[#EBEDF2] bg-white text-[#5F6474] transition-colors duration-150',
+  'hover:border-[#D7DBE5] hover:bg-[#FAFBFF]',
+  'active:border-[#D7DBE5] active:bg-[#F2F4FF]',
+  portfolioFocusRing,
+].join(' ');
+
 export function PortfolioEntryView({
   railItems,
   onRailClick,
@@ -100,9 +107,6 @@ export function PortfolioEntryView({
   onSubmit,
   loading,
   textareaRef,
-  chips,
-  onChipClick,
-  composerLayoutId,
 }: {
   railItems: RailItem[];
   onRailClick: (item: RailItem) => void;
@@ -111,9 +115,6 @@ export function PortfolioEntryView({
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   loading: boolean;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
-  chips: PromptChip[];
-  onChipClick: (chip: PromptChip) => void;
-  composerLayoutId: string;
 }) {
   const carouselRef = useRef<HTMLDivElement | null>(null);
 
@@ -123,7 +124,7 @@ export function PortfolioEntryView({
       return;
     }
 
-    const offset = direction === 'left' ? -344 : 344;
+    const offset = direction === 'left' ? -302 : 302;
     container.scrollBy({ left: offset, behavior: 'smooth' });
   }
 
@@ -150,7 +151,7 @@ export function PortfolioEntryView({
           transition={{ duration: 0.48, ease: WORKSPACE_EASE }}
         >
           <h1 className="text-center text-[78px] font-semibold leading-[84px] tracking-[-0.03em] text-[#11131a]">
-            Макаревич Андрей
+            Андрей Макаревич
           </h1>
           <p className="text-center text-[30px] leading-[36px] text-[#707795]">Продуктовый дизайнер</p>
           <div className="mt-[2px] flex flex-wrap items-center justify-center gap-[14px]">
@@ -162,34 +163,72 @@ export function PortfolioEntryView({
 
         <motion.section
           layout
+          className="mt-[62px] flex w-full max-w-[932px] flex-col items-start"
+          exit={{ y: -22, opacity: 0 }}
+          transition={{ duration: 0.44, ease: WORKSPACE_EASE }}
+        >
+          <div className="flex w-[680px] flex-col items-start gap-[10px]">
+            <PortfolioAssistantIdentityHeader />
+            <div className="w-[680px] whitespace-pre-wrap text-[16px] font-normal leading-[1.45] text-[#202129]">
+              <p>Если нет времени читать всё портфолио — начните отсюда.</p>
+              <p>Коротко разберу: кто Андрей, какой кейс смотреть первым и чем подтверждён его опыт.</p>
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          layout
+          className="mt-[30px] flex w-full max-w-[932px] flex-col items-center gap-[10px]"
+          transition={COMPOSER_DOCK_SPRING}
+        >
+          <motion.div
+            className="w-full"
+            transition={COMPOSER_DOCK_SPRING}
+          >
+            <PortfolioComposer
+              input={input}
+              onChangeInput={onChangeInput}
+              onSubmit={onSubmit}
+              disabled={loading}
+              textareaRef={textareaRef}
+              placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
+            />
+          </motion.div>
+          <p className="text-center text-[16px] font-normal leading-[22px] text-[#909090]">
+            Отвечаю только по кейсам, артефактам и подтверждённым фактам.
+          </p>
+        </motion.section>
+
+        <motion.section
+          layout
           className="mt-[64px] w-full"
           exit={{ y: -22, opacity: 0 }}
           transition={{ duration: 0.44, ease: WORKSPACE_EASE }}
         >
           <div className="flex items-center">
-            <h2 className="text-[24px] font-semibold leading-[30px] text-[#171920]">Про какой кейс мне рассказать?</h2>
+            <h2 className="text-[24px] font-semibold leading-[30px] text-[#171920]">
+              Или откройте конкретный кейс →
+            </h2>
             <div className="min-w-px flex-1" />
             <div className="flex items-center gap-[10px]">
-              <PortfolioButton
-                tone="secondary"
-                size="icon-sm"
+              <button
+                type="button"
+                className={carouselControlClassName}
                 onClick={() => scrollProjects('left')}
                 aria-label="Прокрутить проекты влево"
-                icon={
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/entry/icon-chevron-left.svg" alt="" className="size-4" />
-                }
-              />
-              <PortfolioButton
-                tone="secondary"
-                size="icon-sm"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/entry/icon-chevron-left.svg" alt="" className="size-4" />
+              </button>
+              <button
+                type="button"
+                className={carouselControlClassName}
                 onClick={() => scrollProjects('right')}
                 aria-label="Прокрутить проекты вправо"
-                icon={
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/entry/icon-chevron-right.svg" alt="" className="size-4" />
-                }
-              />
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/entry/icon-chevron-right.svg" alt="" className="size-4" />
+              </button>
             </div>
           </div>
 
@@ -212,36 +251,6 @@ export function PortfolioEntryView({
               })}
             </div>
           </div>
-        </motion.section>
-
-        <motion.section
-          layout
-          className="mt-[52px] flex w-full max-w-[932px] flex-col items-center gap-6"
-          transition={COMPOSER_DOCK_SPRING}
-        >
-          <motion.div
-            layoutId={composerLayoutId}
-            className="w-full"
-            transition={COMPOSER_DOCK_SPRING}
-          >
-            <PortfolioComposer
-              input={input}
-              onChangeInput={onChangeInput}
-              onSubmit={onSubmit}
-              disabled={loading}
-              textareaRef={textareaRef}
-              placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
-            />
-          </motion.div>
-          <motion.div
-            className="flex flex-wrap items-center justify-center gap-[18px]"
-            exit={{ y: 108, opacity: 0 }}
-            transition={{ duration: 0.46, ease: WORKSPACE_EASE }}
-          >
-            {chips.map((chip) => (
-              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
-            ))}
-          </motion.div>
         </motion.section>
       </div>
     </motion.div>

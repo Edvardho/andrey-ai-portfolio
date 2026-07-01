@@ -11,7 +11,7 @@ import {
   loadCaseById,
 } from '@/data/portfolio-case-loader.client';
 import { additionalCasesContent, experience, mobileOverview } from '@/data/portfolio-global-content';
-import { getContactContent, getEntryPrompts, getRailItems } from '@/data/portfolio-index';
+import { getContactContent, getRailItems } from '@/data/portfolio-index';
 import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
@@ -32,6 +32,7 @@ import {
   shouldRestoreThreadScrollOnSwitch,
   type ThreadScrollState,
 } from '@/lib/portfolio/response-scroll-policy';
+import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
 
 import { PortfolioEntryView } from './portfolio-entry-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
@@ -78,6 +79,9 @@ type ContextUiState = {
 type ContextUiStateStore = Record<string, ContextUiState>;
 
 type WorkspaceMode = 'landing' | 'chat';
+
+const LANDING_DEFAULT_PROMPT = 'Быстро оценить Андрея по кейсам';
+const FAST_REVIEW_DEFAULT_DISCLOSURE_ID = 'candidate-review-alfa-smart';
 type TransitionSource = 'submit' | 'chip' | 'case' | null;
 
 type PersistedThreadState = {
@@ -692,7 +696,7 @@ export function PortfolioShell() {
   const [contextUiStateByContextId, setContextUiStateByContextId] = useState<ContextUiStateStore>({});
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(LANDING_DEFAULT_PROMPT);
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>(null);
   const [bootstrappingContextId, setBootstrappingContextId] = useState<ContextId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -730,6 +734,12 @@ export function PortfolioShell() {
     threadsByContextId: normalizedThreadsByContextId,
     workspaceMode,
   });
+  const entryThread = normalizedThreadsByContextId.entry;
+  const assistantReturnLabel =
+    entryThread?.lastEnvelope?.viewType === 'candidate_fast_review'
+      ? 'Коротко об Андрее'
+      : 'Ответ ИИ-ассистента';
+  const railTitle = showChatStage ? 'Подробнее о кейсах' : 'Мои проекты';
 
   useDebouncedPortfolioPersistence({
     activeContextId,
@@ -899,6 +909,17 @@ export function PortfolioShell() {
   }
 
   function appendAssistantToThread(contextId: ContextId, envelope: AssistantEnvelope) {
+    if (envelope.viewType === 'candidate_fast_review') {
+      upsertContextUiState(contextId, (state) => (
+        state.expandedDisclosureIds.length
+          ? state
+          : {
+              ...state,
+              expandedDisclosureIds: [FAST_REVIEW_DEFAULT_DISCLOSURE_ID],
+            }
+      ));
+    }
+
     upsertThread(contextId, (thread) => {
       const assistantItem = createAssistantThreadItem(envelope);
       const isThreadNearBottom = thread.scrollState.isNearBottom;
@@ -1503,6 +1524,7 @@ export function PortfolioShell() {
 
   async function handleRailClick(item: RailItem) {
     if (workspaceModeRef.current === 'landing') {
+      setInput('');
       startWorkspaceTransition('case');
     }
 
@@ -1536,6 +1558,18 @@ export function PortfolioShell() {
     }
 
     void restoreExistingContext('entry');
+  }
+
+  function handleHomeClick() {
+    clearModal();
+    clearChatError();
+    captureActiveThreadScrollState();
+    setActiveContextId('entry');
+    setWorkspaceMode('landing');
+    setBootstrappingContextId(null);
+    setLoadingContextId(null);
+    setInput(LANDING_DEFAULT_PROMPT);
+    requestThreadTopScroll();
   }
 
   async function handleCta(action: UIAction) {
@@ -1634,7 +1668,11 @@ export function PortfolioShell() {
           <button
             type="button"
             onClick={() => handleCta({ type: 'open_contact_modal', source: 'desktop-blocker' })}
-            className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1A1C22] px-6 py-3 text-[15px] font-medium leading-5 text-white transition-colors duration-150 hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17191F]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className={[
+              'inline-flex cursor-pointer items-center justify-center rounded-full border px-6 py-3 text-[15px] font-medium leading-5 transition-colors duration-150',
+              portfolioPrimaryAction,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             Написать Андрею
           </button>
@@ -1646,6 +1684,7 @@ export function PortfolioShell() {
           <div className="portfolio-desktop-frame flex h-full flex-col overflow-hidden bg-white">
             <PortfolioDesktopHeader
               onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
+              onHomeClick={handleHomeClick}
               ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}
               showDivider={showChatStage}
               constrainToLandingFrame={showLandingStage && !showChatStage}
@@ -1664,9 +1703,6 @@ export function PortfolioShell() {
                       onSubmit={handleSubmit}
                       loading={Boolean(loadingContextId) || sessionMeta.remaining <= 0}
                       textareaRef={textareaRef}
-                      chips={getEntryPrompts()}
-                      onChipClick={handleChipClick}
-                      composerLayoutId="portfolio-composer-shell"
                     />
                   ) : null}
 
@@ -1677,6 +1713,8 @@ export function PortfolioShell() {
                       selectedRailId={selectedRailId}
                       showAssistantReturn={showAssistantReturn}
                       assistantReturnSelected={activeContextId === 'entry'}
+                      assistantReturnLabel={assistantReturnLabel}
+                      railTitle={railTitle}
                       messagesRemaining={messagesRemaining}
                       onRailClick={handleRailClick}
                       onAssistantReturnClick={handleAssistantReturnClick}
@@ -1703,7 +1741,6 @@ export function PortfolioShell() {
                       textareaRef={textareaRef}
                       threadViewRef={threadViewRef}
                       contextPanelPayload={currentContextPanelPayload}
-                      composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
                       caseBootstrapping={bootstrappingContextId === activeContextId}
                     />

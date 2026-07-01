@@ -139,7 +139,7 @@ export function PortfolioCaseCollection({
         className={clsx('overflow-visible', className)}
         style={{ width: '100%', maxWidth: `${CASE_COLLECTION_SECTION_WIDTH}px` }}
       >
-        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {cardsRow}
         </div>
       </div>
@@ -152,7 +152,7 @@ export function PortfolioCaseCollection({
       style={{ width: '100%', maxWidth: `${contract.sectionWidth}px` }}
     >
       <div
-        className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={contract.viewportStyle}
       >
         <div className="pr-4">

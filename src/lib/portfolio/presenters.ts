@@ -1,9 +1,9 @@
 import { getCaseFactPack } from '@/data/portfolio-case-facts';
+import { candidateFastReview } from '@/data/portfolio-candidate-review';
 import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   getCaseById,
   getContactContent,
-  getEntryPrompts,
   getExperienceRoute,
   getHiringGuide,
   getRailItems,
@@ -190,8 +190,6 @@ function getReplyStateForSynthesis(status: SynthesisSnapshot['answerStatus']): A
 }
 
 export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope {
-  const chips = getEntryPrompts();
-
   return createEnvelope({
     session,
     viewType: 'entry',
@@ -204,9 +202,55 @@ export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope
         body: [portfolioContent.entry.subtitle],
       },
     ],
-    chips,
     contextPanel: portfolioContent.entry.contextPanel,
-    nextActions: getPromptChipActions(chips),
+  });
+}
+
+export function buildCandidateFastReviewEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contentBlocks: ContentBlock[] = [
+    {
+      type: 'lead',
+      title: candidateFastReview.intro.title,
+      body: candidateFastReview.intro.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.projectScope.title,
+      body: candidateFastReview.projectScope.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.watchOrder.title,
+      body: candidateFastReview.watchOrder.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.disclosureTitle,
+      body: candidateFastReview.disclosures.map((item) => `${item.label}. ${item.body}`),
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.hiringLeadNote.title,
+      body: candidateFastReview.hiringLeadNote.body,
+    },
+  ];
+
+  return createEnvelope({
+    session,
+    viewType: 'candidate_fast_review',
+    presentationVariant: 'candidate_fast_review',
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    nextActions: [candidateFastReview.footerAction.action],
+    responseSource: 'authored',
+    assistantReplyState: 'grounded_answer',
+    answerType: 'candidate_fast_review',
+    queryScope: 'portfolio_wide',
+    questionSubject: 'candidate_fast_review',
   });
 }
 

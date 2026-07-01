@@ -12,6 +12,7 @@ import type {
   AnswerType,
   AssistantSession,
   CaseFactFacet,
+  CaseFactPack,
   PromptChip,
   QueryScope,
   QuestionSubject,
@@ -32,6 +33,10 @@ const synthesisSchema = z.object({
 });
 
 const SYNTHESIS_PATTERNS: Array<{ topic: SynthesisTopic; patterns: RegExp[] }> = [
+  {
+    topic: 'web',
+    patterns: [/что делал в web/i, /что делал в веб/i, /web[-\s]?кейсы/i, /веб[-\s]?кейсы/i],
+  },
   {
     topic: 'decision_making',
     patterns: [/как.+принима/i, /как.+решени/i, /почему.+решени/i, /что.+логик/i],
@@ -86,6 +91,7 @@ type SynthesisRequestConfig = {
     body: string;
   }>;
   fallbackBullets: string[];
+  fallbackAnswerStatus?: SynthesisSnapshot['answerStatus'];
   chips: PromptChip[];
   previousUserQuestion?: string | null;
   previousAssistantAnswerPreview?: string | null;
@@ -182,7 +188,7 @@ function buildFallbackSnapshot(
   question: string,
 ): SynthesisSnapshot {
   return finalizeSnapshot(request, question, {
-    answerStatus: 'grounded',
+    answerStatus: request.fallbackAnswerStatus ?? 'grounded',
     title: request.fallbackTitle,
     intro: request.fallbackIntro,
     followupParagraphs: request.fallbackFollowupParagraphs,
@@ -199,8 +205,11 @@ function buildAnswerPlan(
     case 'candidate_positioning':
       return {
         answerType,
-        requiredMoves: ['кто он', 'где особенно силен', '2-3 доказательства'],
-        avoid: ['резюме по компаниям без вывода', 'длинная хронология', 'общие качества без кейсов'],
+        requiredMoves:
+          options.questionSubject === 'candidate_motivation'
+            ? ['прямо ответить да/нет', 'дать живую реплику без театра', 'подтвердить поведением и фактами из портфолио']
+            : ['кто он', 'где особенно силен', '2-3 доказательства'],
+        avoid: ['резюме по компаниям без вывода', 'длинная хронология', 'общие качества без кейсов', 'психологический портрет без фактов'],
         maxParagraphs: 3,
         allowSections: false,
         allowBullets: false,
@@ -261,9 +270,30 @@ function buildAnswerPlan(
     case 'decision_breakdown':
       return {
         answerType,
-        requiredMoves: ['главный принцип', 'пример из кейса', 'что это подтверждает'],
-        avoid: ['пересказ всех действий по порядку', 'пустые общие слова'],
+        requiredMoves:
+          options.questionSubject === 'case_research'
+            ? ['что именно проверяли или изучали', 'какими артефактами это подтверждено', 'где фактов не хватает']
+            : options.questionSubject === 'case_decisions'
+              ? ['какие решения были приняты', 'почему они были важны', 'чем подтверждены']
+              : options.questionSubject === 'design_process'
+                ? ['как обычно идет работа от задачи до handoff', 'где это видно по кейсам', 'какая граница подтвержденных фактов']
+                : options.questionSubject === 'stakeholder_feedback'
+                  ? ['как обрабатывал обратную связь', 'какие примеры подтверждены кейсами', 'не додумывать неподтвержденные процессы']
+                  : options.questionSubject === 'prioritization'
+                    ? ['как выбирал важное', 'какие компромиссы подтверждены кейсами', 'что не подтверждено']
+                    : ['главный принцип', 'пример из кейса', 'что это подтверждает'],
+        avoid: ['пересказ всех действий по порядку', 'пустые общие слова', 'додуманные интервью или тесты без фактов'],
         maxParagraphs: 4,
+        allowSections: true,
+        allowBullets: false,
+        targetCaseIds: options.targetCaseIds,
+      };
+    case 'outcome_summary':
+      return {
+        answerType,
+        requiredMoves: ['назвать подтвержденный результат', 'отделить метрики от качественного вывода', 'сказать прямо, если нужных метрик нет'],
+        avoid: ['выдуманные метрики', 'NPS или feedback без фактов', 'общая победная риторика', 'метрики без связи с кейсом'],
+        maxParagraphs: 3,
         allowSections: true,
         allowBullets: false,
         targetCaseIds: options.targetCaseIds,
@@ -330,6 +360,17 @@ function buildFewShotExamples(
   questionSubject?: QuestionSubject,
 ): string {
   switch (answerType) {
+    case 'candidate_positioning':
+      if (questionSubject === 'candidate_motivation') {
+        return `
+Хороший пример:
+Вопрос: Нравится ли Андрею работа дизайнером?
+Ответ: Да. Иначе было бы странно тратить столько сил на кейсы, разбор решений и даже на меня.
+
+Но лучше смотреть не на декларацию "нравится/не нравится", а на поведение: Андрей продолжает разбирать свои решения, показывать доказательства и честно вытаскивать наружу даже слабые кейсы вроде ChatPoint.
+`;
+      }
+      return '';
     case 'failure_postmortem':
       return `
 Хороший пример:
@@ -436,6 +477,14 @@ function buildFewShotExamples(
 
 В Альфа-Смарте — гипотезы, прототипы, handoff и метрики после запуска. В SIEBEL — исследование операторов, workflow-изменения и цифры до/после. В ChatPoint — onboarding, routing, operator window и выводы по тому, почему продукт закрыли.
 `;
+    case 'outcome_summary':
+      return `
+Хороший пример:
+Вопрос: Какой результат получился после запуска?
+Ответ: По этому кейсу подтвержденный результат нужно разделять на две части: что дошло до релиза и какие метрики есть в портфолио.
+
+Если метрики есть, называй только их. Если NPS, ошибки или feedback не указаны в фактах, так и скажи: в портфолио это не подтверждено.
+`;
     default:
       return '';
   }
@@ -484,7 +533,82 @@ function buildGlobalSynthesisRequest(
           ],
         }
       : null;
-  const variant = portfolioValueVariant ?? strengthsVariant;
+  const identityMotivationVariant =
+    topic === 'identity' && questionSubject === 'candidate_motivation'
+      ? {
+          title: 'Нравится ли Андрею работа дизайнером',
+          fallbackParagraphs: [
+            'Да. Иначе было бы странно тратить столько сил на кейсы, разбор решений и даже на меня.',
+            'Но лучше смотреть не на декларацию “нравится/не нравится”, а на поведение: Андрей продолжает разбирать свои решения, показывать доказательства и честно вытаскивать наружу даже слабые кейсы вроде ChatPoint.',
+          ],
+        }
+      : null;
+  const processVariant =
+    topic === 'decision_making' && questionSubject === 'design_process'
+      ? {
+          title: 'Как Андрей ведет дизайн-процесс',
+          fallbackParagraphs: [
+            'По подтвержденным кейсам его процесс выглядит так: сначала разобраться в задаче, ролях и ограничениях, потом собрать сценарий и гипотезы, после этого перейти к макетам, проверке и передаче в разработку.',
+            'Лучше всего это видно в Альфа-Смарте и SIEBEL: в одном кейсе были user flow, гипотезы, прототип, дизайн-чек и handoff, в другом — анализ работы операторов и проверка решений через MVP.',
+          ],
+        }
+      : topic === 'decision_making' && questionSubject === 'collaboration_process'
+        ? {
+            title: 'Как Андрей работает с командами',
+            fallbackParagraphs: [
+              'По кейсам видно, что Андрей работает не только с интерфейсом, а с людьми вокруг задачи: бизнесом, продактами, разработкой и соседними командами.',
+              'В Альфа-Смарте это было видно в синхронизации сценария и handoff, в SIEBEL — в согласовании проблем с продактами, а в расходах держателей — в межкомандной зависимости, которую нужно было провести до решения.',
+            ],
+          }
+        : topic === 'decision_making' && questionSubject === 'stakeholder_feedback'
+          ? {
+              title: 'Как Андрей работает с обратной связью',
+              fallbackParagraphs: [
+                'В портфолио подтверждены не все детали работы со стейкхолдерами, поэтому здесь нельзя честно рассказывать “полный процесс”.',
+                'Что подтверждено: в Альфа-Смарте были дизайн-чек, аппрувы и дизайн-ревью после реализации; в SIEBEL найденные проблемы согласовывались с продактами перед переводом в решения.',
+              ],
+            }
+          : topic === 'decision_making' && questionSubject === 'prioritization'
+            ? {
+                title: 'Как Андрей приоритизирует решения',
+                fallbackParagraphs: [
+                  'По кейсам видно, что Андрей приоритизирует не по красоте экрана, а по влиянию на сценарий и ограничения продукта.',
+                  'В Альфа-Смарте это видно в переходе от web-first к mobile-first и споре за MVP отмены подписки в один экран. В SIEBEL — в фокусе на двухоконный режим, данные клиента и шаблоны, а не на косметический редизайн.',
+                ],
+              }
+            : topic === 'decision_making' && questionSubject === 'impact_measurement'
+              ? {
+                  title: 'Как Андрей измеряет влияние работы',
+                  fallbackParagraphs: [
+                    'Влияние подтверждено не во всех кейсах одинаково. Самые сильные данные есть в Альфа-Смарте и SIEBEL.',
+                    'В Альфа-Смарте есть продуктовые метрики после запуска: 32 111 активных подписчиков, 30% владельцев добавили участников, 1,1 млн ₽ дохода. В SIEBEL есть эффект по workflow: среднее время обработки сократилось с 900 до 580 секунд, а число диалогов выросло примерно вдвое.',
+                  ],
+                }
+              : topic === 'decision_making' && questionSubject === 'learning_adaptation'
+                ? {
+                    title: 'Как Андрей учится новому',
+                    fallbackParagraphs: [
+                      'Самый явно подтвержденный пример обучения — UX/UI WannabeLike: Андрей отдельно прокачивал UI вне жестких ограничений банковской дизайн-системы.',
+                      'По этому кейсу видны research synthesis, структура приложения, user flows и UI-концепт. Более широкий список случаев быстрого обучения в портфолио пока не подтвержден.',
+                    ],
+                  }
+                : null;
+  const designSystemVariant =
+    topic === 'experience' && questionSubject === 'design_system_work'
+      ? {
+          title: 'Как Андрей работает с дизайн-системами',
+          fallbackParagraphs: [
+            'В портфолио подтверждено, что Андрей работал не только с кастомными экранами, но и внутри готовых дизайн-систем.',
+            'В Positive Technologies он проектировал часть интерфейсов с готовой дизайн-системой и поддерживал UI-kit. В Альфа-Смарте работал в ограничениях банковской дизайн-системы и BDUI.',
+          ],
+        }
+      : null;
+  const variant =
+    portfolioValueVariant
+    ?? strengthsVariant
+    ?? identityMotivationVariant
+    ?? processVariant
+    ?? designSystemVariant;
   const resolvedTitle = variant?.title ?? config.title;
   const resolvedFallbackParagraphs = variant?.fallbackParagraphs ?? config.fallbackParagraphs;
   return {
@@ -580,10 +704,23 @@ ${request.answerPlan.targetCaseIds?.length ? `- targetCaseIds: ${request.answerP
 Специальные правила по QuestionSubject:
 - candidate_portfolio_value: объясняй, почему это портфолио кандидата полезно для оценки и какие типы доказательств в нем есть
 - ai_format_value: отвечай про формат AI-портфолио как инструмента, а не про силу Андрея как кандидата
-- assistant_case_navigation: отвечай про сценарий просмотра кейсов через ассистента и про то, какие вопросы он помогает задать быстрее
-- interview_decision: отвечай, почему стоит тратить слот интервью и что нужно проверить на разговоре
-- case_contribution: отвечай только про личный вклад кандидата
+	- assistant_case_navigation: отвечай про сценарий просмотра кейсов через ассистента и про то, какие вопросы он помогает задать быстрее
+	- interview_decision: отвечай, почему стоит тратить слот интервью и что нужно проверить на разговоре
+	- candidate_motivation: отвечай живо, но подтверждай вывод поведением и фактами портфолио, а не психологическими догадками
+	- case_contribution: отвечай только про личный вклад кандидата
 - case_strength: отвечай, что именно этот кейс доказывает о кандидате и почему это важно для оценки
+- case_problem: отвечай про исходную задачу и проблему, не уходи в продажу кейса
+- case_research: отвечай только про подтвержденные исследования, проверки, тесты и артефакты; если нужного типа проверки нет в фактах, скажи об этом
+- case_decisions: отвечай про конкретные решения, механику, flow и trade-off
+- case_constraints: отвечай про ограничения, права доступа, безопасность, edge cases и компромиссы; не выдумывай compliance
+- case_outcomes: отвечай про подтвержденные результаты, метрики и feedback; если NPS/ошибки/отзывы не указаны, скажи "в портфолио это не подтверждено"
+- design_process: отвечай про процесс от задачи до handoff только по подтвержденным кейсам
+- collaboration_process: отвечай про работу с PM, разработчиками и командами только по подтвержденным кейсам
+- stakeholder_feedback: отвечай про feedback и стейкхолдеров только если это есть во фактах
+- prioritization: отвечай про приоритеты и компромиссы через подтвержденные решения
+- impact_measurement: отвечай про измерение влияния и метрики; не придумывай метрики
+- design_system_work: отвечай про дизайн-системы, компоненты и UI-kit только по подтвержденным фактам
+- learning_adaptation: отвечай про обучение новому только по подтвержденным фактам
 
 Предыдущий диалог:
 - previousUserQuestion: ${request.previousUserQuestion ?? 'none'}
@@ -717,12 +854,77 @@ export async function synthesizeGeneralAnswer(
 
 const CASE_FACET_TOPIC_MAP: Record<CaseFactFacet, SynthesisTopic> = {
   overview: 'fit',
+  problem: 'fit',
   role: 'fit',
+  research: 'decision_making',
   decisions: 'decision_making',
+  constraints: 'fit',
+  outcomes: 'fit',
   evidence: 'fit',
   strengths: 'strengths',
   risks: 'fit',
 };
+
+type FallbackOverride = {
+  fallbackIntro: string;
+  fallbackSections: Array<{
+    title: string;
+    body: string;
+  }>;
+  fallbackBullets: string[];
+};
+
+function asksForSpecificOutcomeEvidence(question: string): boolean {
+  return /метрик|nps|feedback|фидбек|отзыв|ошиб|конверс|вырос|рост|улучшил|улучшились/i.test(question);
+}
+
+function hasConfirmedOutcomeEvidence(question: string, pack: CaseFactPack): boolean {
+  const facts = [...pack.outcomes, ...pack.validation, ...pack.evidence].join(' ').toLowerCase();
+
+  if (/nps/i.test(question)) {
+    return /\bnps\b/i.test(facts);
+  }
+
+  if (/feedback|фидбек|отзыв/i.test(question)) {
+    return /feedback|фидбек|отзыв|обратн.+связ|без отторжения/i.test(facts);
+  }
+
+  if (/ошиб/i.test(question)) {
+    return /ошиб/i.test(facts);
+  }
+
+  return /%|₽|подписчик|доход|секунд|диалог|вдвое|x2|активн/i.test(facts);
+}
+
+function buildOutcomeGapOverride(question: string, pack: CaseFactPack): FallbackOverride | null {
+  if (!asksForSpecificOutcomeEvidence(question) || hasConfirmedOutcomeEvidence(question, pack)) {
+    return null;
+  }
+
+  const confirmedResult =
+    pack.outcomes.find((outcome) => !/нет подтвержден|не хватает подтвержден/i.test(outcome.toLowerCase()))
+    ?? pack.outcomes[0]
+    ?? pack.recruiterSummary.followup
+    ?? pack.recruiterSummary.intro;
+  const missingMetric =
+    pack.missing.find((item) => /метрик|feedback|фидбек|nps|запуск|production/i.test(item))
+    ?? 'В портфолио это не подтверждено отдельными метриками, NPS или post-launch feedback.';
+
+  return {
+    fallbackIntro: 'В портфолио это не подтверждено отдельными метриками или feedback.',
+    fallbackSections: [
+      {
+        title: 'Что подтверждено',
+        body: confirmedResult,
+      },
+      {
+        title: 'Чего нет в фактах',
+        body: missingMetric,
+      },
+    ].filter((section) => section.body),
+    fallbackBullets: [],
+  };
+}
 
 export async function synthesizeCaseAwareAnswer(
   question: string,
@@ -740,6 +942,10 @@ export async function synthesizeCaseAwareAnswer(
   }
 
   const answerPlan = buildAnswerPlan(answerType, { targetCaseIds: [caseId], questionSubject });
+  const outcomeGapOverride =
+    answerType === 'outcome_summary' && pack
+      ? buildOutcomeGapOverride(question, pack)
+      : null;
   const failureOverride =
     answerType === 'failure_postmortem' && pack
       ? {
@@ -764,14 +970,16 @@ export async function synthesizeCaseAwareAnswer(
     title: config.fallbackTitle,
     facts: config.facts,
     fallbackTitle: failureOverride?.fallbackTitle ?? config.fallbackTitle,
-    fallbackIntro: failureOverride?.fallbackIntro ?? config.fallbackIntro,
+    fallbackIntro: failureOverride?.fallbackIntro ?? outcomeGapOverride?.fallbackIntro ?? config.fallbackIntro,
     fallbackFollowupParagraphs:
       failureOverride?.fallbackFollowupParagraphs
+      ?? (outcomeGapOverride ? [] : null)
       ?? (!answerPlan.allowSections
         ? config.fallbackSections.map((section) => section.body).slice(0, Math.max(answerPlan.maxParagraphs - 1, 0))
         : []),
-    fallbackSections: failureOverride?.fallbackSections ?? config.fallbackSections,
-    fallbackBullets: failureOverride?.fallbackBullets ?? config.fallbackBullets,
+    fallbackSections: failureOverride?.fallbackSections ?? outcomeGapOverride?.fallbackSections ?? config.fallbackSections,
+    fallbackBullets: failureOverride?.fallbackBullets ?? outcomeGapOverride?.fallbackBullets ?? config.fallbackBullets,
+    fallbackAnswerStatus: failureOverride ? 'grounded' : outcomeGapOverride ? 'insufficient_facts' : config.fallbackAnswerStatus,
     chips: config.chips,
     previousUserQuestion: session.lastUserQuestion,
     previousAssistantAnswerPreview: session.lastAssistantAnswerPreview,

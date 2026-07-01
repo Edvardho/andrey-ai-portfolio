@@ -67,6 +67,34 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
     return null;
   }
 
+  if (/какая была.+проблем|какую проблем|зачем понадоб|что решал|основная проблем/i.test(lowered)) {
+    return { intent: { type: 'case_discovery', targetCaseId: findCaseId(lowered) ?? undefined }, confidence: 'medium' };
+  }
+
+  if (/какая была.+роль|что именно.+делал|что.+реально.+делал|какой был.+вклад|что здесь сделал он|а не команда/i.test(lowered)) {
+    return { intent: { type: 'case_discovery', targetCaseId: findCaseId(lowered) ?? undefined }, confidence: 'high' };
+  }
+
+  if (/как.+исслед|как.+изучал|как.+тестировал|тестировал.+гипотез|проверял.+гипотез|юзабилити|shadowing|запис[ьи].+оператор|анализ задач/i.test(lowered)) {
+    return { intent: { type: 'decision_process' }, confidence: 'high' };
+  }
+
+  if (/какие.+решени|ключевые решени|механик|архитектур|балансир|flow|флоу|сценари|вариант[а-яё\s]+рассматр/i.test(lowered)) {
+    return { intent: { type: 'decision_process' }, confidence: 'medium' };
+  }
+
+  if (/compliance|edge[-\s]?кейс|безопасност|права доступа|управлени[ея].+доступ|ограничени|уведомлен|компромисс/i.test(lowered)) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
+  if (/какой.+результ|какие.+метрик|что улучшил|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)) {
+    return { intent: { type: 'evidence_request' }, confidence: 'high' };
+  }
+
+  if (/дизайн-процесс|типичн.+процесс|от получения задачи|handoff|хенд.?офф|product manager|pm|продакт|разработчик|обратн.+связ|стейкхолдер|приоритиз|измеря.+влияни|влияни.+(?:продукт|бизнес)|дизайн-систем|компонент|ui[-\s]?kit|быстро.+уч|учиться.+нов/i.test(lowered)) {
+    return { intent: { type: /дизайн-систем|компонент|ui[-\s]?kit/i.test(lowered) ? 'experience_overview' : 'decision_process' }, confidence: 'high' };
+  }
+
   if (
     /(?:а\s+)?ты.*кто|кто\s+ты(?:\s+такой)?|ну\s+ты\s+кто|что ты умеешь|что ты можешь|чем ты полезен|ты мне чем полезен|что умеет ассистент|что это за ассистент|что ты тут делаешь|ты зачем нужен|зачем ты тут/i.test(
       lowered,
@@ -96,6 +124,14 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
+    /нравит(?:ся)? ли андр[её]ю.+(?:дизайн|работа дизайнером|быть дизайнером)|андре[юя].+нравит(?:ся)?.+(?:дизайн|работа дизайнером|быть дизайнером)|любит ли андр[её]й.+дизайн/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'identity_intro' }, confidence: 'high' };
+  }
+
+  if (
     /кто такой андрей|что это за кандидат|что за кандидат|расскажи про андрея|представ(ь|ьте).+андре|ну и кто такой андрей|что за чел|это вообще кто|короче кто он|что он за тип как спец/i.test(
       lowered,
     )
@@ -112,11 +148,27 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
+    /что делал в web|что делал в веб|что он делал в web|что он делал в веб|web[-\s]?кейсы|веб[-\s]?кейсы|что у него по web|что у него по веб/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'experience_overview' }, confidence: 'high' };
+  }
+
+  if (
     /покажи мобильные кейсы|что делал в мобилк|что он делал в мобилк|делал мобильн|есть мобильн(ый|ые) кейс|мобильн(ый|ые) кейс|mobile/i.test(
       lowered,
     )
   ) {
     return { intent: { type: 'mobile_overview' }, confidence: 'high' };
+  }
+
+  if (
+    /(?:ошибк|сделал не так).*(chatpoint|чатпойнт|чат поинт)|(?:chatpoint|чатпойнт|чат поинт).*(?:ошибк|сделал не так)|какую ошибку.+(?:chatpoint|чатпойнт|чат поинт)/i.test(
+      lowered,
+    )
+  ) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
   }
 
   if (
@@ -210,6 +262,67 @@ export function classifyMessageDeterministically(
     return null;
   }
 
+  if (
+    session.selectedContext.kind === 'case'
+    && /какая была.+проблем|какую проблем|зачем понадоб|что решал|основная проблем/i.test(lowered)
+  ) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: session.selectedContext.id },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    session.selectedContext.kind === 'case'
+    && /как.+исслед|как.+изучал|как.+тестировал|тестировал.+гипотез|проверял.+гипотез|юзабилити|shadowing|запис[ьи].+оператор|анализ задач/i.test(lowered)
+  ) {
+    return {
+      intent: { type: 'decision_process' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    session.selectedContext.kind === 'case'
+    && /какие.+решени|ключевые решени|механик|архитектур|балансир|flow|флоу|сценари|вариант[а-яё\s]+рассматр/i.test(lowered)
+  ) {
+    return {
+      intent: { type: 'decision_process' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    session.selectedContext.kind === 'case'
+    && /compliance|edge[-\s]?кейс|безопасност|права доступа|управлени[ея].+доступ|ограничени|уведомлен|компромисс/i.test(lowered)
+  ) {
+    return {
+      intent: { type: 'risk_objection' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    session.selectedContext.kind === 'case'
+    && /какой.+результ|какие.+метрик|что улучшил|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)
+  ) {
+    return {
+      intent: { type: 'evidence_request' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /дизайн-процесс|типичн.+процесс|от получения задачи|handoff|хенд.?офф|product manager|pm|продакт|разработчик|обратн.+связ|стейкхолдер|приоритиз|измеря.+влияни|влияни.+(?:продукт|бизнес)|дизайн-систем|компонент|ui[-\s]?kit|быстро.+уч|учиться.+нов/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: /дизайн-систем|компонент|ui[-\s]?kit/i.test(lowered) ? 'experience_overview' : 'decision_process' },
+      confidence: 'high',
+    };
+  }
+
   if (/контакт|связа|написа/i.test(lowered)) {
     return {
       intent: { type: 'navigation_action', action: { type: 'open_contact_modal', source: 'message' } },
@@ -229,12 +342,34 @@ export function classifyMessageDeterministically(
   }
 
   if (
+    /расскажи коротко про андре|быстро оценить андре[яй].+кейс|оценить андре[яй].+кейс|расскажи про андре[яй].+3 минут|оценить андре[яй].+3 минут|коротко (?:о|об) кандидат|нет времени (?:изучать|читать|смотреть) портфолио|быстро.+(?:оценить|понять|разобрать).+андре/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'portfolio_overview' },
+      confidence: 'high',
+    };
+  }
+
+  if (
     /сожми весь опыт|сожми.+по каждому кейсу|по каждому кейсу дай|по всем кейсам дай|кратко расскажи про андрея.+по каждому кейсу|дай выжимку по кейсам|краткое саммари по всем кейсам|кратко по всем кейсам|расскажи кратко о кейсах андр[её]я|расскажи емко о кейсах андр[её]я|расскажи сжато о кейсах андр[её]я|кратко расскажи о кейсах|емко расскажи о кейсах|сжато расскажи о кейсах|дай краткий обзор кейсов/i.test(
       lowered,
     )
   ) {
     return {
       intent: { type: 'portfolio_overview' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /нравит(?:ся)? ли андр[её]ю.+(?:дизайн|работа дизайнером|быть дизайнером)|андре[юя].+нравит(?:ся)?.+(?:дизайн|работа дизайнером|быть дизайнером)|любит ли андр[её]й.+дизайн/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'identity_intro' },
       confidence: 'high',
     };
   }
@@ -257,6 +392,17 @@ export function classifyMessageDeterministically(
     };
   }
 
+  if (
+    /что делал в web|что делал в веб|что он делал в web|что он делал в веб|web[-\s]?кейсы|веб[-\s]?кейсы|что у него по web|что у него по веб/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'experience_overview' },
+      confidence: 'high',
+    };
+  }
+
   if (/в чем у него позвоночник|чем андрей лучше других дизайнеров|чем он лучше других дизайнеров|чем отличается от других дизайнеров|почему андрей лучше других дизайнеров|почему он лучше других дизайнеров|расскажи почему андрей лучше других дизайнеров|расскажи почему он лучше других дизайнеров/i.test(lowered)) {
     return {
       intent: { type: 'strengths_assessment' },
@@ -267,6 +413,28 @@ export function classifyMessageDeterministically(
   if (/был у него неудачный кейс|есть неудачный кейс|был слабый кейс|есть слабый кейс|был плохой кейс|есть плохой кейс|был провальный кейс|есть провальный кейс/i.test(lowered)) {
     return {
       intent: { type: 'case_discovery', targetCaseId: 'chatpoint' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /(?:ошибк|сделал не так).*(chatpoint|чатпойнт|чат поинт)|(?:chatpoint|чатпойнт|чат поинт).*(?:ошибк|сделал не так)|какую ошибку.+(?:chatpoint|чатпойнт|чат поинт)/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'risk_objection' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /что тут смущает|что здесь смущает|что меня должно смутить|что должно смутить|а где тут риск|где тут риск|какие тут риски|какие здесь риски/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'risk_objection' },
       confidence: 'high',
     };
   }
@@ -466,6 +634,8 @@ const CLASSIFIER_PROMPT = `
 - Если пользователь спрашивает, кто такой сам ассистент, что он умеет, чем полезен -> assistant_intro.
 - Если пользователь спрашивает, кто такой Андрей, что это за кандидат, просит кратко представить -> identity_intro.
 - Если пользователь спрашивает про опыт, компании, домены -> experience_overview.
+- Если пользователь спрашивает, нравится ли Андрею работа дизайнером или дизайн как профессия -> identity_intro.
+- Если пользователь спрашивает, что Андрей делал в web/вебе -> experience_overview.
 - Если пользователь просит сжать весь опыт и кратко пройтись по кейсам одним ответом -> portfolio_overview.
 - Если пользователь спрашивает, зачем вообще смотреть это портфолио или что дает такой формат -> portfolio_value_request.
 - Если пользователь просит показать или рассказать про кейс, но не просит явно перейти на экран -> case_discovery.
@@ -473,8 +643,13 @@ const CLASSIFIER_PROMPT = `
 - Если пользователь спрашивает про сильные стороны или почему стоит звать на интервью -> strengths_assessment.
 - Если пользователь спрашивает про уровень, seniority или fit для роли -> role_fit_assessment.
 - Если пользователь спрашивает, как Андрей принимает решения, работает над задачей, исследует или валидирует -> decision_process.
+- Если пользователь внутри кейса спрашивает про проблему, роль, research, тестирование гипотез, flow, механику, решения или процесс -> не ambiguous; выбери case_discovery или decision_process по смыслу.
+- Если пользователь внутри кейса спрашивает про ограничения, compliance, edge cases, безопасность или права доступа -> risk_objection.
+- Если пользователь внутри кейса спрашивает про результат, метрики, отзывы, эффект после запуска или NPS -> evidence_request.
+- Если пользователь спрашивает глобально про работу с PM, разработчиками, стейкхолдерами, приоритизацию, измерение влияния, дизайн-систему или быстрое обучение -> decision_process или experience_overview, но не ambiguous.
 - Если пользователь просит доказательства, подтверждения, артефакты или спрашивает, где это видно -> evidence_request.
 - Если пользователь спрашивает про слабые стороны, ограничения, риски -> risk_objection.
+- Если пользователь спрашивает, какую ошибку Андрей совершил в конкретном кейсе -> risk_objection.
 - Если пользователь просит конкретный кейс, которого нет в известном списке -> missing_case_request.
 - Если вопрос вне границ портфолио, требует внешнего мнения, world knowledge или не относится к оценке кандидата -> unsupported_request.
 - ambiguous_question только если запрос невозможно уверенно отнести ни к одному из классов выше.
@@ -489,12 +664,14 @@ Confidence:
 - "Расскажи о себе" -> assistant_intro, medium
 - "ну ты кто" -> assistant_intro, high
 - "Кто такой Андрей?" -> identity_intro, high
+- "Нравится ли Андрею работа дизайнером?" -> identity_intro, high
 - "Что это за кандидат?" -> identity_intro, medium
 - "что за кандидат" -> identity_intro, medium
 - "где он успел поработать" -> experience_overview, high
 - "Расскажи сжато об опыте работы Андрея" -> experience_overview, high
 - "Кратко расскажи про его опыт работы" -> experience_overview, high
 - "Кратко пройдись по его опыту" -> experience_overview, high
+- "Что делал в web?" -> experience_overview, high
 - "Сожми весь опыт и по каждому кейсу дай по паре строк" -> portfolio_overview, high
 - "Расскажи сжато о кейсах Андрея" -> portfolio_overview, high
 - "Почему это портфолио вообще стоит смотреть?" -> portfolio_value_request, high
@@ -505,6 +682,7 @@ Confidence:
 - "Покажи сильный кейс" -> case_discovery, high
 - "Расскажи про ChatPoint" -> case_discovery, high, caseId=chatpoint
 - "Что делал в мобилке?" -> mobile_overview, high
+- "Какую ошибку совершил Андрей на ChatPoint?" -> risk_objection, high
 - "Открой опыт работы" -> navigation_action, high, action=open_experience_summary
 - "Перейди к ChatPoint" -> navigation_action, high, action=open_case_summary, caseId=chatpoint
 - "Почему его стоит позвать?" -> strengths_assessment, high
@@ -520,6 +698,15 @@ Confidence:
 - "пока выглядит как нормальный мидл, почему это не так?" -> role_fit_assessment, high
 - "он продуктом думает или только пиксели красит" -> decision_process, high
 - "Как Андрей работает над задачей?" -> decision_process, high
+- "Как вы обычно работаете с Product Manager и разработчиками?" -> decision_process, high
+- "Как вы получаете обратную связь от стейкхолдеров?" -> decision_process, high
+- "Как вы приоритизируете задачи в условиях ограниченных ресурсов?" -> decision_process, high
+- "Как вы измеряете влияние своей работы на продукт?" -> decision_process, high
+- "Как вы работаете с дизайн-системами и компонентами?" -> experience_overview, high
+- "Какие права доступа вы проектировали?" -> risk_objection, high
+- "С какими edge-кейсами и ограничениями столкнулись?" -> risk_objection, high
+- "Как тестировали гипотезы в этом кейсе?" -> decision_process, high
+- "Какой результат получился после запуска?" -> evidence_request, high
 - "что у него есть кроме аккуратного ui?" -> decision_process, high
 - "окей а пруфы где" -> evidence_request, high
 - "где видно что он влияет на продукт?" -> evidence_request, high

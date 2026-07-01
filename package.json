@@ -16,6 +16,8 @@
     "verify:structured-experience": "tsx scripts/structured-experience-contract.ts",
     "verify:intent-policy": "tsx scripts/verify-intent-policy.ts",
     "verify:query-interpretation": "node --import tsx scripts/verify-query-interpretation.ts",
+    "verify:design-lead-questions": "node --import tsx scripts/verify-design-lead-questions.ts",
+    "verify:design-lead-answer-quality": "node --import tsx scripts/verify-design-lead-answer-quality.ts",
     "verify:synthesis-policy": "tsx scripts/verify-synthesis-policy.ts",
     "verify:case-fact-packs": "tsx scripts/verify-case-fact-packs.ts",
     "verify:assistant-reply-states": "tsx scripts/verify-assistant-reply-states.ts",

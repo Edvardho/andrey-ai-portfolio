@@ -6,13 +6,17 @@ type SafetyMatch = {
   body: string[];
 };
 
+const WORD_START = String.raw`(?:^|[\s.,!?;:()«»"'/-])`;
+const WORD_END = String.raw`(?=$|[\s.,!?;:()«»"'/-])`;
+const CYRILLIC_TAIL = String.raw`[а-яё-]*`;
+
 const TOXIC_PATTERNS = [
-  /идиот/i,
-  /туп/i,
-  /соси/i,
-  /пош[её]л/i,
-  /дебил/i,
-  /нах/i,
+  new RegExp(`${WORD_START}идиот${CYRILLIC_TAIL}${WORD_END}`, 'i'),
+  new RegExp(`${WORD_START}туп(?:ой|ая|ое|ые|ого|ому|ым|ыми|ых|о)?${WORD_END}`, 'i'),
+  new RegExp(`${WORD_START}соси${WORD_END}`, 'i'),
+  new RegExp(`${WORD_START}пош[её]л${CYRILLIC_TAIL}${WORD_END}`, 'i'),
+  new RegExp(`${WORD_START}дебил${CYRILLIC_TAIL}${WORD_END}`, 'i'),
+  new RegExp(`${WORD_START}нах(?:уй|ер|рен)?${WORD_END}`, 'i'),
 ];
 
 const INJECTION_PATTERNS = [

@@ -8,11 +8,13 @@ import { PortfolioButton } from './portfolio-button';
 
 export function PortfolioDesktopHeader({
   onContactClick,
+  onHomeClick,
   ctaSource,
   showDivider,
   constrainToLandingFrame = false,
 }: {
   onContactClick: (source: 'entry' | 'header') => void;
+  onHomeClick: () => void;
   ctaSource: 'entry' | 'header';
   showDivider: boolean;
   constrainToLandingFrame?: boolean;
@@ -30,11 +32,16 @@ export function PortfolioDesktopHeader({
             : 'flex h-full items-center justify-between'
         }
       >
-        <div className="flex items-center gap-[10px] whitespace-nowrap">
+        <button
+          type="button"
+          onClick={onHomeClick}
+          className="flex cursor-pointer items-center gap-[10px] whitespace-nowrap rounded-[10px] text-left transition-opacity duration-150 hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+          aria-label="Вернуться на главную"
+        >
           <span className="text-[15px] font-semibold leading-5 text-[#1a1d23]">Андрей Макаревич</span>
           <span className="text-[14px] leading-[18px] text-[#c6c8d0]">•</span>
           <span className="text-[14px] leading-[18px] text-[#9da1ae]">Product Designer</span>
-        </div>
+        </button>
 
         <div className="flex items-center gap-3">
           <PortfolioAvailabilityPill />

@@ -39,7 +39,7 @@ export const caseAliases: CaseAlias[] = [
     ],
   },
   { caseId: 'siebel', patterns: [/siebel/i, /оператор/i, /мтс/i] },
-  { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /anti-case/i] },
+  { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /чат\s+поинт/i, /anti-case/i] },
   { caseId: 'expenses-card-holders', patterns: [/держател/i, /расход/i, /истори/i] },
   { caseId: 'subscription-sharing', patterns: [/шаринг/i, /подписк.+ссыл/i, /приглаш/i] },
   { caseId: 'ux-ui-wannabelike', patterns: [/wannabelike/i, /superapp/i, /миш/i, /структур/i, /ux\/ui/i] },
@@ -51,7 +51,7 @@ const explicitCaseAliases: CaseAlias[] = [
     patterns: [/альфа[-\s]?смарт/i, /\balfa[-\s]?smart\b/i],
   },
   { caseId: 'siebel', patterns: [/siebel/i] },
-  { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i] },
+  { caseId: 'chatpoint', patterns: [/chatpoint/i, /чатпойнт/i, /чат\s+поинт/i] },
   {
     caseId: 'expenses-card-holders',
     patterns: [/расходы держател/i, /держател[ея].+карт/i],
@@ -85,6 +85,18 @@ const CURRENT_CASE_CUES: CueDefinition[] = [
   { label: 'current_case:this_case', patterns: [/этот кейс/i, /данный кейс/i] },
 ];
 
+const CONTEXT_CASE_REFERENCE_CUES: CueDefinition[] = [
+  {
+    label: 'context_case:anaphora',
+    patterns: [
+      /(^|[\s.,!?;:()«»"'/-])там($|[\s.,!?;:()«»"'/-])/i,
+      /в том кейсе/i,
+      /в этом ответе/i,
+      /у него в этом проекте/i,
+    ],
+  },
+];
+
 const GLOBAL_PERSON_CUES: CueDefinition[] = [
   { label: 'global_person:hiring', patterns: [/почему.+звать/i, /стоит.+нанять/i, /как кандидат/i, /почему его стоит/i] },
   { label: 'global_person:better_than_others', patterns: [/лучше других дизайнеров/i, /чем он лучше/i, /чем андрей лучше/i, /отличается от других дизайнеров/i] },
@@ -106,6 +118,22 @@ const PORTFOLIO_VALUE_CUES: CueDefinition[] = [
   },
 ];
 
+const FAST_REVIEW_CUES: CueDefinition[] = [
+  {
+    label: 'fast_review:short_about_andrey',
+    patterns: [
+      /расскажи коротко про андре/i,
+      /расскажи про андре[яй].+3 минут/i,
+      /оценить андре[яй].+3 минут/i,
+      /быстро оценить андре[яй].+кейс/i,
+      /оценить андре[яй].+кейс/i,
+      /коротко (?:о|об) кандидат/i,
+      /нет времени (?:изучать|читать|смотреть) портфолио/i,
+      /быстро.+(?:оценить|понять|разобрать).+андре/i,
+    ],
+  },
+];
+
 const SUMMARY_CUES: CueDefinition[] = [
   { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /емко/i, /коротко/i, /без воды/i] },
 ];
@@ -113,6 +141,7 @@ const SUMMARY_CUES: CueDefinition[] = [
 const EXPERIENCE_CUES: CueDefinition[] = [
   { label: 'experience:work_history', patterns: [/опыт работы/i, /его опыт/i, /где он работал/i, /карьер/i, /бэкграунд/i] },
   { label: 'experience:domains', patterns: [/компани/i, /домены/i, /где успел поработать/i] },
+  { label: 'experience:web', patterns: [/что делал в web/i, /что делал в веб/i, /web[-\s]?кейсы/i, /веб[-\s]?кейсы/i, /что у него по web/i, /что у него по веб/i] },
 ];
 
 const EVIDENCE_CUES: CueDefinition[] = [
@@ -122,6 +151,140 @@ const EVIDENCE_CUES: CueDefinition[] = [
 const RISK_CUES: CueDefinition[] = [
   { label: 'risk:weakness', patterns: [/слабое место/i, /слабые стороны/i, /ограничения/i, /риски/i, /что смущает/i] },
   { label: 'risk:failure', patterns: [/почему продукт закрыли/i, /почему закрыли/i, /неудачный кейс/i, /слабый кейс/i] },
+  { label: 'risk:error', patterns: [/ошибк/i, /что.+сделал не так/i, /какую ошибку/i] },
+];
+
+const MOTIVATION_CUES: CueDefinition[] = [
+  {
+    label: 'identity:motivation',
+    patterns: [
+      /нравит(?:ся)? ли андр[её]ю.+(?:дизайн|работа дизайнером|быть дизайнером)/i,
+      /андре[юя].+нравит(?:ся)?.+(?:дизайн|работа дизайнером|быть дизайнером)/i,
+      /любит ли андр[её]й.+дизайн/i,
+    ],
+  },
+];
+
+const CASE_PROBLEM_CUES: CueDefinition[] = [
+  {
+    label: 'case:problem',
+    patterns: [
+      /какая была.+проблем/i,
+      /какую проблем/i,
+      /зачем понадоб/i,
+      /что решал/i,
+      /какая бизнес.+проблем/i,
+      /пользовательск.+проблем/i,
+      /основная проблем/i,
+    ],
+  },
+];
+
+const CASE_RESEARCH_CUES: CueDefinition[] = [
+  {
+    label: 'case:research',
+    patterns: [
+      /как.+исслед/i,
+      /как.+изучал/i,
+      /как.+тестировал/i,
+      /тестировал.+гипотез/i,
+      /проверял.+гипотез/i,
+      /юзабилити/i,
+      /a\/b|а\/б/i,
+      /shadowing/i,
+      /интервью/i,
+      /анализ задач/i,
+      /запис[ьи].+оператор/i,
+    ],
+  },
+];
+
+const CASE_DECISION_CUES: CueDefinition[] = [
+  {
+    label: 'case:decisions',
+    patterns: [
+      /какие.+решени/i,
+      /ключевые решени/i,
+      /механик/i,
+      /архитектур/i,
+      /переключени/i,
+      /вариант[а-яё\s]+рассматр/i,
+      /балансир/i,
+      /роли пользов/i,
+      /flow/i,
+      /флоу/i,
+      /сценари/i,
+    ],
+  },
+];
+
+const CASE_CONSTRAINT_CUES: CueDefinition[] = [
+  {
+    label: 'case:constraints',
+    patterns: [
+      /ограничени/i,
+      /compliance/i,
+      /edge[-\s]?кейс/i,
+      /edge[-\s]?cases/i,
+      /безопасност/i,
+      /права доступа/i,
+      /доступ/i,
+      /уведомлен/i,
+      /техническ/i,
+      /компромисс/i,
+    ],
+  },
+];
+
+const CASE_OUTCOME_CUES: CueDefinition[] = [
+  {
+    label: 'case:outcomes',
+    patterns: [
+      /какой.+результ/i,
+      /какие.+метрик/i,
+      /метрик/i,
+      /что улучшил/i,
+      /эффект/i,
+      /feedback/i,
+      /фидбек/i,
+      /отзывы/i,
+      /после запуска/i,
+      /после внедрен/i,
+      /nps/i,
+      /ошибок/i,
+    ],
+  },
+];
+
+const GLOBAL_PROCESS_CUES: CueDefinition[] = [
+  {
+    label: 'global:design_process',
+    patterns: [/дизайн-процесс/i, /типичн.+процесс/i, /от получения задачи/i, /handoff/i, /хенд.?офф/i],
+  },
+  {
+    label: 'global:collaboration',
+    patterns: [/product manager/i, /pm/i, /продакт/i, /разработчик/i, /команд/i, /как.+работа.+с.+разработ/i],
+  },
+  {
+    label: 'global:stakeholder_feedback',
+    patterns: [/обратн.+связ/i, /стейкхолдер/i, /stakeholder/i, /feedback/i, /фидбек/i],
+  },
+  {
+    label: 'global:prioritization',
+    patterns: [/приоритиз/i, /ограниченн.+ресурс/i, /фич/i],
+  },
+  {
+    label: 'global:impact_measurement',
+    patterns: [/измеря.+влияни/i, /влияни.+(?:продукт|бизнес)/i, /метрик.+работ/i, /как.+измер/i],
+  },
+  {
+    label: 'global:design_system',
+    patterns: [/дизайн-систем/i, /компонент/i, /ui[-\s]?kit/i, /юай[-\s]?кит/i],
+  },
+  {
+    label: 'global:learning',
+    patterns: [/быстро.+уч/i, /учиться.+нов/i, /новому.+проект/i, /пришлось.+уч/i],
+  },
 ];
 
 export function hasExplicitNavigationVerb(text: string): boolean {
@@ -200,6 +363,57 @@ function hasNegativeCaseCue(text: string): boolean {
   );
 }
 
+function hasCaseQuestionCue(text: string): boolean {
+  return [
+    CASE_PROBLEM_CUES,
+    CASE_RESEARCH_CUES,
+    CASE_DECISION_CUES,
+    CASE_CONSTRAINT_CUES,
+    CASE_OUTCOME_CUES,
+  ].some((group) => collectCueLabels(text, group).length > 0);
+}
+
+function hasCaseScopedQuestionCue(text: string): boolean {
+  return (
+    hasCaseQuestionCue(text)
+    || collectCueLabels(text, EVIDENCE_CUES).length > 0
+    || collectCueLabels(text, RISK_CUES).length > 0
+    || /вклад|реально сделал|что именно сделал|какая была.+роль|в чем была.+роль|что здесь сделал он|что здесь его|а не команд/i.test(text)
+  );
+}
+
+function getLastReferencedCaseId(session: AssistantSession): string | null {
+  const targetCaseIds = session.lastSynthesis?.answerPlan.targetCaseIds ?? [];
+  return targetCaseIds.length === 1 ? targetCaseIds[0] : null;
+}
+
+function getGlobalProcessSubject(text: string): QuestionSubject | null {
+  const labels = collectCueLabels(text, GLOBAL_PROCESS_CUES);
+  if (!labels.length) {
+    return null;
+  }
+
+  if (labels.some((label) => label.includes('design_process'))) {
+    return 'design_process';
+  }
+  if (labels.some((label) => label.includes('stakeholder_feedback'))) {
+    return 'stakeholder_feedback';
+  }
+  if (labels.some((label) => label.includes('prioritization'))) {
+    return 'prioritization';
+  }
+  if (labels.some((label) => label.includes('impact_measurement'))) {
+    return 'impact_measurement';
+  }
+  if (labels.some((label) => label.includes('design_system'))) {
+    return 'design_system_work';
+  }
+  if (labels.some((label) => label.includes('learning'))) {
+    return 'learning_adaptation';
+  }
+  return 'collaboration_process';
+}
+
 function getGlobalSynthesisTopic(intent: MessageIntent): SynthesisTopic | null {
   switch (intent.type) {
     case 'identity_intro':
@@ -232,6 +446,42 @@ function resolveQuestionSubject(
   scope: QueryScope,
   text: string,
 ): QuestionSubject {
+  if (collectCueLabels(text, FAST_REVIEW_CUES).length > 0) {
+    return 'candidate_fast_review';
+  }
+
+  if (scope === 'current_case_only' || scope === 'named_case') {
+    if (/вклад|реально сделал|что именно сделал|какая была.+роль|в чем была.+роль|что здесь сделал он|что здесь его|а не команд/i.test(text)) {
+      return 'case_contribution';
+    }
+    if (collectCueLabels(text, EVIDENCE_CUES).length > 0) {
+      return 'case_evidence';
+    }
+    if (collectCueLabels(text, CASE_PROBLEM_CUES).length > 0) {
+      return 'case_problem';
+    }
+    if (collectCueLabels(text, CASE_RESEARCH_CUES).length > 0) {
+      return 'case_research';
+    }
+    if (collectCueLabels(text, CASE_DECISION_CUES).length > 0) {
+      return 'case_decisions';
+    }
+    if (collectCueLabels(text, CASE_CONSTRAINT_CUES).length > 0) {
+      return 'case_constraints';
+    }
+    if (collectCueLabels(text, CASE_OUTCOME_CUES).length > 0) {
+      return 'case_outcomes';
+    }
+    if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
+      return 'case_strength';
+    }
+  }
+
+  const globalProcessSubject = getGlobalProcessSubject(text);
+  if (globalProcessSubject) {
+    return globalProcessSubject;
+  }
+
   switch (intent.type) {
     case 'experience_overview':
       return 'experience_summary';
@@ -256,7 +506,7 @@ function resolveQuestionSubject(
     case 'role_fit_assessment':
       return 'candidate_value';
     case 'case_discovery':
-      if (/вклад|реально сделал|что именно сделал|что здесь сделал он|что здесь его|а не команд/i.test(text)) {
+      if (/вклад|реально сделал|что именно сделал|какая была.+роль|в чем была.+роль|что здесь сделал он|что здесь его|а не команд/i.test(text)) {
         return 'case_contribution';
       }
       return 'case_summary';
@@ -265,8 +515,11 @@ function resolveQuestionSubject(
     case 'risk_objection':
       return 'risk_check';
     case 'decision_process':
-      return scope === 'current_case_only' ? 'case_summary' : 'candidate_value';
+      return scope === 'current_case_only' ? 'case_decisions' : 'candidate_value';
     case 'identity_intro':
+      if (collectCueLabels(text, MOTIVATION_CUES).length > 0) {
+        return 'candidate_motivation';
+      }
       return 'candidate_value';
     case 'ambiguous_question':
     case 'mobile_overview':
@@ -278,11 +531,17 @@ function resolveQuestionSubject(
 function getCaseFacetTopic(facet: CaseFactFacet): SynthesisTopic {
   switch (facet) {
     case 'overview':
+    case 'problem':
       return 'fit';
     case 'role':
       return 'fit';
+    case 'research':
     case 'decisions':
       return 'decision_making';
+    case 'constraints':
+      return 'fit';
+    case 'outcomes':
+      return 'fit';
     case 'evidence':
       return 'fit';
     case 'strengths':
@@ -299,6 +558,38 @@ function getAnswerType(
   text: string,
   questionSubject: QuestionSubject,
 ): AnswerType | null {
+  if (questionSubject === 'candidate_fast_review') {
+    return 'candidate_fast_review';
+  }
+
+  switch (questionSubject) {
+    case 'case_contribution':
+      return 'contribution_breakdown';
+    case 'case_evidence':
+      return 'proof_map';
+    case 'case_problem':
+    case 'case_summary':
+      return hasNegativeCaseCue(text) ? 'failure_postmortem' : 'case_summary';
+    case 'case_research':
+    case 'case_decisions':
+    case 'design_process':
+    case 'collaboration_process':
+    case 'stakeholder_feedback':
+    case 'prioritization':
+    case 'learning_adaptation':
+      return 'decision_breakdown';
+    case 'case_constraints':
+    case 'risk_check':
+      return 'risk_assessment';
+    case 'case_outcomes':
+    case 'impact_measurement':
+      return 'outcome_summary';
+    case 'design_system_work':
+      return 'experience_overview';
+    default:
+      break;
+  }
+
   switch (intent.type) {
     case 'identity_intro':
       return 'candidate_positioning';
@@ -311,9 +602,6 @@ function getAnswerType(
     case 'mobile_overview':
       return 'experience_overview';
     case 'case_discovery':
-      if (questionSubject === 'case_contribution') {
-        return 'contribution_breakdown';
-      }
       return hasNegativeCaseCue(text) ? 'failure_postmortem' : 'case_summary';
     case 'strengths_assessment':
       return 'hiring_argument';
@@ -333,6 +621,7 @@ function getAnswerType(
 
       switch (recoveredTopic) {
         case 'experience':
+        case 'web':
           return 'experience_overview';
         case 'portfolio_overview':
           return 'portfolio_compression';
@@ -371,9 +660,32 @@ function getCaseAwareFacet(
     return null;
   }
 
+  switch (questionSubject) {
+    case 'case_problem':
+      return 'problem';
+    case 'case_research':
+      return 'research';
+    case 'case_decisions':
+      return 'decisions';
+    case 'case_constraints':
+      return 'constraints';
+    case 'case_outcomes':
+      return 'outcomes';
+    case 'case_contribution':
+      return 'role';
+    case 'case_evidence':
+      return 'evidence';
+    case 'case_strength':
+      return 'strengths';
+    case 'risk_check':
+      return 'risks';
+    default:
+      break;
+  }
+
   switch (intent.type) {
     case 'case_discovery':
-      return questionSubject === 'case_contribution' ? 'role' : 'overview';
+      return 'overview';
     case 'decision_process':
       return 'decisions';
     case 'strengths_assessment':
@@ -401,7 +713,75 @@ function recoverIntentFromText(
   const evidenceCueLabels = collectCueLabels(text, EVIDENCE_CUES);
   const riskCueLabels = collectCueLabels(text, RISK_CUES);
   const portfolioValueCueLabels = collectCueLabels(text, PORTFOLIO_VALUE_CUES);
+  const motivationCueLabels = collectCueLabels(text, MOTIVATION_CUES);
+  const fastReviewCueLabels = collectCueLabels(text, FAST_REVIEW_CUES);
+  const caseProblemCueLabels = collectCueLabels(text, CASE_PROBLEM_CUES);
+  const caseResearchCueLabels = collectCueLabels(text, CASE_RESEARCH_CUES);
+  const caseDecisionCueLabels = collectCueLabels(text, CASE_DECISION_CUES);
+  const caseConstraintCueLabels = collectCueLabels(text, CASE_CONSTRAINT_CUES);
+  const caseOutcomeCueLabels = collectCueLabels(text, CASE_OUTCOME_CUES);
+  const globalProcessCueLabels = collectCueLabels(text, GLOBAL_PROCESS_CUES);
   const recoveredTopic = detectSynthesisTopic(text);
+  const caseScopedCueLabels = [
+    ...currentCaseCueLabels,
+    ...(explicitNamedCaseId ? [`named_case:${explicitNamedCaseId}`] : []),
+  ];
+
+  if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseProblemCueLabels.length > 0) {
+    return {
+      intent: { type: 'case_discovery', targetCaseId: explicitNamedCaseId ?? undefined },
+      confidence: 'medium',
+      matchedCues: [...caseScopedCueLabels, ...caseProblemCueLabels],
+    };
+  }
+
+  if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseResearchCueLabels.length > 0) {
+    return {
+      intent: { type: 'decision_process' },
+      confidence: 'medium',
+      matchedCues: [...caseScopedCueLabels, ...caseResearchCueLabels],
+    };
+  }
+
+  if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseDecisionCueLabels.length > 0) {
+    return {
+      intent: { type: 'decision_process' },
+      confidence: 'medium',
+      matchedCues: [...caseScopedCueLabels, ...caseDecisionCueLabels],
+    };
+  }
+
+  if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseConstraintCueLabels.length > 0) {
+    return {
+      intent: { type: 'risk_objection' },
+      confidence: 'medium',
+      matchedCues: [...caseScopedCueLabels, ...caseConstraintCueLabels],
+    };
+  }
+
+  if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseOutcomeCueLabels.length > 0) {
+    return {
+      intent: { type: 'evidence_request' },
+      confidence: 'medium',
+      matchedCues: [...caseScopedCueLabels, ...caseOutcomeCueLabels],
+    };
+  }
+
+  if (fastReviewCueLabels.length > 0) {
+    return {
+      intent: { type: 'portfolio_overview' },
+      confidence: 'high',
+      matchedCues: fastReviewCueLabels,
+    };
+  }
+
+  if (motivationCueLabels.length > 0) {
+    return {
+      intent: { type: 'identity_intro' },
+      confidence: 'medium',
+      matchedCues: motivationCueLabels,
+    };
+  }
 
   if (portfolioValueCueLabels.length > 0) {
     return {
@@ -432,6 +812,23 @@ function recoverIntentFromText(
       intent: { type: 'strengths_assessment' },
       confidence: 'medium',
       matchedCues: globalPersonCueLabels,
+    };
+  }
+
+  if (globalProcessCueLabels.length > 0) {
+    const subject = getGlobalProcessSubject(text);
+    return {
+      intent: subject === 'design_system_work' ? { type: 'experience_overview' } : { type: 'decision_process' },
+      confidence: 'medium',
+      matchedCues: globalProcessCueLabels,
+    };
+  }
+
+  if (riskCueLabels.length > 0) {
+    return {
+      intent: { type: 'risk_objection' },
+      confidence: 'medium',
+      matchedCues: riskCueLabels,
     };
   }
 
@@ -493,14 +890,6 @@ function recoverIntentFromText(
     };
   }
 
-  if (riskCueLabels.length > 0) {
-    return {
-      intent: { type: 'risk_objection' },
-      confidence: 'medium',
-      matchedCues: riskCueLabels,
-    };
-  }
-
   if (evidenceCueLabels.length > 0) {
     return {
       intent: { type: 'evidence_request' },
@@ -509,6 +898,37 @@ function recoverIntentFromText(
     };
   }
 
+  return null;
+}
+
+function recoverCurrentCaseIntentFromText(text: string): MessageIntent | null {
+  if (/вклад|реально сделал|что именно сделал|какая была.+роль|в чем была.+роль|что здесь сделал он|что здесь его|а не команд/i.test(text)) {
+    return { type: 'case_discovery' };
+  }
+  if (collectCueLabels(text, CASE_PROBLEM_CUES).length > 0) {
+    return { type: 'case_discovery' };
+  }
+  if (
+    collectCueLabels(text, CASE_RESEARCH_CUES).length > 0
+    || collectCueLabels(text, CASE_DECISION_CUES).length > 0
+  ) {
+    return { type: 'decision_process' };
+  }
+  if (
+    collectCueLabels(text, CASE_CONSTRAINT_CUES).length > 0
+    || collectCueLabels(text, RISK_CUES).length > 0
+  ) {
+    return { type: 'risk_objection' };
+  }
+  if (
+    collectCueLabels(text, CASE_OUTCOME_CUES).length > 0
+    || collectCueLabels(text, EVIDENCE_CUES).length > 0
+  ) {
+    return { type: 'evidence_request' };
+  }
+  if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
+    return { type: 'strengths_assessment' };
+  }
   return null;
 }
 
@@ -559,6 +979,9 @@ function resolveScope(
       if (currentCaseCueLabels.length > 0 && session.selectedContext.kind === 'case') {
         return { scope: 'current_case_only', matchedCues: currentCaseCueLabels };
       }
+      if (targetCaseId && session.selectedContext.kind === 'case' && targetCaseId === session.selectedContext.id) {
+        return { scope: 'current_case_only', matchedCues: [`current_case:${targetCaseId}`] };
+      }
       if (targetCaseId) {
         return { scope: 'named_case', matchedCues: [`named_case:${targetCaseId}`] };
       }
@@ -603,8 +1026,11 @@ export function interpretQuery(
   const lowered = text.trim().toLowerCase();
   const portfolioWideCueLabels = collectCueLabels(lowered, PORTFOLIO_WIDE_CUES);
   const currentCaseCueLabels = collectCueLabels(lowered, CURRENT_CASE_CUES);
+  const contextCaseCueLabels = collectCueLabels(lowered, CONTEXT_CASE_REFERENCE_CUES);
   const globalPersonCueLabels = collectCueLabels(lowered, GLOBAL_PERSON_CUES);
+  const fastReviewCueLabels = collectCueLabels(lowered, FAST_REVIEW_CUES);
   const explicitNamedCaseId = findExplicitNamedCaseId(lowered);
+  const lastReferencedCaseId = getLastReferencedCaseId(session);
 
   const recovered = classification.intent.type === 'ambiguous_question'
     ? recoverIntentFromText(
@@ -615,6 +1041,10 @@ export function interpretQuery(
         explicitNamedCaseId,
       )
     : null;
+  const currentCaseRecovered =
+    session.selectedContext.kind === 'case'
+      ? recoverCurrentCaseIntentFromText(lowered)
+      : null;
 
   const contributionInCurrentCase =
     session.selectedContext.kind === 'case'
@@ -625,19 +1055,27 @@ export function interpretQuery(
     && /почему этот кейс сильный|почему этот проект важен|что этот кейс доказывает/i.test(lowered);
 
   const effectiveIntent =
-    contributionInCurrentCase && classification.intent.type === 'ambiguous_question'
+    fastReviewCueLabels.length > 0
+      ? { type: 'portfolio_overview' as const }
+      : contributionInCurrentCase && classification.intent.type === 'ambiguous_question'
       ? { type: 'case_discovery' as const }
       : caseStrengthInCurrentCase && classification.intent.type === 'ambiguous_question'
         ? { type: 'strengths_assessment' as const }
+        : currentCaseRecovered
+          ? currentCaseRecovered
         : recovered?.intent ?? classification.intent;
-  const effectiveConfidence = recovered?.confidence ?? classification.confidence;
+  const effectiveConfidence = fastReviewCueLabels.length > 0
+    ? 'high'
+    : recovered?.confidence ?? classification.confidence;
 
   const targetCaseId =
     effectiveIntent.type === 'case_discovery' && effectiveIntent.targetCaseId
       ? effectiveIntent.targetCaseId
       : explicitNamedCaseId
         ? explicitNamedCaseId
-        : session.selectedContext.kind === 'case' && currentCaseCueLabels.length > 0
+        : lastReferencedCaseId && contextCaseCueLabels.length > 0 && hasCaseScopedQuestionCue(lowered)
+          ? lastReferencedCaseId
+        : session.selectedContext.kind === 'case' && (currentCaseCueLabels.length > 0 || hasCaseScopedQuestionCue(lowered))
           ? session.selectedContext.id
           : null;
 
@@ -674,8 +1112,13 @@ export function interpretQuery(
     lowered,
     questionSubject,
   );
+  const isWebExperience =
+    effectiveIntent.type === 'experience_overview'
+    && /(^|[\s.,!?;:()«»"'/-])(web|веб)(?=$|[\s.,!?;:()«»"'/-])/i.test(lowered);
   const topic = factFacet
     ? getCaseFacetTopic(factFacet)
+    : isWebExperience
+      ? 'web'
     : getGlobalSynthesisTopic(effectiveIntent);
 
   return {
@@ -687,8 +1130,10 @@ export function interpretQuery(
     factFacet,
     targetCaseId: resolvedTargetCaseId,
     confidence: effectiveConfidence,
-    matchedCues: recovered?.matchedCues.length
-      ? recovered.matchedCues
-      : scopeResolution.matchedCues,
+    matchedCues: fastReviewCueLabels.length
+      ? fastReviewCueLabels
+      : recovered?.matchedCues.length
+        ? recovered.matchedCues
+        : [...scopeResolution.matchedCues, ...contextCaseCueLabels],
   };
 }

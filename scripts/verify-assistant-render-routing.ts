@@ -11,6 +11,7 @@ function read(path: string) {
 const envelope = read('src/components/portfolio-assistant-envelope.tsx');
 const synthesis = read('src/components/portfolio-assistant-synthesis-reply.tsx');
 const assistantComponents = [
+  'src/components/portfolio-assistant-candidate-fast-review.tsx',
   'src/components/portfolio-assistant-case-summary.tsx',
   'src/components/portfolio-assistant-experience-summary.tsx',
   'src/components/portfolio-assistant-sectioned-reply.tsx',
@@ -37,6 +38,10 @@ assert(
 assert(
   envelope.includes('if (!isStructuredSummary && !isEntitySectionedReply)'),
   'Conversational replies must be routed to the synthesis renderer before variant switch.',
+);
+assert(
+  envelope.includes("envelope.presentationVariant === 'candidate_fast_review'"),
+  'Candidate fast review must have an explicit structured renderer before synthesis fallback.',
 );
 
 assert(

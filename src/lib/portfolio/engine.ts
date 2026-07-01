@@ -13,6 +13,7 @@ import {
   buildCaseEnvelope,
   buildCaseDiscoveryEnvelope,
   buildCaseRouteEnvelope,
+  buildCandidateFastReviewEnvelope,
   buildContactModalEnvelope,
   buildDecisionProcessEnvelope,
   buildEvidenceEnvelope,
@@ -140,6 +141,8 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
   switch (session.currentView) {
     case 'entry':
       return buildEntryEnvelope(session);
+    case 'candidate_fast_review':
+      return buildCandidateFastReviewEnvelope(session);
     case 'case_summary':
       return session.selectedContext.kind === 'case'
         ? buildCaseEnvelope(session, session.selectedContext.id, 'summary')
@@ -308,6 +311,24 @@ async function resolveGlobalSynthesis(
   };
 }
 
+async function resolveCandidateFastReview(
+  session: AssistantSession,
+  text: string,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const nextSession = await persistSession(session, {
+    ...updateContext(session, { kind: 'none', id: null, label: null }, 'candidate_fast_review'),
+    lastUserQuestion: text,
+    lastAssistantAnswerPreview: 'Короткий структурированный обзор Андрея, ключевых кейсов и проверки для интервью.',
+    lastQuestionSubject: 'candidate_fast_review',
+    recentHistory: appendHistory(session, 'candidate_fast_review'),
+  });
+
+  return {
+    session: nextSession,
+    envelope: buildCandidateFastReviewEnvelope(nextSession),
+  };
+}
+
 type IntentPolicy =
   | {
       threadBehavior: 'navigate';
@@ -393,6 +414,10 @@ async function resolveIntentClassification(
 
   if (isServiceOnlyIntent) {
     return resolveMessageIntent(session, intent);
+  }
+
+  if (interpretation.answerType === 'candidate_fast_review') {
+    return resolveCandidateFastReview(session, text);
   }
 
   if (interpretation.scope === 'current_case_only') {

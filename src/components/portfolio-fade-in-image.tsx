@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import Image, { type ImageProps } from 'next/image';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type PortfolioFadeInImageProps = ImageProps & {
   overlayClassName?: string;
@@ -10,6 +10,22 @@ type PortfolioFadeInImageProps = ImageProps & {
 };
 
 export function PortfolioFadeInImage({
+  alt,
+  src,
+  ...props
+}: PortfolioFadeInImageProps) {
+  return (
+    <PortfolioFadeInImageInner
+      key={typeof src === 'string' ? src : JSON.stringify(src)}
+      alt={alt}
+      src={src}
+      {...props}
+    />
+  );
+}
+
+function PortfolioFadeInImageInner({
+  alt,
   src,
   className,
   onLoad,
@@ -20,14 +36,11 @@ export function PortfolioFadeInImage({
 }: PortfolioFadeInImageProps) {
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    setLoaded(false);
-  }, [src]);
-
   return (
     <span className="relative block h-full w-full overflow-hidden">
       <Image
         {...imageProps}
+        alt={alt}
         src={src}
         className={clsx(
           className,

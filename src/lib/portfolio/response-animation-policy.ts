@@ -47,7 +47,11 @@ function countEnvelopeWords(envelope: AssistantEnvelope) {
 }
 
 export function isSummaryPresentationVariant(variant: PresentationVariant) {
-  return variant === 'case_summary' || variant === 'experience_summary';
+  return (
+    variant === 'case_summary' ||
+    variant === 'experience_summary' ||
+    variant === 'candidate_fast_review'
+  );
 }
 
 export function getAutoScrollThresholdPx() {

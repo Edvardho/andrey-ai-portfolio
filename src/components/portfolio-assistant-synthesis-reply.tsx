@@ -9,6 +9,7 @@ import {
   getProgressiveReplyBlockTiming,
 } from '@/lib/portfolio/response-animation-policy';
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
+import { portfolioChipSurface, portfolioFocusRing } from './portfolio-interaction-styles';
 import { PortfolioProgressiveText } from './portfolio-progressive-text';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 
@@ -146,7 +147,11 @@ export function PortfolioAssistantSynthesisReply({
               key={`${block.label}-${block.action.type}`}
               type="button"
               onClick={() => onCta(block.action)}
-              className="inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#dedfe5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150 hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              className={[
+                'inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#DEDFE5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150',
+                portfolioChipSurface,
+                portfolioFocusRing,
+              ].join(' ')}
             >
               {block.label}
             </button>
@@ -159,7 +164,11 @@ export function PortfolioAssistantSynthesisReply({
           <button
             type="button"
             onClick={onRetryError}
-            className="inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#dedfe5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150 hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#DEDFE5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150',
+              portfolioChipSurface,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             Повторить
           </button>

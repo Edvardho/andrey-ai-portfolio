@@ -27,6 +27,7 @@ import {
   PortfolioContextPanelSkeleton,
 } from './portfolio-case-workspace-skeleton';
 import { PortfolioComposer } from './portfolio-composer';
+import { portfolioFocusRing, portfolioSoftSurfaceBorder } from './portfolio-interaction-styles';
 import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 
 interface ContextThread {
@@ -51,6 +52,8 @@ export function PortfolioChatWorkspace({
   selectedRailId,
   showAssistantReturn,
   assistantReturnSelected,
+  assistantReturnLabel,
+  railTitle,
   messagesRemaining,
   onRailClick,
   onAssistantReturnClick,
@@ -77,7 +80,6 @@ export function PortfolioChatWorkspace({
   textareaRef,
   threadViewRef,
   contextPanelPayload,
-  composerLayoutId,
   startTransitionSource,
   caseBootstrapping,
 }: {
@@ -85,6 +87,8 @@ export function PortfolioChatWorkspace({
   selectedRailId: string | null;
   showAssistantReturn: boolean;
   assistantReturnSelected: boolean;
+  assistantReturnLabel?: string;
+  railTitle?: string;
   messagesRemaining: number;
   onRailClick: (item: RailItem) => void;
   onAssistantReturnClick: () => void;
@@ -115,7 +119,6 @@ export function PortfolioChatWorkspace({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   threadViewRef: RefObject<PortfolioThreadViewHandle | null>;
   contextPanelPayload: ContextPanelPayload | null;
-  composerLayoutId: string;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
   caseBootstrapping: boolean;
 }) {
@@ -181,6 +184,8 @@ export function PortfolioChatWorkspace({
             selectedRailId={selectedRailId}
             showAssistantReturn={showAssistantReturn}
             assistantReturnSelected={assistantReturnSelected}
+            assistantReturnLabel={assistantReturnLabel}
+            railTitle={railTitle}
             messagesRemaining={messagesRemaining}
             onRailClick={onRailClick}
             onAssistantReturnClick={onAssistantReturnClick}
@@ -201,7 +206,11 @@ export function PortfolioChatWorkspace({
               <button
                 type="button"
                 onClick={() => setContextDrawerContextId(currentThread.contextId)}
-                className="flex h-9 cursor-pointer items-center rounded-full border border-[#EBEDF2] bg-white px-4 text-[14px] font-medium leading-5 text-[#202129] shadow-[0px_6px_14px_rgba(17,19,26,0.06)] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                className={[
+                  'flex h-9 cursor-pointer items-center rounded-full border px-4 text-[14px] font-medium leading-5 text-[#202129] shadow-[0px_6px_14px_rgba(17,19,26,0.06)] transition-colors duration-150',
+                  portfolioSoftSurfaceBorder,
+                  portfolioFocusRing,
+                ].join(' ')}
               >
                 Контекст проекта
               </button>
@@ -267,7 +276,6 @@ export function PortfolioChatWorkspace({
               className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-b from-white/0 to-white"
             />
             <motion.div
-              layoutId={composerLayoutId}
               className="relative z-[1] w-full"
               transition={COMPOSER_DOCK_SPRING}
             >
@@ -350,7 +358,11 @@ export function PortfolioChatWorkspace({
               type="button"
               aria-label="Закрыть контекст проекта"
               onClick={() => setContextDrawerContextId(null)}
-              className="absolute right-0 top-0 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#202129] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              className={[
+                'absolute right-0 top-0 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full border text-[#202129] transition-colors duration-150',
+                portfolioSoftSurfaceBorder,
+                portfolioFocusRing,
+              ].join(' ')}
             >
               <X className="size-4" strokeWidth={1.8} />
             </button>
