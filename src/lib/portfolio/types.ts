@@ -674,6 +674,8 @@ export type MessageIntent =
 
 export type IntentConfidence = 'high' | 'medium' | 'low';
 
+export type AIMode = 'fallback' | 'live';
+
 export type AssistantEnvelope = {
   sessionId: string;
   uiState: UIState;
@@ -697,6 +699,7 @@ export type AssistantEnvelope = {
     answerType?: AnswerType | null;
     queryScope?: QueryScope | null;
     questionSubject?: QuestionSubject | null;
+    aiMode?: AIMode;
   };
 };
 

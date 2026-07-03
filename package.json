@@ -29,6 +29,8 @@
     "verify:case-loader": "node --import tsx scripts/verify-case-loader.ts",
     "verify:case-code-splitting": "node --import tsx scripts/verify-case-code-splitting.ts",
     "verify:session-store-mode": "tsx scripts/verify-session-store-mode.ts",
+    "verify:ai-mode": "node --import tsx scripts/verify-ai-mode.ts",
+    "verify:assistant-v1": "npm run verify:ai-mode && npm run verify:query-interpretation && npm run verify:design-lead-questions && npm run verify:design-lead-answer-quality && npm run verify:intent-policy && npm run verify:synthesis-policy && npm run verify:recruiter-quality && npm run verify:vocabulary && npm run verify:assistant-reply-states && npm run verify:assistant-render-routing && npm run verify:case-fact-packs",
     "test:runtime": "tsx scripts/runtime-browser-smoke.ts",
     "eval:intents": "tsx scripts/eval-intents.ts",
     "eval:intents:objections": "tsx scripts/eval-intents.ts objections",

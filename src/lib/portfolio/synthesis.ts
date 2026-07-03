@@ -6,7 +6,7 @@ import { getCaseFactPack, getCaseSynthesisConfig } from '@/data/portfolio-case-f
 import {
   getSynthesisTopicConfig,
 } from '@/data/portfolio-facts';
-import { getOpenAIKey, getOpenAIModel } from '@/lib/portfolio/config';
+import { getOpenAIModel, isOpenAIEnabled } from '@/lib/portfolio/config';
 import type {
   AnswerPlan,
   AnswerType,
@@ -55,7 +55,14 @@ const SYNTHESIS_PATTERNS: Array<{ topic: SynthesisTopic; patterns: RegExp[] }> =
   },
   {
     topic: 'strengths',
-    patterns: [/сильн(ая|ые|ая сторона|ые стороны|ый сигнал|ые сигналы)/i, /что.+умеет/i, /что.+отлича/i, /в чем.+сил/i],
+    patterns: [
+      /сильн(ая|ые|ая сторона|ые стороны|ый сигнал|ые сигналы)/i,
+      /что.+умеет/i,
+      /что.+отлича/i,
+      /в чем.+сил/i,
+      /если убрать.+(?:красив|аккуратн|визуальн).+(?:экран|ui|интерфейс|картин)/i,
+      /что останется.+(?:без|кроме|после).+(?:экран|ui|интерфейс|картин|визуал)/i,
+    ],
   },
 ];
 
@@ -276,7 +283,7 @@ function buildAnswerPlan(
             : options.questionSubject === 'case_decisions'
               ? ['какие решения были приняты', 'почему они были важны', 'чем подтверждены']
               : options.questionSubject === 'design_process'
-                ? ['как обычно идет работа от задачи до handoff', 'где это видно по кейсам', 'какая граница подтвержденных фактов']
+                ? ['какие гипотезы или решения проверял', 'где это видно по кейсам и артефактам', 'какая граница подтвержденных фактов']
                 : options.questionSubject === 'stakeholder_feedback'
                   ? ['как обрабатывал обратную связь', 'какие примеры подтверждены кейсами', 'не додумывать неподтвержденные процессы']
                   : options.questionSubject === 'prioritization'
@@ -301,11 +308,14 @@ function buildAnswerPlan(
     case 'proof_map':
       return {
         answerType,
-        requiredMoves: ['где лежат доказательства', 'на какие артефакты смотреть', 'что именно они подтверждают'],
-        avoid: ['общая фраза "смотри кейсы"', 'бездоказательные выводы', 'дублирующиеся секции', 'одинаковые заголовки'],
+        requiredMoves:
+          options.questionSubject === 'case_evidence'
+            ? ['признать нормальность проверки по артефактам', 'назвать конкретные артефакты', 'разнести доказательства по кейсам', 'отделить доказательство от самопрезентации']
+            : ['где лежат доказательства', 'на какие артефакты смотреть', 'что именно они подтверждают'],
+        avoid: ['общая фраза "смотри кейсы"', 'бездоказательные выводы', 'дублирующиеся секции', 'одинаковые заголовки', 'объяснение зачем смотреть портфолио вместо карты доказательств', 'слово "сигнал"', 'маркетинговый тон'],
         maxParagraphs: 4,
-        allowSections: true,
-        allowBullets: true,
+        allowSections: options.questionSubject !== 'case_evidence',
+        allowBullets: options.questionSubject !== 'case_evidence',
         targetCaseIds: options.targetCaseIds,
       };
     case 'hiring_argument':
@@ -316,8 +326,8 @@ function buildAnswerPlan(
             ? ['почему стоит тратить слот интервью', 'какие задачи он может закрыть', 'что именно нужно проверить на разговоре']
             : options.questionSubject === 'case_strength'
               ? ['что этот кейс доказывает', 'почему он важен для оценки кандидата', 'какие артефакты или результаты это подтверждают']
-              : ['чем он лучше среднего дизайнера', 'кейсы как доказательства', 'честная граница'],
-        avoid: ['общие качества', 'резюме без позиции', 'слишком сильные обещания', 'сильная сторона Андрея как старт ответа'],
+              : ['что остается кроме экранов и аккуратного UI', 'кейсы как доказательства', 'честная граница'],
+        avoid: ['общие качества', 'резюме без позиции', 'сравнение со средним дизайнером', 'слишком сильные обещания', 'сильная сторона Андрея как старт ответа'],
         maxParagraphs: 3,
         allowSections: false,
         allowBullets: false,
@@ -405,9 +415,9 @@ function buildFewShotExamples(
       return `
 Хороший пример:
 Вопрос: Чем Андрей лучше других дизайнеров?
-Ответ: Если коротко, Андрей сильнее там, где задача не сводится к красивому экрану. Он умеет сначала разобраться в ролях, сценариях и ограничениях, а уже потом собирать интерфейс.
+Ответ: Если убрать аккуратный UI, у Андрея остается главное: умение разобраться в ролях, сценариях и ограничениях, а уже потом собирать интерфейс.
 
-Лучше всего это видно по Альфа-Смарту и SIEBEL: в одном случае — сложный продукт с запуском и метриками, в другом — операторский workflow с исследованием и измеримым эффектом.
+Лучше всего это видно по Альфа-Смарту и SIEBEL: в одном случае — сложный продукт с запуском и метриками, в другом — операторский процесс с исследованием и измеримым эффектом.
 `;
     case 'experience_overview':
       return `
@@ -472,10 +482,14 @@ function buildFewShotExamples(
     case 'proof_map':
       return `
 Хороший пример:
-Вопрос: Где доказательства?
-Ответ: Доказательства лежат не в одном месте, а по кейсам.
+Вопрос: Если я не верю словам, на что смотреть в кейсах?
+Ответ: Правильно, словам верить не нужно. Особенно словам ассистента.
 
-В Альфа-Смарте — гипотезы, прототипы, handoff и метрики после запуска. В SIEBEL — исследование операторов, workflow-изменения и цифры до/после. В ChatPoint — onboarding, routing, operator window и выводы по тому, почему продукт закрыли.
+Проверяйте не то, как Андрей описывает себя, а следы работы в кейсах: user flow, гипотезы, прототипы, дизайн-чек, handoff, дизайн-ревью, метрики и выводы после запуска.
+
+В Альфа-Смарте должна считываться цепочка: требования → user flow → гипотезы → прототип → передача в разработку → релиз → метрики. В SIEBEL — исследование реального процесса и изменения workflow. В ChatPoint — честный разбор продукта, который не сработал.
+
+Если кейс нельзя проверить по артефактам, это не кейс, а рассказ о себе.
 `;
     case 'outcome_summary':
       return `
@@ -533,6 +547,18 @@ function buildGlobalSynthesisRequest(
           ],
         }
       : null;
+  const proofVariant =
+    answerType === 'proof_map' && questionSubject === 'case_evidence'
+      ? {
+          title: 'На что смотреть в кейсах',
+          fallbackParagraphs: [
+            'Правильно, словам верить не нужно. Особенно словам ассистента.',
+            'Проверяйте не то, как Андрей описывает себя, а следы работы в кейсах: user flow, гипотезы, прототипы, дизайн-чек, handoff, дизайн-ревью, метрики и выводы после запуска.',
+            'В Альфа-Смарте должна считываться цепочка: требования → user flow → гипотезы → прототип → передача в разработку → релиз → метрики. В SIEBEL — исследование реального процесса и изменения workflow. В ChatPoint — честный разбор продукта, который не сработал.',
+            'Если кейс нельзя проверить по артефактам, это не кейс, а рассказ о себе.',
+          ],
+        }
+      : null;
   const identityMotivationVariant =
     topic === 'identity' && questionSubject === 'candidate_motivation'
       ? {
@@ -549,7 +575,7 @@ function buildGlobalSynthesisRequest(
           title: 'Как Андрей ведет дизайн-процесс',
           fallbackParagraphs: [
             'По подтвержденным кейсам его процесс выглядит так: сначала разобраться в задаче, ролях и ограничениях, потом собрать сценарий и гипотезы, после этого перейти к макетам, проверке и передаче в разработку.',
-            'Лучше всего это видно в Альфа-Смарте и SIEBEL: в одном кейсе были user flow, гипотезы, прототип, дизайн-чек и handoff, в другом — анализ работы операторов и проверка решений через MVP.',
+            'Гипотезы он проверял через разные форматы: в Альфа-Смарте были юзабилити-тесты и First Click test, в SIEBEL — анализ записей операторов, интервью и проверка решений через MVP.',
           ],
         }
       : topic === 'decision_making' && questionSubject === 'collaboration_process'
@@ -606,6 +632,7 @@ function buildGlobalSynthesisRequest(
   const variant =
     portfolioValueVariant
     ?? strengthsVariant
+    ?? proofVariant
     ?? identityMotivationVariant
     ?? processVariant
     ?? designSystemVariant;
@@ -647,7 +674,7 @@ async function synthesizeAnswerFromRequest(
     LIMITS.MAX_RETRIEVED_CHUNKS,
   );
 
-  if (!getOpenAIKey()) {
+  if (!isOpenAIEnabled()) {
     return buildFallbackSnapshot(request, question);
   }
 
@@ -708,6 +735,7 @@ ${request.answerPlan.targetCaseIds?.length ? `- targetCaseIds: ${request.answerP
 	- interview_decision: отвечай, почему стоит тратить слот интервью и что нужно проверить на разговоре
 	- candidate_motivation: отвечай живо, но подтверждай вывод поведением и фактами портфолио, а не психологическими догадками
 	- case_contribution: отвечай только про личный вклад кандидата
+- case_evidence: отвечай как карта проверки по артефактам; если пользователь говорит, что не верит словам, это нормальная позиция, а не спор с ассистентом
 - case_strength: отвечай, что именно этот кейс доказывает о кандидате и почему это важно для оценки
 - case_problem: отвечай про исходную задачу и проблему, не уходи в продажу кейса
 - case_research: отвечай только про подтвержденные исследования, проверки, тесты и артефакты; если нужного типа проверки нет в фактах, скажи об этом
@@ -874,6 +902,47 @@ type FallbackOverride = {
   fallbackBullets: string[];
 };
 
+function normalizeFallbackText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[«»"'.!,?:;()—–-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function dedupeFallbackParagraphs(intro: string, paragraphs: string[]): string[] {
+  const seen = new Set<string>([normalizeFallbackText(intro)]);
+
+  return paragraphs.filter((paragraph) => {
+    const normalized = normalizeFallbackText(paragraph);
+    if (!normalized || seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+}
+
+function dedupeFallbackSections(
+  intro: string,
+  paragraphs: string[],
+  sections: Array<{ title: string; body: string }>,
+): Array<{ title: string; body: string }> {
+  const seen = new Set<string>([
+    normalizeFallbackText(intro),
+    ...paragraphs.map((paragraph) => normalizeFallbackText(paragraph)),
+  ]);
+
+  return sections.filter((section) => {
+    const normalized = normalizeFallbackText(section.body);
+    if (!normalized || seen.has(normalized)) {
+      return false;
+    }
+    seen.add(normalized);
+    return true;
+  });
+}
+
 function asksForSpecificOutcomeEvidence(question: string): boolean {
   return /метрик|nps|feedback|фидбек|отзыв|ошиб|конверс|вырос|рост|улучшил|улучшились/i.test(question);
 }
@@ -960,6 +1029,21 @@ export async function synthesizeCaseAwareAnswer(
           fallbackBullets: [],
         }
       : null;
+  const fallbackIntro = failureOverride?.fallbackIntro ?? outcomeGapOverride?.fallbackIntro ?? config.fallbackIntro;
+  const fallbackFollowupParagraphs =
+    failureOverride?.fallbackFollowupParagraphs
+    ?? (outcomeGapOverride ? [] : null)
+    ?? (!answerPlan.allowSections
+      ? dedupeFallbackParagraphs(
+          fallbackIntro,
+          config.fallbackSections.map((section) => section.body).slice(0, Math.max(answerPlan.maxParagraphs - 1, 0)),
+        )
+      : []);
+  const fallbackSections = dedupeFallbackSections(
+    fallbackIntro,
+    fallbackFollowupParagraphs,
+    failureOverride?.fallbackSections ?? outcomeGapOverride?.fallbackSections ?? config.fallbackSections,
+  );
 
   return synthesizeAnswerFromRequest(question, session, {
     topic: CASE_FACET_TOPIC_MAP[facet],
@@ -970,14 +1054,9 @@ export async function synthesizeCaseAwareAnswer(
     title: config.fallbackTitle,
     facts: config.facts,
     fallbackTitle: failureOverride?.fallbackTitle ?? config.fallbackTitle,
-    fallbackIntro: failureOverride?.fallbackIntro ?? outcomeGapOverride?.fallbackIntro ?? config.fallbackIntro,
-    fallbackFollowupParagraphs:
-      failureOverride?.fallbackFollowupParagraphs
-      ?? (outcomeGapOverride ? [] : null)
-      ?? (!answerPlan.allowSections
-        ? config.fallbackSections.map((section) => section.body).slice(0, Math.max(answerPlan.maxParagraphs - 1, 0))
-        : []),
-    fallbackSections: failureOverride?.fallbackSections ?? outcomeGapOverride?.fallbackSections ?? config.fallbackSections,
+    fallbackIntro,
+    fallbackFollowupParagraphs,
+    fallbackSections,
     fallbackBullets: failureOverride?.fallbackBullets ?? outcomeGapOverride?.fallbackBullets ?? config.fallbackBullets,
     fallbackAnswerStatus: failureOverride ? 'grounded' : outcomeGapOverride ? 'insufficient_facts' : config.fallbackAnswerStatus,
     chips: config.chips,

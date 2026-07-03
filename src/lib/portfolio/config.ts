@@ -1,7 +1,17 @@
 export const MAX_USER_MESSAGES_PER_SESSION = 20;
 
+export type AIMode = 'fallback' | 'live';
+
+export function getAIMode(): AIMode {
+  return process.env.AI_MODE?.trim() === 'live' ? 'live' : 'fallback';
+}
+
 export function getOpenAIKey(): string | undefined {
   return process.env.OPENAI_API_KEY;
+}
+
+export function isOpenAIEnabled(): boolean {
+  return getAIMode() === 'live' && Boolean(getOpenAIKey());
 }
 
 export function getOpenAIModel(): string {

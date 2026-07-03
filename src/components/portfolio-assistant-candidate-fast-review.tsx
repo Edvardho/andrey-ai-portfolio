@@ -109,7 +109,6 @@ export function PortfolioAssistantCandidateFastReview({
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[16px] leading-6 text-[#202332]">{item.label}</p>
-                        <p className="truncate text-[13px] leading-5 text-[#8F95A7]">{item.subtitle}</p>
                       </div>
                     </div>
                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white">

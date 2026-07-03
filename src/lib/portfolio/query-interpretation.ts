@@ -35,7 +35,6 @@ export const caseAliases: CaseAlias[] = [
       /флагман/i,
       /сильн(ый|ого|ом|ые|ых)?.+кейс/i,
       /сам(ый|ого|ом)?.+сильн(ый|ого|ом)?.+кейс/i,
-      /подписк/i,
     ],
   },
   { caseId: 'siebel', patterns: [/siebel/i, /оператор/i, /мтс/i] },
@@ -58,7 +57,7 @@ const explicitCaseAliases: CaseAlias[] = [
   },
   {
     caseId: 'subscription-sharing',
-    patterns: [/шаринг подпис/i, /улучшени[ея].+добавлени[яе].+участник/i],
+    patterns: [/шаринг[ае]?\s+подпис/i, /улучшени[ея].+добавлени[яе].+участник/i],
   },
   {
     caseId: 'ux-ui-wannabelike',
@@ -103,6 +102,21 @@ const GLOBAL_PERSON_CUES: CueDefinition[] = [
   { label: 'global_person:whole_person', patterns: [/по андрею в целом/i, /в целом по андрею/i, /в целом по опыту/i] },
 ];
 
+const VALUE_BEYOND_UI_CUES: CueDefinition[] = [
+  {
+    label: 'global_person:value_beyond_ui',
+    patterns: [
+      /если убрать.+(?:красив|аккуратн|визуальн).+(?:экран|ui|интерфейс|картин)/i,
+      /что останется.+(?:без|кроме|после).+(?:экран|ui|интерфейс|картин|визуал)/i,
+      /без красивых экранов/i,
+      /кроме красивых экранов/i,
+      /кроме аккуратного ui/i,
+      /если не смотреть на ui/i,
+      /если не смотреть на экраны/i,
+    ],
+  },
+];
+
 const PORTFOLIO_VALUE_CUES: CueDefinition[] = [
   {
     label: 'portfolio_value:why_watch',
@@ -125,6 +139,8 @@ const FAST_REVIEW_CUES: CueDefinition[] = [
       /расскажи коротко про андре/i,
       /расскажи про андре[яй].+3 минут/i,
       /оценить андре[яй].+3 минут/i,
+      /только 3 минут.+что смотреть/i,
+      /3 минут.+что смотреть/i,
       /быстро оценить андре[яй].+кейс/i,
       /оценить андре[яй].+кейс/i,
       /коротко (?:о|об) кандидат/i,
@@ -145,7 +161,19 @@ const EXPERIENCE_CUES: CueDefinition[] = [
 ];
 
 const EVIDENCE_CUES: CueDefinition[] = [
-  { label: 'evidence:proof', patterns: [/доказательств/i, /где это подтверждается/i, /где тут доказательства/i, /пруфы/i, /артефакт/i] },
+  {
+    label: 'evidence:proof',
+    patterns: [
+      /доказательств/i,
+      /где это подтверждается/i,
+      /где тут доказательства/i,
+      /не верю словам/i,
+      /на что смотреть в кейсах/i,
+      /где видно что это не слова/i,
+      /пруфы/i,
+      /артефакт/i,
+    ],
+  },
 ];
 
 const RISK_CUES: CueDefinition[] = [
@@ -184,9 +212,12 @@ const CASE_RESEARCH_CUES: CueDefinition[] = [
   {
     label: 'case:research',
     patterns: [
+      /как.+проверя.+гипотез/i,
       /как.+исслед/i,
       /как.+изучал/i,
       /как.+тестировал/i,
+      /что.+проверял.+исслед/i,
+      /проверял.+через.+исслед/i,
       /тестировал.+гипотез/i,
       /проверял.+гипотез/i,
       /юзабилити/i,
@@ -214,6 +245,8 @@ const CASE_DECISION_CUES: CueDefinition[] = [
       /flow/i,
       /флоу/i,
       /сценари/i,
+      /где видно.+думал/i,
+      /не просто исполнял задачу/i,
     ],
   },
 ];
@@ -243,6 +276,8 @@ const CASE_OUTCOME_CUES: CueDefinition[] = [
       /какой.+результ/i,
       /какие.+метрик/i,
       /метрик/i,
+      /что изменил/i,
+      /что изменилось/i,
       /что улучшил/i,
       /эффект/i,
       /feedback/i,
@@ -250,6 +285,7 @@ const CASE_OUTCOME_CUES: CueDefinition[] = [
       /отзывы/i,
       /после запуска/i,
       /после внедрен/i,
+      /после редизайн/i,
       /nps/i,
       /ошибок/i,
     ],
@@ -475,6 +511,14 @@ function resolveQuestionSubject(
     if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
       return 'case_strength';
     }
+  }
+
+  if (collectCueLabels(text, CASE_OUTCOME_CUES).length > 0) {
+    return 'impact_measurement';
+  }
+
+  if (collectCueLabels(text, CASE_RESEARCH_CUES).length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(text)) {
+    return 'design_process';
   }
 
   const globalProcessSubject = getGlobalProcessSubject(text);
@@ -713,6 +757,7 @@ function recoverIntentFromText(
   const evidenceCueLabels = collectCueLabels(text, EVIDENCE_CUES);
   const riskCueLabels = collectCueLabels(text, RISK_CUES);
   const portfolioValueCueLabels = collectCueLabels(text, PORTFOLIO_VALUE_CUES);
+  const valueBeyondUiCueLabels = collectCueLabels(text, VALUE_BEYOND_UI_CUES);
   const motivationCueLabels = collectCueLabels(text, MOTIVATION_CUES);
   const fastReviewCueLabels = collectCueLabels(text, FAST_REVIEW_CUES);
   const caseProblemCueLabels = collectCueLabels(text, CASE_PROBLEM_CUES);
@@ -791,6 +836,14 @@ function recoverIntentFromText(
     };
   }
 
+  if (valueBeyondUiCueLabels.length > 0) {
+    return {
+      intent: { type: 'strengths_assessment' },
+      confidence: 'medium',
+      matchedCues: valueBeyondUiCueLabels,
+    };
+  }
+
   if (portfolioWideCueLabels.length > 0 && summaryCueLabels.length > 0) {
     return {
       intent: { type: 'portfolio_overview' },
@@ -821,6 +874,30 @@ function recoverIntentFromText(
       intent: subject === 'design_system_work' ? { type: 'experience_overview' } : { type: 'decision_process' },
       confidence: 'medium',
       matchedCues: globalProcessCueLabels,
+    };
+  }
+
+  if (caseResearchCueLabels.length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(text)) {
+    return {
+      intent: { type: 'decision_process' },
+      confidence: 'medium',
+      matchedCues: caseResearchCueLabels,
+    };
+  }
+
+  if (caseOutcomeCueLabels.length > 0) {
+    return {
+      intent: { type: 'evidence_request' },
+      confidence: 'medium',
+      matchedCues: caseOutcomeCueLabels,
+    };
+  }
+
+  if (/мобильн(ых|ые|ый|ом|ыми|ых)?\s+кейс|в мобилк|mobile/i.test(text)) {
+    return {
+      intent: { type: 'mobile_overview' },
+      confidence: 'medium',
+      matchedCues: ['mobile:overview'],
     };
   }
 
@@ -1028,7 +1105,11 @@ export function interpretQuery(
   const currentCaseCueLabels = collectCueLabels(lowered, CURRENT_CASE_CUES);
   const contextCaseCueLabels = collectCueLabels(lowered, CONTEXT_CASE_REFERENCE_CUES);
   const globalPersonCueLabels = collectCueLabels(lowered, GLOBAL_PERSON_CUES);
+  const valueBeyondUiCueLabels = collectCueLabels(lowered, VALUE_BEYOND_UI_CUES);
   const fastReviewCueLabels = collectCueLabels(lowered, FAST_REVIEW_CUES);
+  const caseOutcomeCueLabels = collectCueLabels(lowered, CASE_OUTCOME_CUES);
+  const caseResearchCueLabels = collectCueLabels(lowered, CASE_RESEARCH_CUES);
+  const caseConstraintCueLabels = collectCueLabels(lowered, CASE_CONSTRAINT_CUES);
   const explicitNamedCaseId = findExplicitNamedCaseId(lowered);
   const lastReferencedCaseId = getLastReferencedCaseId(session);
 
@@ -1057,6 +1138,14 @@ export function interpretQuery(
   const effectiveIntent =
     fastReviewCueLabels.length > 0
       ? { type: 'portfolio_overview' as const }
+      : valueBeyondUiCueLabels.length > 0
+        ? { type: 'strengths_assessment' as const }
+      : (currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseOutcomeCueLabels.length > 0
+        ? { type: 'evidence_request' as const }
+      : (currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseConstraintCueLabels.length > 0
+        ? { type: 'risk_objection' as const }
+      : !explicitNamedCaseId && caseResearchCueLabels.length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(lowered)
+        ? { type: 'decision_process' as const }
       : contributionInCurrentCase && classification.intent.type === 'ambiguous_question'
       ? { type: 'case_discovery' as const }
       : caseStrengthInCurrentCase && classification.intent.type === 'ambiguous_question'
@@ -1066,18 +1155,23 @@ export function interpretQuery(
         : recovered?.intent ?? classification.intent;
   const effectiveConfidence = fastReviewCueLabels.length > 0
     ? 'high'
+    : valueBeyondUiCueLabels.length > 0
+      ? 'high'
     : recovered?.confidence ?? classification.confidence;
 
-  const targetCaseId =
-    effectiveIntent.type === 'case_discovery' && effectiveIntent.targetCaseId
-      ? effectiveIntent.targetCaseId
-      : explicitNamedCaseId
-        ? explicitNamedCaseId
-        : lastReferencedCaseId && contextCaseCueLabels.length > 0 && hasCaseScopedQuestionCue(lowered)
-          ? lastReferencedCaseId
-        : session.selectedContext.kind === 'case' && (currentCaseCueLabels.length > 0 || hasCaseScopedQuestionCue(lowered))
-          ? session.selectedContext.id
-          : null;
+  let targetCaseId: string | null = null;
+  if (explicitNamedCaseId) {
+    targetCaseId = explicitNamedCaseId;
+  } else if (effectiveIntent.type === 'case_discovery' && effectiveIntent.targetCaseId) {
+    targetCaseId = effectiveIntent.targetCaseId;
+  } else if (lastReferencedCaseId && contextCaseCueLabels.length > 0 && hasCaseScopedQuestionCue(lowered)) {
+    targetCaseId = lastReferencedCaseId;
+  } else if (
+    session.selectedContext.kind === 'case'
+    && (currentCaseCueLabels.length > 0 || hasCaseScopedQuestionCue(lowered))
+  ) {
+    targetCaseId = session.selectedContext.id;
+  }
 
   const scopeResolution = resolveScope(
     session,
@@ -1119,6 +1213,8 @@ export function interpretQuery(
     ? getCaseFacetTopic(factFacet)
     : isWebExperience
       ? 'web'
+    : questionSubject === 'impact_measurement'
+      ? 'decision_making'
     : getGlobalSynthesisTopic(effectiveIntent);
 
   return {
@@ -1132,6 +1228,8 @@ export function interpretQuery(
     confidence: effectiveConfidence,
     matchedCues: fastReviewCueLabels.length
       ? fastReviewCueLabels
+      : valueBeyondUiCueLabels.length
+        ? valueBeyondUiCueLabels
       : recovered?.matchedCues.length
         ? recovered.matchedCues
         : [...scopeResolution.matchedCues, ...contextCaseCueLabels],

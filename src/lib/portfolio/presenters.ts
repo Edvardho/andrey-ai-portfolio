@@ -9,7 +9,7 @@ import {
   getRailItems,
   portfolioContent,
 } from '@/data/portfolio-content.server';
-import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getAIMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {
   AnswerType,
@@ -171,6 +171,7 @@ function createEnvelope({
       answerType,
       queryScope,
       questionSubject,
+      aiMode: getAIMode(),
     },
   };
 }
@@ -499,6 +500,38 @@ export function buildIdentityIntroEnvelope(session: AssistantSession): Assistant
 
 export function buildAssistantIntroEnvelope(session: AssistantSession): AssistantEnvelope {
   return buildHiringGuideEnvelope(session, 'assistantProfile');
+}
+
+export function buildAssistantTrustEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips: PromptChip[] = [
+    { id: 'trust-proof', label: 'Где доказательства?', message: 'Где доказательства его опыта?' },
+    { id: 'trust-weak-case', label: 'Проверь слабый кейс', message: 'Был ли слабый кейс?' },
+    { id: 'trust-contribution', label: 'Что он сделал сам?', message: 'Что Андрей сделал сам в Альфа-Смарте, а не команда?' },
+  ];
+
+  return createEnvelope({
+    session,
+    viewType: 'assistant_intro',
+    presentationVariant: 'plain_text_reply',
+    selectedContext: session.selectedContext,
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: 'Честно? Частично ты прав.',
+        body: [
+          'Я не свободный чат-бот обо всем и не притворяюсь человеком. Я специально ограничен портфолио Андрея: беру вопрос, сопоставляю его с кейсами и отвечаю только по подтвержденным фактам.',
+          'Это сделано не чтобы “зашаблонить” ответ, а чтобы не выдумывать опыт и не подстраиваться под лида. Проверять меня лучше неудобными вопросами: что Андрей сделал сам, где есть метрики, какой кейс слабый и где продукт не сработал.',
+        ],
+      },
+    ],
+    chips,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'authored_reply',
+  });
 }
 
 export function buildCareerSummaryEnvelope(session: AssistantSession): AssistantEnvelope {

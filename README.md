@@ -47,9 +47,22 @@ Copy `.env.example` into `.env.local` and fill the values:
 cp .env.example .env.local
 ```
 
-Required for model classification:
+AI mode:
 
+- `AI_MODE=fallback` disables OpenAI calls even when a key is present. Use it for local UI, layout, routing, skeleton, and chip testing.
+- `AI_MODE=live` enables OpenAI calls when `OPENAI_API_KEY` is present. Use it only when testing real assistant answer quality or in production.
+
+Required for live model classification and synthesis:
+
+- `AI_MODE=live`
 - `OPENAI_API_KEY`
+- `OPENAI_MODEL` defaults to `gpt-4o-mini` when omitted.
+
+Recommended defaults:
+
+- Local `.env.local`: `AI_MODE=fallback`
+- Vercel Production: `AI_MODE=live`
+- Vercel Preview: `AI_MODE=fallback` unless you intentionally want preview deployments to spend API tokens.
 
 Optional for persistence:
 
@@ -88,9 +101,10 @@ npm run dev
 ```bash
 npm run typecheck
 npm run smoke
+npm run verify:assistant-v1
 ```
 
-`npm run verify` runs both.
+`npm run verify` runs the baseline UI/data checks. `npm run verify:assistant-v1` is the release gate for the AI assistant: AI mode, routing, design-lead questions, synthesis quality, reply states, and case facts.
 
 ## API surface
 

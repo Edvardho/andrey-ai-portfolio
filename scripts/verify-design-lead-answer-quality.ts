@@ -27,6 +27,7 @@ type QualityScenario = {
   mustContainAny?: string[];
   mustContainAll?: string[];
   mustNotContain?: string[];
+  disallowDuplicateSentences?: boolean;
 };
 
 function snapshotText(snapshot: SynthesisSnapshot): string {
@@ -69,6 +70,19 @@ function assertExcludes(text: string, needles: string[], label: string) {
   }
 }
 
+function assertNoDuplicateSentences(text: string, label: string) {
+  const seen = new Set<string>();
+  const sentences = text
+    .split(/[.!?]\s+|\n+/)
+    .map((sentence) => sentence.replace(/\s+/g, ' ').trim().toLowerCase())
+    .filter((sentence) => sentence.length > 24);
+
+  for (const sentence of sentences) {
+    assert(!seen.has(sentence), `${label}: answer contains duplicated sentence\nSentence: ${sentence}\nActual: ${text}`);
+    seen.add(sentence);
+  }
+}
+
 async function openCase(session: AssistantSession, caseId: string): Promise<AssistantSession> {
   const result = await resolveAction(session, {
     type: 'open_case_summary',
@@ -104,6 +118,9 @@ async function assertQualityScenario(scenario: QualityScenario): Promise<Assista
   if (scenario.mustNotContain) {
     assertExcludes(text, scenario.mustNotContain, scenario.label);
   }
+  if (scenario.disallowDuplicateSentences) {
+    assertNoDuplicateSentences(text, scenario.label);
+  }
 
   return result.session;
 }
@@ -128,6 +145,71 @@ async function main() {
       expectedQuestionSubject: 'case_outcomes',
       expectedStatus: 'grounded',
       mustContainAll: ['32 111', '30%', '1,1 млн'],
+    },
+    {
+      label: 'global metrics answer names concrete proof cases',
+      session: baseSession,
+      input: 'Какие метрики подтверждают результат?',
+      expectedAnswerType: 'outcome_summary',
+      expectedQuestionSubject: 'impact_measurement',
+      expectedStatus: 'grounded',
+      mustContainAll: ['32 111', '900', '580'],
+      mustNotContain: ['флагман с метриками'],
+    },
+    {
+      label: 'global hypothesis validation is not ambiguous',
+      session: baseSession,
+      input: 'Как Андрей обычно проверяет гипотезы?',
+      expectedAnswerType: 'decision_breakdown',
+      expectedQuestionSubject: 'design_process',
+      mustContainAny: ['юзабилити', 'First Click', 'A/B', 'гипотез'],
+    },
+    {
+      label: 'global research validation phrased as what he checked',
+      session: baseSession,
+      input: 'Что Андрей проверял через исследования?',
+      expectedAnswerType: 'decision_breakdown',
+      expectedQuestionSubject: 'design_process',
+      mustContainAny: ['юзабилити', 'First Click', 'SIEBEL', 'оператор'],
+      mustNotContain: ['Я могу быстро представить Андрея'],
+    },
+    {
+      label: 'skeptical proof question answers with artifacts',
+      session: baseSession,
+      input: 'Если я не верю словам, на что смотреть в кейсах?',
+      expectedAnswerType: 'proof_map',
+      expectedQuestionSubject: 'case_evidence',
+      expectedStatus: 'grounded',
+      mustContainAll: ['Правильно, словам верить не нужно', 'user flow', 'дизайн-чек', 'Альфа-Смарте', 'SIEBEL', 'ChatPoint'],
+      mustNotContain: ['Я не свободный чат-бот', 'Смотреть это портфолио стоит не из-за', 'Как читать сигнал', 'флагман с метриками'],
+    },
+    {
+      label: 'thinking versus execution question is not fallback',
+      session: baseSession,
+      input: 'Где видно, что он думал, а не просто исполнял задачу?',
+      expectedAnswerType: 'decision_breakdown',
+      expectedQuestionSubject: 'candidate_value',
+      mustContainAny: ['Альфа-Смарт', 'SIEBEL', 'гипотез', 'сценар'],
+      mustNotContain: ['Я могу быстро представить Андрея'],
+    },
+    {
+      label: 'value beyond pretty screens is not ambiguous',
+      session: baseSession,
+      input: 'Если убрать красивые экраны, что останется?',
+      expectedAnswerType: 'hiring_argument',
+      expectedQuestionSubject: 'candidate_value',
+      expectedStatus: 'grounded',
+      mustContainAny: ['Альфа-Смарт', 'SIEBEL', 'сценари', 'метрик'],
+      mustNotContain: ['Я могу быстро представить Андрея'],
+    },
+    {
+      label: 'alfa problem does not duplicate the intro',
+      session: baseSession,
+      input: 'Какая была главная проблема в Альфа-Смарте?',
+      expectedAnswerType: 'case_summary',
+      expectedQuestionSubject: 'case_problem',
+      mustContainAny: ['удерживать текущих клиентов', 'подключать близких'],
+      disallowDuplicateSentences: true,
     },
     {
       label: 'alfa hypothesis validation is specific',
@@ -163,6 +245,16 @@ async function main() {
       expectedAnswerType: 'decision_breakdown',
       expectedQuestionSubject: 'case_research',
       mustContainAll: ['12', 'оператор'],
+    },
+    {
+      label: 'siebel redesign question answers with outcomes',
+      session: baseSession,
+      input: 'Что изменилось в SIEBEL после редизайна?',
+      expectedAnswerType: 'outcome_summary',
+      expectedQuestionSubject: 'case_outcomes',
+      expectedStatus: 'grounded',
+      mustContainAll: ['900', '580'],
+      mustNotContain: ['SIEBEL — внутренний интерфейс CRM'],
     },
     {
       label: 'chatpoint unsupported feedback is honest',
@@ -217,6 +309,15 @@ async function main() {
       expectedAnswerType: 'risk_assessment',
       expectedQuestionSubject: 'case_constraints',
       mustContainAny: ['сроку жизни', 'ссылку можно было переслать', 'заканчивались места'],
+    },
+    {
+      label: 'named sharing constraints do not use Alfa-Smart facts',
+      session: baseSession,
+      input: 'Какие ограничения были в Шаринге подписки?',
+      expectedAnswerType: 'risk_assessment',
+      expectedQuestionSubject: 'case_constraints',
+      mustContainAny: ['сроку жизни', 'ссылку можно было переслать', 'заканчивались места'],
+      mustNotContain: ['App Store удалил приложение', 'Что входит в подписку'],
     },
     {
       label: 'wannabelike research mentions interviews',

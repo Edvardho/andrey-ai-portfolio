@@ -544,6 +544,7 @@ function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
       answerType: envelope.meta.answerType ?? null,
       queryScope: envelope.meta.queryScope ?? null,
       questionSubject: envelope.meta.questionSubject ?? null,
+      aiMode: envelope.meta.aiMode ?? 'fallback',
     },
     contextPanel: getCurrentContextPanel(envelope),
   };

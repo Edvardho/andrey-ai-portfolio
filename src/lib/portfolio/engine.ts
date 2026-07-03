@@ -9,6 +9,7 @@ import {
   buildAdditionalCasesEnvelope,
   buildAmbiguousEnvelope,
   buildAssistantIntroEnvelope,
+  buildAssistantTrustEnvelope,
   buildCareerSummaryEnvelope,
   buildCaseEnvelope,
   buildCaseDiscoveryEnvelope,
@@ -135,6 +136,12 @@ function buildAssistantAnswerPreview(synthesis: SynthesisSnapshot): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 280);
+}
+
+function isAssistantTrustChallenge(text: string): boolean {
+  return /не верю.+(?:тебе|в тебя|что ты|этому ассистенту|ассистенту|ии|ответу|роутер|бот|шаблон)|ты не ии|не искусственн(ый|ого)? интеллект|зашаблон|шаблон(изированн|ированн)?|роутер|faq[-\s]?бот|просто бот|ты настоящий ии|ты реально ии|придумываешь ответы|подстраиваешься под/i.test(
+    text,
+  );
 }
 
 function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelope {
@@ -556,6 +563,10 @@ export async function resolveMessage(
 
   if (incrementedCount > MAX_USER_MESSAGES_PER_SESSION) {
     return { session: nextSession, envelope: buildLimitEnvelope(nextSession) };
+  }
+
+  if (isAssistantTrustChallenge(text)) {
+    return { session: nextSession, envelope: buildAssistantTrustEnvelope(nextSession) };
   }
 
   const deterministic = classifyMessageDeterministically(text, nextSession);
