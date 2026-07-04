@@ -768,6 +768,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
                   canRetryError={canRetryError}
                   onRetryError={onRetryError}
                   renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
+                  showChips={item.id === latestAssistantItemId}
                 />
               </motion.div>
             ),

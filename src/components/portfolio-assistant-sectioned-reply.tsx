@@ -23,6 +23,7 @@ type Props = {
   onCta: (action: UIAction) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 };
 
 export function PortfolioAssistantSectionedReply({
@@ -33,6 +34,7 @@ export function PortfolioAssistantSectionedReply({
   onCta,
   onOpenArtifact,
   renderMode = 'instant',
+  showChips = true,
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
   const progressive = renderMode === 'progressive_text';
@@ -63,6 +65,7 @@ export function PortfolioAssistantSectionedReply({
                 onChipClick,
                 onCta,
                 onOpenArtifact,
+                showChips,
               },
               { renderMode },
             )}
@@ -70,7 +73,7 @@ export function PortfolioAssistantSectionedReply({
         )}
       </div>
 
-      {envelope.chips.length ? (
+      {showChips && envelope.chips.length ? (
         <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />

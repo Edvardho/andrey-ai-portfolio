@@ -85,6 +85,7 @@ async function main() {
   await assertIntent('Что делал в мобилке?', 'mobile_overview');
   await assertIntent('Не верю! Я думаю, что ты не ИИ, а хитро зашаблонированный роутер', 'assistant_intro');
   await assertIntent('Если убрать красивые экраны, что останется?', 'strengths_assessment');
+  await assertIntent('Андрей хороший дизайнер, как ты думаешь?', 'strengths_assessment');
   await assertIntent('Открой опыт работы', 'navigation_action');
   await assertIntent('Перейди к ChatPoint', 'navigation_action');
 
@@ -121,6 +122,18 @@ async function main() {
   assertNoHiddenNavigation('unsupported fallback', buildUnsupportedEnvelope(baseSession).chips);
   assertNoHiddenNavigation('no matching fallback', buildNoMatchingEnvelope(baseSession, 'Озон').chips);
   assertNoHiddenNavigation('safety fallback', getSafetyFallbackChips());
+
+  const ambiguousText = envelopeText(buildAmbiguousEnvelope(baseSession));
+  assert.doesNotMatch(ambiguousText, /Я могу быстро представить Андрея/i);
+  assert.match(ambiguousText, /проверяемым направлениям|личный вклад|доказательства/i);
+
+  const unsupportedText = envelopeText(buildUnsupportedEnvelope(baseSession));
+  assert.doesNotMatch(unsupportedText, /КВН|Comedy Club|развлекать/i);
+  assert.match(unsupportedText, /нет подтвержденных фактов|оценку кандидата/i);
+
+  const noMatchingText = envelopeText(buildNoMatchingEnvelope(baseSession, 'Озон'));
+  assert.doesNotMatch(noMatchingText, /не выдумывает кейсы/i);
+  assert.match(noMatchingText, /кейса «Озон» в портфолио нет|подтвержденный кейс/i);
 
   const { session: alfaSession } = await resolveAction(baseSession, {
     type: 'open_case_summary',

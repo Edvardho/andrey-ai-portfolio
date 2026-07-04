@@ -12,7 +12,11 @@ import {
 } from '@/data/portfolio-case-loader.client';
 import { additionalCasesContent, experience, mobileOverview } from '@/data/portfolio-global-content';
 import { getContactContent, getRailItems } from '@/data/portfolio-index';
-import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
+import {
+  buildClientEnvelopeForAction,
+  buildClientErrorRetryEnvelope,
+  buildClientRepeatedFastReviewEnvelope,
+} from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -82,6 +86,14 @@ type WorkspaceMode = 'landing' | 'chat';
 
 const LANDING_DEFAULT_PROMPT = 'Быстро оценить Андрея по кейсам';
 const FAST_REVIEW_DEFAULT_DISCLOSURE_ID = 'candidate-review-alfa-smart';
+const LANDING_FAST_REVIEW_REVEAL_DELAY_MS = 520;
+const FAST_REVIEW_REPEAT_PROMPTS = [
+  LANDING_DEFAULT_PROMPT,
+  'Расскажи коротко про Андрея',
+  'Коротко об Андрее',
+  'Коротко о кандидате',
+  'Оценить Андрея по кейсам',
+];
 type TransitionSource = 'submit' | 'chip' | 'case' | null;
 
 type PersistedThreadState = {
@@ -230,6 +242,20 @@ function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
     envelope,
     hasAnimated: false,
   };
+}
+
+function normalizePromptForRepeatGuard(text: string) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ');
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    globalThis.setTimeout(resolve, ms);
+  });
 }
 
 function getLastAssistantItemId(items: ThreadItem[]) {
@@ -1280,6 +1306,16 @@ export function PortfolioShell() {
       await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
       const targetContextId = options?.forceThreadContextId ?? resolveReplyThreadContextId(contextId, body, envelope);
+      const shouldDelayLandingFastReviewReveal =
+        options?.forceThreadContextId === 'entry' &&
+        envelope.viewType === 'candidate_fast_review' &&
+        !threadsRef.current.entry?.items.some((item) => (
+          item.kind === 'assistant' && item.envelope.viewType === 'candidate_fast_review'
+        ));
+
+      if (shouldDelayLandingFastReviewReveal) {
+        await wait(LANDING_FAST_REVIEW_REVEAL_DELAY_MS);
+      }
 
       setSessionId(envelope.sessionId);
       updateSessionMeta(envelope);
@@ -1625,6 +1661,28 @@ export function PortfolioShell() {
     }
 
     const isLandingTextSubmit = workspaceModeRef.current === 'landing';
+    const isFastReviewRepeatPrompt = FAST_REVIEW_REPEAT_PROMPTS
+      .map(normalizePromptForRepeatGuard)
+      .includes(normalizePromptForRepeatGuard(text));
+    const entryThread = threadsRef.current.entry;
+    const hasExistingFastReview = Boolean(
+      entryThread?.items.some((item) => (
+        item.kind === 'assistant' && item.envelope.viewType === 'candidate_fast_review'
+      )),
+    );
+
+    if (isLandingTextSubmit && isFastReviewRepeatPrompt && hasExistingFastReview) {
+      startWorkspaceTransition('submit');
+      appendUserToThread('entry', text);
+      appendAssistantToThread(
+        'entry',
+        buildClientRepeatedFastReviewEnvelope(sessionIdRef.current, sessionMeta.used),
+      );
+      setActiveContextId('entry');
+      setInput('');
+      requestStickyScroll();
+      return;
+    }
 
     if (workspaceModeRef.current === 'landing') {
       prepareLandingConversationStart();

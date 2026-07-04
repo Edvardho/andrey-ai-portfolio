@@ -57,8 +57,8 @@ assert(
   'Conversational chips/CTA containers must not render divider borders.',
 );
 assert(
-  synthesis.includes('text-[17px] font-normal leading-6'),
-  'Conversational paragraph styles must use 17px / 24px.',
+  synthesis.includes('text-[16px] font-normal leading-6'),
+  'Conversational paragraph styles must use 16px / 24px.',
 );
 
 for (const { path, source } of assistantComponents) {

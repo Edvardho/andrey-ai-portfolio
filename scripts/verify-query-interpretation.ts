@@ -124,6 +124,15 @@ async function main() {
       session: baseSession,
     },
     {
+      label: 'follow-up about Andrey is candidate intro, not assistant fallback',
+      input: 'Что еще можешь рассказать об Андрее?',
+      expectedIntent: 'identity_intro',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'candidate_value',
+      expectedAnswerType: 'candidate_positioning',
+      session: baseSession,
+    },
+    {
       label: 'thinking versus execution question',
       input: 'Где видно, что он думал, а не просто исполнял задачу?',
       expectedIntent: 'decision_process',
@@ -149,6 +158,15 @@ async function main() {
       expectedQuestionSubject: 'candidate_value',
       expectedAnswerType: 'hiring_argument',
       session: alfaSession,
+    },
+    {
+      label: 'plain candidate quality question is evaluation task',
+      input: 'Андрей хороший дизайнер, как ты думаешь?',
+      expectedIntent: 'strengths_assessment',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'candidate_value',
+      expectedAnswerType: 'hiring_argument',
+      session: baseSession,
     },
     {
       label: 'hire without fluff',

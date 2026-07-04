@@ -21,6 +21,8 @@ import { PortfolioButton } from './portfolio-button';
 import { PortfolioProgressiveText } from './portfolio-progressive-text';
 import { PortfolioAssistantEvidenceCaseBlock } from './portfolio-assistant-evidence-case-block';
 
+const ASSISTANT_BODY_TEXT_CLASS = 'text-[16px] font-normal leading-6 tracking-[0] text-[#202129]';
+
 type SharedRenderProps = {
   activeCaseId: string | null;
   expandedDisclosureIds: string[];
@@ -28,6 +30,7 @@ type SharedRenderProps = {
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
+  showChips?: boolean;
 };
 
 export function renderCanonicalSummaryBlock(
@@ -53,7 +56,7 @@ export function renderCanonicalSummaryBlock(
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
           <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f] lg:text-[34px]">{block.title}</h3>
-          <div className="space-y-4 text-[17px] leading-[1.9] text-[#4e4740]">
+          <div className={`space-y-4 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
             ))}
@@ -111,6 +114,10 @@ export function renderCanonicalSummaryBlock(
         />
       );
     case 'chips':
+      if (props.showChips === false) {
+        return null;
+      }
+
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
           {block.title ? <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3> : null}
@@ -131,7 +138,7 @@ export function renderCanonicalSummaryBlock(
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
           {block.title ? <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3> : null}
-          <ul className="space-y-3 text-[17px] leading-[1.85] text-[#4e4740]">
+          <ul className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.items.map((item) => (
               <li key={item} className="flex gap-3">
                 <span className="mt-3 h-2 w-2 shrink-0 rounded-full bg-[#2d2923]" />
@@ -162,7 +169,7 @@ export function renderConversationalBlock(
       return (
         <section key={`${block.type}-${index}`} className="space-y-4">
           <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3>
-          <div className="space-y-4 text-[17px] leading-[1.85] text-[#4e4740]">
+          <div className={`space-y-4 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph, paragraphIndex) => (
               <p key={paragraph}>
                 <PortfolioProgressiveText
@@ -179,7 +186,7 @@ export function renderConversationalBlock(
       return (
         <section key={`${block.type}-${index}`} className="space-y-3">
           <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3>
-          <div className="space-y-3 text-[16px] leading-[1.8] text-[#4e4740]">
+          <div className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph, paragraphIndex) => (
               <p key={paragraph}>
                 <PortfolioProgressiveText
@@ -196,7 +203,7 @@ export function renderConversationalBlock(
       return (
         <section key={`${block.type}-${index}`} className="space-y-3">
           {block.title ? <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3> : null}
-          <ul className="space-y-3 text-[16px] leading-[1.8] text-[#4e4740]">
+          <ul className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.items.map((item, itemIndex) => (
               <motion.li
                 key={item}

@@ -206,7 +206,12 @@ function buildFallbackSnapshot(
 
 function buildAnswerPlan(
   answerType: AnswerType,
-  options: { targetCaseIds?: string[]; questionSubject?: QuestionSubject } = {},
+  options: {
+    targetCaseIds?: string[];
+    questionSubject?: QuestionSubject;
+    isValueBeyondUiQuestion?: boolean;
+    isCandidateQualityQuestion?: boolean;
+  } = {},
 ): AnswerPlan {
   switch (answerType) {
     case 'candidate_positioning':
@@ -258,7 +263,7 @@ function buildAnswerPlan(
       return {
         answerType,
         requiredMoves: ['назвать роль кандидата', 'дать 4-6 конкретных действий', 'указать артефакты вклада', 'связать вклад с релизом или результатом'],
-        avoid: ['длинное описание продукта', 'самый сильный кейс', 'повтор одной мысли', 'метрики без связи с вкладом'],
+        avoid: ['длинное описание продукта', 'пересказ продукта перед вкладом', 'самый сильный кейс', 'повтор одной мысли', 'метрики без связи с вкладом'],
         maxParagraphs: 5,
         allowSections: false,
         allowBullets: false,
@@ -310,9 +315,9 @@ function buildAnswerPlan(
         answerType,
         requiredMoves:
           options.questionSubject === 'case_evidence'
-            ? ['признать нормальность проверки по артефактам', 'назвать конкретные артефакты', 'разнести доказательства по кейсам', 'отделить доказательство от самопрезентации']
+            ? ['прямо сказать, что словам верить не нужно', 'назвать проверяемые артефакты', 'показать где смотреть по кейсам', 'дать критерий доверия: без артефактов это рассказ о себе']
             : ['где лежат доказательства', 'на какие артефакты смотреть', 'что именно они подтверждают'],
-        avoid: ['общая фраза "смотри кейсы"', 'бездоказательные выводы', 'дублирующиеся секции', 'одинаковые заголовки', 'объяснение зачем смотреть портфолио вместо карты доказательств', 'слово "сигнал"', 'маркетинговый тон'],
+        avoid: ['защита ассистента', 'фраза "я ограничен фактами"', 'убеждать словами', 'общая фраза "смотри кейсы"', 'бездоказательные выводы', 'дублирующиеся секции', 'одинаковые заголовки', 'объяснение зачем смотреть портфолио вместо карты доказательств', 'слово "сигнал"', 'маркетинговый тон'],
         maxParagraphs: 4,
         allowSections: options.questionSubject !== 'case_evidence',
         allowBullets: options.questionSubject !== 'case_evidence',
@@ -326,8 +331,12 @@ function buildAnswerPlan(
             ? ['почему стоит тратить слот интервью', 'какие задачи он может закрыть', 'что именно нужно проверить на разговоре']
             : options.questionSubject === 'case_strength'
               ? ['что этот кейс доказывает', 'почему он важен для оценки кандидата', 'какие артефакты или результаты это подтверждают']
-              : ['что остается кроме экранов и аккуратного UI', 'кейсы как доказательства', 'честная граница'],
-        avoid: ['общие качества', 'резюме без позиции', 'сравнение со средним дизайнером', 'слишком сильные обещания', 'сильная сторона Андрея как старт ответа'],
+              : options.questionSubject === 'candidate_value' && options.isValueBeyondUiQuestion
+                ? ['сказать что остается способ работы, а не мнение о кандидате', 'разложить цепочку работы: требования, user flow, гипотезы, проверка, handoff, релиз', 'подтвердить разными кейсами: Альфа-Смарт, SIEBEL, ChatPoint']
+                : options.questionSubject === 'candidate_value' && options.isCandidateQualityQuestion
+                  ? ['ответить на оценку кандидата без позиции "мне кажется"', 'дать 2-3 доказательства из разных кейсов', 'закончить точной формулировкой уровня доказанности']
+              : ['оценить кандидата через артефакты и результаты', 'что остается кроме экранов и аккуратного UI', 'кейсы как доказательства', 'честная граница'],
+        avoid: ['сводить ответ только к Альфа-Смарт', 'оценка "хороший дизайнер" без доказательств', 'общие качества', 'резюме без позиции', 'сравнение со средним дизайнером', 'слишком сильные обещания', 'сильная сторона Андрея как старт ответа'],
         maxParagraphs: 3,
         allowSections: false,
         allowBullets: false,
@@ -504,7 +513,16 @@ function buildFewShotExamples(
   }
 }
 
+function isValueBeyondUiQuestion(question: string): boolean {
+  return /если убрать.+(?:красив|аккуратн|визуальн).+(?:экран|ui|интерфейс|картин)|что останется.+(?:без|кроме|после).+(?:экран|ui|интерфейс|картин|визуал)|без красивых экранов|кроме красивых экранов|кроме аккуратного ui|если не смотреть на ui|если не смотреть на экраны/i.test(question);
+}
+
+function isCandidateQualityQuestion(question: string): boolean {
+  return /андре[йя].+хорош.+дизайнер|хорош.+дизайнер.+андре[йя]|андре[йя].+сильн.+дизайнер|нормальн.+дизайнер/i.test(question);
+}
+
 function buildGlobalSynthesisRequest(
+  question: string,
   topic: SynthesisTopic,
   answerType: AnswerType,
   queryScope: QueryScope,
@@ -512,7 +530,13 @@ function buildGlobalSynthesisRequest(
   session: AssistantSession,
 ): SynthesisRequestConfig {
   const config = getSynthesisTopicConfig(topic);
-  const answerPlan = buildAnswerPlan(answerType, { questionSubject });
+  const valueBeyondUiQuestion = isValueBeyondUiQuestion(question);
+  const candidateQualityQuestion = isCandidateQualityQuestion(question);
+  const answerPlan = buildAnswerPlan(answerType, {
+    questionSubject,
+    isValueBeyondUiQuestion: valueBeyondUiQuestion,
+    isCandidateQualityQuestion: candidateQualityQuestion,
+  });
   const facts = config.subjectFacts?.[questionSubject] ?? config.facts;
   const portfolioValueVariant =
     topic === 'portfolio_value' && questionSubject === 'ai_format_value'
@@ -546,6 +570,24 @@ function buildGlobalSynthesisRequest(
             'По Альфа-Смарту и SIEBEL видно, что он умеет разбирать сценарии, ограничения и рабочую среду, а потом доводить решение до релиза. На интервью его стоит проверять на уровне мышления: как он принимает решения, что считает доказательством и как связывает дизайн с результатом.',
           ],
         }
+      : topic === 'strengths' && questionSubject === 'candidate_value' && valueBeyondUiQuestion
+        ? {
+            title: 'Что остается кроме экранов',
+            fallbackParagraphs: [
+              'Останется не картинка, а способ работы.',
+              'По кейсам видно, что Андрей сначала разбирает задачу: роли, сценарии, ограничения, точки входа, гипотезы и пользовательский путь. Уже потом появляются макеты.',
+              'В Альфа-Смарте это цепочка от требований и user flow до релиза и метрик. В SIEBEL — исследование реального процесса операторов и изменение workflow. В ChatPoint — вывод, что хороший интерфейс не спасает продукт, если ценность проверили поздно.',
+            ],
+          }
+        : topic === 'strengths' && questionSubject === 'candidate_value' && candidateQualityQuestion
+          ? {
+              title: 'Хороший ли Андрей дизайнер',
+              fallbackParagraphs: [
+                'Да, но проверять это лучше не по словам, а по кейсам.',
+                'В Альфа-Смарте видно, что Андрей довел сложный банковский сценарий до релиза и метрик. В SIEBEL — что он умеет разбираться в реальной работе операторов, а не просто перерисовывать интерфейс. В ChatPoint — что он способен честно разбирать слабый продуктовый результат.',
+                'Точнее: у него есть доказательства продуктового мышления, работы со сложной логикой и доведения решений до результата.',
+              ],
+            }
       : null;
   const proofVariant =
     answerType === 'proof_map' && questionSubject === 'case_evidence'
@@ -876,7 +918,7 @@ export async function synthesizeGeneralAnswer(
   return synthesizeAnswerFromRequest(
     question,
     session,
-    buildGlobalSynthesisRequest(topic, answerType, queryScope, questionSubject, session),
+    buildGlobalSynthesisRequest(question, topic, answerType, queryScope, questionSubject, session),
   );
 }
 
@@ -980,7 +1022,7 @@ function buildOutcomeGapOverride(question: string, pack: CaseFactPack): Fallback
     ?? 'В портфолио это не подтверждено отдельными метриками, NPS или post-launch feedback.';
 
   return {
-    fallbackIntro: 'В портфолио это не подтверждено отдельными метриками или feedback.',
+    fallbackIntro: 'По этому вопросу в материалах недостаточно подтверждений, чтобы отвечать уверенно.',
     fallbackSections: [
       {
         title: 'Что подтверждено',

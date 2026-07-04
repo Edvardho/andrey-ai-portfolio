@@ -99,6 +99,7 @@ const CONTEXT_CASE_REFERENCE_CUES: CueDefinition[] = [
 const GLOBAL_PERSON_CUES: CueDefinition[] = [
   { label: 'global_person:hiring', patterns: [/почему.+звать/i, /стоит.+нанять/i, /как кандидат/i, /почему его стоит/i] },
   { label: 'global_person:better_than_others', patterns: [/лучше других дизайнеров/i, /чем он лучше/i, /чем андрей лучше/i, /отличается от других дизайнеров/i] },
+  { label: 'global_person:candidate_quality', patterns: [/андре[йя].+хорош.+дизайнер/i, /хорош.+дизайнер.+андре[йя]/i, /андре[йя].+сильн.+дизайнер/i, /нормальн.+дизайнер/i] },
   { label: 'global_person:whole_person', patterns: [/по андрею в целом/i, /в целом по андрею/i, /в целом по опыту/i] },
 ];
 
@@ -158,6 +159,17 @@ const EXPERIENCE_CUES: CueDefinition[] = [
   { label: 'experience:work_history', patterns: [/опыт работы/i, /его опыт/i, /где он работал/i, /карьер/i, /бэкграунд/i] },
   { label: 'experience:domains', patterns: [/компани/i, /домены/i, /где успел поработать/i] },
   { label: 'experience:web', patterns: [/что делал в web/i, /что делал в веб/i, /web[-\s]?кейсы/i, /веб[-\s]?кейсы/i, /что у него по web/i, /что у него по веб/i] },
+];
+
+const CANDIDATE_INTRO_CUES: CueDefinition[] = [
+  {
+    label: 'candidate_intro:about_andrey',
+    patterns: [
+      /что еще можешь рассказать об андре[её]/i,
+      /\bещ[её].+рассказать.+об андре[её]/i,
+      /расскажи.+об андре[её].+еще/i,
+    ],
+  },
 ];
 
 const EVIDENCE_CUES: CueDefinition[] = [
@@ -482,6 +494,8 @@ function resolveQuestionSubject(
   scope: QueryScope,
   text: string,
 ): QuestionSubject {
+  // `QuestionSubject` is the hiring evaluation task behind the wording:
+  // proof, contribution, risk, interview decision, or candidate value.
   if (collectCueLabels(text, FAST_REVIEW_CUES).length > 0) {
     return 'candidate_fast_review';
   }
@@ -1106,6 +1120,7 @@ export function interpretQuery(
   const contextCaseCueLabels = collectCueLabels(lowered, CONTEXT_CASE_REFERENCE_CUES);
   const globalPersonCueLabels = collectCueLabels(lowered, GLOBAL_PERSON_CUES);
   const valueBeyondUiCueLabels = collectCueLabels(lowered, VALUE_BEYOND_UI_CUES);
+  const candidateIntroCueLabels = collectCueLabels(lowered, CANDIDATE_INTRO_CUES);
   const fastReviewCueLabels = collectCueLabels(lowered, FAST_REVIEW_CUES);
   const caseOutcomeCueLabels = collectCueLabels(lowered, CASE_OUTCOME_CUES);
   const caseResearchCueLabels = collectCueLabels(lowered, CASE_RESEARCH_CUES);
@@ -1138,6 +1153,8 @@ export function interpretQuery(
   const effectiveIntent =
     fastReviewCueLabels.length > 0
       ? { type: 'portfolio_overview' as const }
+      : candidateIntroCueLabels.length > 0
+        ? { type: 'identity_intro' as const }
       : valueBeyondUiCueLabels.length > 0
         ? { type: 'strengths_assessment' as const }
       : (currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseOutcomeCueLabels.length > 0
@@ -1155,6 +1172,8 @@ export function interpretQuery(
         : recovered?.intent ?? classification.intent;
   const effectiveConfidence = fastReviewCueLabels.length > 0
     ? 'high'
+    : candidateIntroCueLabels.length > 0
+      ? 'high'
     : valueBeyondUiCueLabels.length > 0
       ? 'high'
     : recovered?.confidence ?? classification.confidence;
@@ -1228,6 +1247,8 @@ export function interpretQuery(
     confidence: effectiveConfidence,
     matchedCues: fastReviewCueLabels.length
       ? fastReviewCueLabels
+      : candidateIntroCueLabels.length
+        ? candidateIntroCueLabels
       : valueBeyondUiCueLabels.length
         ? valueBeyondUiCueLabels
       : recovered?.matchedCues.length

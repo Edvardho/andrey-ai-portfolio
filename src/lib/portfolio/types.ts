@@ -109,6 +109,9 @@ export type QueryScope =
   | 'named_case'
   | 'portfolio_wide';
 
+// Product meaning: this is the evaluation task behind the question,
+// not just the topic. Example: "portfolio" can mean proof, format value,
+// navigation, or hiring decision, and those require different answers.
 export type QuestionSubject =
   | 'candidate_fast_review'
   | 'candidate_value'

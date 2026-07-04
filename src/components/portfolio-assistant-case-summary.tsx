@@ -24,6 +24,7 @@ type Props = {
   onCta: (action: UIAction) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 };
 
 export function PortfolioAssistantCaseSummary({
@@ -34,6 +35,7 @@ export function PortfolioAssistantCaseSummary({
   onCta,
   onOpenArtifact,
   renderMode = 'instant',
+  showChips = true,
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
   const activeCase = activeCaseId ? getLoadedCaseById(activeCaseId) : null;
@@ -72,12 +74,13 @@ export function PortfolioAssistantCaseSummary({
               onChipClick,
               onCta,
               onOpenArtifact,
+              showChips,
             })}
           </motion.div>,
         )}
       </div>
 
-      {envelope.chips.length ? (
+      {showChips && envelope.chips.length ? (
         <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />

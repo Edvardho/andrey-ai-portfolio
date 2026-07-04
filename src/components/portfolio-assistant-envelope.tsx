@@ -24,6 +24,7 @@ export function PortfolioAssistantEnvelopeView({
   canRetryError = false,
   onRetryError,
   renderMode = 'instant',
+  showChips = true,
 }: {
   envelope: AssistantEnvelope;
   expandedDisclosureIds: string[];
@@ -34,6 +35,7 @@ export function PortfolioAssistantEnvelopeView({
   canRetryError?: boolean;
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 }) {
   if (envelope.presentationVariant === 'loading_row') {
     return <PortfolioAssistantLoadingRow />;
@@ -67,6 +69,7 @@ export function PortfolioAssistantEnvelopeView({
         canRetryError={canRetryError}
         onRetryError={onRetryError}
         renderMode={renderMode}
+        showChips={showChips}
       />
     );
   }
@@ -82,6 +85,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'experience_summary':
@@ -94,6 +98,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'sectioned_reply':
@@ -106,6 +111,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'refusal_reply':
@@ -118,6 +124,7 @@ export function PortfolioAssistantEnvelopeView({
           canRetryError={canRetryError}
           onRetryError={onRetryError}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
   }

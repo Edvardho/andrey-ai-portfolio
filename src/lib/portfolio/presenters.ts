@@ -668,10 +668,10 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
 
 export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'ambiguous-identity', label: 'Расскажи про Андрея', message: 'Расскажи про Андрея' },
-    { id: 'ambiguous-exp', label: 'Какой у него опыт работы', message: 'Какой у него опыт работы' },
-    { id: 'ambiguous-mobile', label: 'Что делал в мобилке', message: 'Что делал в мобилке?' },
-    { id: 'ambiguous-web', label: 'Что делал в web', message: 'Что делал в web?' },
+    { id: 'ambiguous-interview', label: 'Почему его стоит звать?', message: 'Почему его стоит звать на интервью?' },
+    { id: 'ambiguous-proof', label: 'Где доказательства?', message: 'Если я не верю словам, на что смотреть в кейсах?' },
+    { id: 'ambiguous-contribution', label: 'Что он сделал сам?', message: 'Что Андрей сделал сам, а не команда?' },
+    { id: 'ambiguous-risk', label: 'Где слабое место?', message: 'Где у него слабое место?' },
   ];
 
   return createEnvelope({
@@ -684,9 +684,10 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Прости, но я не знаю ответа на этот вопрос.',
+        title: 'Этот вопрос можно проверить несколькими способами',
         body: [
-          'Я могу быстро представить Андрея, показать его опыт, сильный кейс, ограничения или доказательства.',
+          'Я не хочу угадывать за вас. В рамках портфолио Андрея вопрос можно разложить по проверяемым направлениям: кандидат, личный вклад, доказательства, слабые места или решение звать на интервью.',
+          'Если хотите быстро понять ценность кандидата, лучше спросить про доказательства, вклад или риск — там меньше самопрезентации и больше фактов.',
         ],
       },
     ],
@@ -722,8 +723,8 @@ export function buildNoMatchingEnvelope(
         type: 'lead',
         title: requestedCase ? `Кейса «${requestedCase}» в портфолио нет` : 'В базе нет такого кейса',
         body: [
-          'Ассистент не выдумывает кейсы и не притворяется, что знает больше, чем реально есть в портфолио.',
-          'Лучше перейти к одному из подтвержденных кейсов или к общему опыту работы.',
+          'Я не буду притворяться, что в портфолио есть этот проект. Проверять Андрея лучше по тем кейсам, где есть материалы: Альфа-Смарт, SIEBEL, ChatPoint и мобильные сценарии.',
+          'Можно открыть подтвержденный кейс или перейти к общему опыту работы.',
         ],
       },
     ],
@@ -739,10 +740,10 @@ export function buildNoMatchingEnvelope(
 
 export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'unsupported-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
     { id: 'unsupported-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
-    { id: 'unsupported-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
-    { id: 'unsupported-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
+    { id: 'unsupported-proof', label: 'Где доказательства?', message: 'Если я не верю словам, на что смотреть в кейсах?' },
+    { id: 'unsupported-risk', label: 'Где слабое место?', message: 'Где у него слабое место?' },
+    { id: 'unsupported-interview', label: 'Почему его стоит звать?', message: 'Почему его стоит звать на интервью?' },
   ];
 
   return createEnvelope({
@@ -755,10 +756,10 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Этот вопрос вне границ ассистента',
+        title: 'По этому вопросу в портфолио нет подтвержденных фактов',
         body: [
-          'Я тут не для того, чтобы развлекать тебя случайными байками. За этим лучше к КВН, Comedy Club или в любую соцсеть, где алгоритм уже потерял надежду.',
-          'Моя зона уже: быстро оценить Андрея по опыту, кейсам, сильным сторонам, ограничениям и доказательствам.',
+          'Я не буду отвечать уверенно там, где материалы Андрея ничего не подтверждают.',
+          'Могу помочь с тем, что влияет на оценку кандидата: опыт, кейсы, личный вклад, доказательства, метрики, слабые места и релевантность для интервью.',
         ],
       },
     ],
