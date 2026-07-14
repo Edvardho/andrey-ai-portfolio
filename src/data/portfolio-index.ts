@@ -2,10 +2,10 @@ import type { ContactContent, EntryContent, PromptChip, RailItem } from '@/lib/p
 
 export const railItems: RailItem[] = [
   { id: 'alfa-smart', label: 'Альфа-Смарт', subtitle: 'Подписка на банковские продукты', kind: 'case' },
-  { id: 'chatpoint', label: 'ChatPoint', subtitle: 'Платформа для коммуникации', kind: 'case' },
   { id: 'siebel', label: 'SIEBEL', subtitle: 'CRM для службы поддержки', kind: 'case' },
   { id: 'expenses-card-holders', label: 'Расходы держателей', subtitle: 'Добавление точки входа', kind: 'case' },
   { id: 'subscription-sharing', label: 'Шаринг подписки', subtitle: 'Улучшение флоу добавления участников', kind: 'case' },
+  { id: 'chatpoint', label: 'ChatPoint', subtitle: 'Платформа для коммуникации', kind: 'case' },
   { id: 'ux-ui-wannabelike', label: 'UX/UI WannabeLike', subtitle: 'Прохождение курса Миши Розова по UI', kind: 'case' },
   { id: 'experience', label: 'Опыт работы', subtitle: 'Где работал Андрей и какие были результаты', kind: 'experience' },
 ];
@@ -25,12 +25,6 @@ export const contactOptions: ContactContent = {
       label: 'Написать в LinkedIn',
       helper: 'Ответит в течении дня, лучше пиши в Telegram',
       href: 'https://www.linkedin.com/in/edvardho/',
-    },
-    {
-      id: 'email',
-      label: 'Написать на e-mail',
-      helper: 'Может быть ответит, а может и нет 😅',
-      href: 'mailto:Edvardho@list.ru',
     },
   ],
 };
@@ -58,10 +52,10 @@ export const entry: EntryContent = {
 
 export const CASE_IDS = [
   'alfa-smart',
-  'chatpoint',
   'siebel',
   'expenses-card-holders',
   'subscription-sharing',
+  'chatpoint',
   'ux-ui-wannabelike',
 ] as const;
 

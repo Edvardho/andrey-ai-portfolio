@@ -17,11 +17,6 @@ const contactOptionIcons: Record<ContactOption['id'], { src: string; bgClass?: s
     src: '/contact-modal/linkedin.png',
     imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
   },
-  email: {
-    src: '/contact-modal/email.svg',
-    bgClass: 'bg-[#787F8D]',
-    imageClassName: 'absolute left-1/2 top-1/2 h-[30px] w-[30px] max-w-none -translate-x-1/2 -translate-y-1/2',
-  },
 };
 
 function ContactOptionRow({ option }: { option: ContactOption }) {
@@ -30,8 +25,8 @@ function ContactOptionRow({ option }: { option: ContactOption }) {
   return (
     <a
       href={option.href}
-      target={option.id === 'email' ? undefined : '_blank'}
-      rel={option.id === 'email' ? undefined : 'noreferrer'}
+      target="_blank"
+      rel="noreferrer"
       className={cx(
         'flex w-full cursor-pointer items-center gap-[14px] overflow-hidden rounded-[20px] border p-[18px] transition-colors duration-150',
         portfolioSoftSurfaceBorder,
@@ -142,14 +137,14 @@ export function PortfolioModalOverlay({
         </div>
       ) : isImage ? (
         <div className="relative z-10 flex max-w-[calc(100vw-48px)] items-start gap-4">
-          <div className="h-[min(736px,calc(100vh-142px))] w-[min(1200px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
+          <div className="h-[min(820px,calc(100dvh-142px))] w-[min(1280px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
             {modal.imageUrl ? (
               <Image
                 src={modal.imageUrl}
                 alt={modal.title}
-                width={1200}
-                height={736}
-                sizes="min(1200px, calc(100vw - 116px))"
+                width={1280}
+                height={820}
+                sizes="min(1280px, calc(100vw - 116px))"
                 className="block h-full w-full object-contain"
               />
             ) : (

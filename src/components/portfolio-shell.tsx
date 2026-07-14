@@ -1283,6 +1283,7 @@ export function PortfolioShell() {
       syncBeforeRequest?: boolean;
       clearInputOnSuccess?: boolean;
       forceThreadContextId?: ContextId;
+      keepThreadAtTop?: boolean;
     },
   ) {
     if (options?.userText) {
@@ -1293,7 +1294,9 @@ export function PortfolioShell() {
     setLoadingContextId(contextId);
     setError(null);
     setLastFailedRequest(null);
-    if (threadsRef.current[contextId]?.scrollState.isNearBottom ?? true) {
+    if (options?.keepThreadAtTop) {
+      requestThreadTopScroll();
+    } else if (threadsRef.current[contextId]?.scrollState.isNearBottom ?? true) {
       requestStickyScroll();
     }
 
@@ -1320,6 +1323,9 @@ export function PortfolioShell() {
       setSessionId(envelope.sessionId);
       updateSessionMeta(envelope);
       appendAssistantToThread(targetContextId, envelope);
+      if (options?.keepThreadAtTop) {
+        requestThreadTopScroll();
+      }
       setActiveContextId(targetContextId);
       setServerContextId(nextContextId);
       if (options?.clearInputOnSuccess) {
@@ -1342,6 +1348,9 @@ export function PortfolioShell() {
         forceThreadContextId: options?.forceThreadContextId,
       });
       appendAssistantToThread(targetContextId, errorEnvelope);
+      if (options?.keepThreadAtTop) {
+        requestThreadTopScroll();
+      }
       setError(null);
     } finally {
       setLoadingContextId(null);
@@ -1697,6 +1706,7 @@ export function PortfolioShell() {
         syncBeforeRequest: true,
         clearInputOnSuccess: true,
         forceThreadContextId: isLandingTextSubmit ? 'entry' : undefined,
+        keepThreadAtTop: isLandingTextSubmit,
       },
     );
   }

@@ -778,7 +778,6 @@ export async function classifyMessageWithModel(
     schemaChars,
     totalPayloadChars,
     estimatedInputChars: Math.round(totalPayloadChars / 4),
-    userMessagePreview: text.slice(0, 200),
     retrievedChunksCount: 0,
     messagesCount: 1,
   });

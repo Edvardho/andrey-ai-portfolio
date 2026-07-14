@@ -1,6 +1,9 @@
 import { makeGallery } from '@/data/case-module-helpers';
 import type { CaseContent, DisclosureRow, StructuredCaseSummaryData } from '@/lib/portfolio/types';
 
+// A versioned filename refreshes the image cache without unsupported query parameters.
+const alfaRequirementsMapImage = '/cases/alfa-smart/disclosure-requirements-v2.png';
+
 const alfaDisclosures: DisclosureRow[] = [
   {
     id: 'alfa-requirements',
@@ -41,7 +44,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
     preview: {
       src: '/cases/alfa-smart/intro-preview.png',
       backgroundColor: '#D1D7E3',
-      imageClassName: 'absolute left-0 top-0 h-[184.11%] w-full max-w-none',
+      imageClassName: 'absolute left-0 top-0 h-[184.11%] w-auto max-w-none',
     },
   },
   sections: [
@@ -67,10 +70,10 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
           artifactId: 'alfa-requirements-map',
           width: 462,
           preview: {
-            src: '/cases/alfa-smart/disclosure-requirements.png',
+            src: alfaRequirementsMapImage,
             backgroundColor: '#F7F8FC',
             borderColor: '#E7EAF2',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
       ],
@@ -91,7 +94,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-userflow-1.png',
             backgroundColor: '#505050',
             borderColor: '#E7EAF2',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
         {
@@ -104,7 +107,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-userflow-2.png',
             backgroundColor: '#F7F8FC',
             borderColor: '#E7EAF2',
-            imageClassName: 'absolute left-[-3px] top-[-3px] h-[calc(100%+6px)] w-[calc(100%+6px)] max-w-none object-cover object-top',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
       ],
@@ -125,7 +128,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-testing-1.png',
             backgroundColor: '#E7EBF6',
             borderColor: '#D1D7E3',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
         {
@@ -138,7 +141,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-testing-2.png',
             backgroundColor: '#000000',
             borderColor: '#000000',
-            imageClassName: 'absolute left-0 top-[1.66%] h-[98.34%] w-[124.11%] max-w-none',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
       ],
@@ -159,11 +162,9 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
           width: 370,
           preview: {
             src: '/cases/alfa-smart/disclosure-delivery-1.png',
-            overlaySrc: '/cases/alfa-smart/disclosure-delivery-1-overlay.png',
-            overlayImageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
             backgroundColor: '#505050',
             borderColor: '#E7EAF2',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
         {
@@ -176,7 +177,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-delivery-2.png',
             backgroundColor: '#E5E5E5',
             borderColor: '#E7EAF2',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
         {
@@ -189,7 +190,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
             src: '/cases/alfa-smart/disclosure-delivery-3.png',
             backgroundColor: '#D1D7E3',
             borderColor: '#D1D7E3',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-contain',
+            imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
           },
         },
       ],
@@ -209,7 +210,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
         src: '/cases/alfa-smart/showcase-landing.png',
         backgroundColor: '#D1D7E3',
         borderColor: '#E7EAF2',
-        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     },
     {
@@ -222,7 +223,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
         src: '/cases/alfa-smart/showcase-manage.png',
         backgroundColor: '#D1D7E3',
         borderColor: '#E7EAF2',
-        imageClassName: 'absolute left-[-5.05%] top-[12.69%] h-[74.61%] w-[110.09%] max-w-none',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     },
     {
@@ -235,7 +236,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
         src: '/cases/alfa-smart/showcase-invite.png',
         backgroundColor: '#E7EBF6',
         borderColor: '#D1D7E3',
-        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     },
     {
@@ -248,7 +249,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
         src: '/cases/alfa-smart/showcase-members.png',
         backgroundColor: '#E7EBF6',
         borderColor: '#D1D7E3',
-        imageClassName: 'absolute inset-0 h-full w-full max-w-none rounded-[24px] object-contain',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     },
   ],
@@ -362,10 +363,10 @@ export const alfaSmartCase: CaseContent = {
   ],
   disclosures: alfaDisclosures,
   artifacts: [
-    { id: 'alfa-miro', title: 'Miro-структура', caption: 'Каркас продукта и роли до начала экранов.', imageUrl: '/cases/alfa-smart/disclosure-requirements.png', sourceLabel: 'Miro' },
+    { id: 'alfa-miro', title: 'Miro-структура', caption: 'Каркас продукта и роли до начала экранов.', imageUrl: alfaRequirementsMapImage, sourceLabel: 'Miro' },
     { id: 'alfa-prototype', title: 'Прототип для тестов', caption: 'Основа для проверки ключевых гипотез.', imageUrl: '/cases/alfa-smart/disclosure-testing-2.png', sourceLabel: 'Figma' },
     { id: 'alfa-ui', title: 'UI flows', caption: 'Итоговые сценарии, дошедшие до реализации.', imageUrl: '/cases/alfa-smart/showcase-landing.png', sourceLabel: 'Figma' },
-    { id: 'alfa-requirements-map', title: 'Структура продукта в Miro', caption: 'Роли, сценарии и конфликтные точки до отрисовки экранов.', imageUrl: '/cases/alfa-smart/disclosure-requirements.png' },
+    { id: 'alfa-requirements-map', title: 'Структура продукта в Miro', caption: 'Роли, сценарии и конфликтные точки до отрисовки экранов.', imageUrl: alfaRequirementsMapImage },
     { id: 'alfa-user-flow', title: 'User-Flow первого входа в продукт', caption: 'Согласованный путь пользователя на входе в семейный сценарий.', imageUrl: '/cases/alfa-smart/disclosure-userflow-1.png' },
     { id: 'alfa-first-designs', title: 'Первые варианты дизайна подписки', caption: 'Ранние драфты подписки до перехода в mobile-first решение.', imageUrl: '/cases/alfa-smart/disclosure-userflow-2.png' },
     { id: 'alfa-test-hypotheses', title: 'Гипотезы для тестирования', caption: 'Список гипотез для UX-лаборатории перед тестами.', imageUrl: '/cases/alfa-smart/disclosure-testing-1.png' },

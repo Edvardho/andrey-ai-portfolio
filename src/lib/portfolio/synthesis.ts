@@ -865,7 +865,6 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
     schemaChars,
     totalPayloadChars,
     estimatedInputChars: Math.round(totalPayloadChars / 4),
-    userMessagePreview: question.slice(0, 200),
     retrievedChunksCount: facts.length,
     messagesCount: 1,
   });

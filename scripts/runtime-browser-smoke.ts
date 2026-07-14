@@ -4,7 +4,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 3137;
-const DEFAULT_PLAYWRIGHT_BROWSERS_PATH = '/private/tmp/ms-playwright';
 const DEFAULT_EXISTING_SERVER_URL = 'http://localhost:3000';
 const FALLBACK_DEV_SERVER_URL =
   `http://${process.env.RUNTIME_SMOKE_HOST ?? DEFAULT_HOST}:${process.env.RUNTIME_SMOKE_PORT ?? DEFAULT_PORT}`;
@@ -18,8 +17,6 @@ const FRAMEWORK_OVERLAY_PATTERNS = [
   /Build Error/i,
   /Hydration failed/i,
 ];
-
-process.env.PLAYWRIGHT_BROWSERS_PATH ??= DEFAULT_PLAYWRIGHT_BROWSERS_PATH;
 
 type Browser = import('playwright').Browser;
 type ConsoleMessage = import('playwright').ConsoleMessage;
@@ -141,6 +138,10 @@ function getRail(page: Page) {
   return page.locator('aside').first();
 }
 
+function getEntryAlfaCard(page: Page) {
+  return page.getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i }).first();
+}
+
 async function clickRailCase(page: Page, label: string) {
   const button = getRail(page).getByRole('button', { name: new RegExp(label, 'i') });
   await button.waitFor({ state: 'visible', timeout: 8_000 });
@@ -177,6 +178,35 @@ async function clearBrowserStorageBeforeNavigation(page: Page) {
   });
 }
 
+async function expectButtonBackground(
+  button: import('playwright').Locator,
+  expected: string,
+  step: string,
+) {
+  const background = await button.evaluate((element) => getComputedStyle(element).backgroundColor);
+  assert.equal(background, expected, `${step}: unexpected button background`);
+}
+
+async function assertComposerStates(page: Page) {
+  const textarea = page.locator('textarea').last();
+  await textarea.waitFor({ state: 'visible', timeout: 8_000 });
+  const composer = textarea.locator('xpath=ancestor::form').getByRole('button', { name: 'Отправить' });
+  await composer.waitFor({ state: 'visible', timeout: 8_000 });
+  await textarea.fill('');
+  await delay(200);
+  assert.equal(await composer.isDisabled(), true, 'Composer must be disabled without text');
+  await expectButtonBackground(composer, 'rgb(166, 166, 166)', 'inactive composer');
+
+  await textarea.fill('Кто такой Андрей?');
+  await delay(200);
+  assert.equal(await composer.isDisabled(), false, 'Composer must become active after text input');
+  await expectButtonBackground(composer, 'rgb(26, 28, 34)', 'active composer');
+
+  const iconColor = await composer.locator('svg').evaluate((element) => getComputedStyle(element).color);
+  assert.equal(iconColor, 'rgb(255, 255, 255)', 'Active composer arrow must stay white');
+  await textarea.fill('');
+}
+
 async function main() {
   let server: ChildProcess | null = null;
   let browser: Browser | null = null;
@@ -209,21 +239,30 @@ async function main() {
       });
     });
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
-    await page
-      .getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i })
-      .waitFor({ state: 'visible', timeout: 15_000 });
+    await getEntryAlfaCard(page).waitFor({ state: 'visible', timeout: 15_000 });
     await assertHealthy(page, state, 'bootstrap fallback after forced 500');
 
     await page.unroute('**/api/assistant/bootstrap**');
     resetRuntimeSmokeState(state);
 
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
-    await page.getByText('Андрей Макаревич').waitFor({ state: 'visible', timeout: 15_000 });
+    await page.getByRole('heading', { name: 'Андрей Макаревич' }).waitFor({ state: 'visible', timeout: 15_000 });
     await assertHealthy(page, state, 'initial landing load');
+    await assertComposerStates(page);
 
-    await page.getByRole('button', { name: /Альфа-смарт подписка на банковские продукты/i }).click();
-    await page.getByText('ИИ ассистент').waitFor({ state: 'visible', timeout: 15_000 });
+    await getEntryAlfaCard(page).click();
+    await page.getByText('ИИ ассистент').first().waitFor({ state: 'visible', timeout: 15_000 });
     await assertHealthy(page, state, 'landing case click');
+
+    await page.getByRole('button', { name: 'Вернуться на главную' }).click();
+    await getEntryAlfaCard(page).waitFor({
+      state: 'visible',
+      timeout: 8_000,
+    });
+    await assertHealthy(page, state, 'header return to landing');
+
+    await getEntryAlfaCard(page).click();
+    await page.getByText('ИИ ассистент').first().waitFor({ state: 'visible', timeout: 8_000 });
 
     const switchSequence = [
       'ChatPoint',

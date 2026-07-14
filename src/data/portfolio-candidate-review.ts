@@ -81,6 +81,18 @@ export const candidateFastReview: StructuredCandidateFastReviewData = {
       peekWidth: 160,
       cards: [
         {
+          id: 'candidate-review-siebel-research',
+          artifactId: 'siebel-hypotheses',
+          title: 'Исследование перед редизайном',
+          description: 'Записи работы операторов, интервью и гипотезы легли в основу изменений.',
+          width: 320,
+          preview: {
+            src: '/cases/siebel/disclosure-research.png',
+            backgroundColor: '#F7F8FC',
+            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
+          },
+        },
+        {
           id: 'candidate-review-siebel-two-window',
           artifactId: 'siebel-two-window',
           title: 'Работа в двух окнах',
@@ -100,18 +112,6 @@ export const candidateFastReview: StructuredCandidateFastReviewData = {
           width: 320,
           preview: {
             src: '/cases/siebel/showcase-client-data.png',
-            backgroundColor: '#D1D7E3',
-            imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
-          },
-        },
-        {
-          id: 'candidate-review-siebel-templates',
-          artifactId: 'siebel-templates',
-          title: 'Шаблоны ответов',
-          description: 'Повторяющиеся действия оператора сокращены через более быстрый выбор и отправку ответов.',
-          width: 320,
-          preview: {
-            src: '/cases/siebel/showcase-templates.png',
             backgroundColor: '#D1D7E3',
             imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
           },

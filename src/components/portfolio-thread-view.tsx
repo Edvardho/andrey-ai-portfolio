@@ -409,7 +409,9 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       return;
     }
 
-    if (!shouldStickToBottom({ isNearBottom: shouldStickToBottomRef.current, force: animateThreadStart })) {
+    // The entry animation is visual only. It must not override an explicit
+    // scroll-to-top request made when a new workspace opens.
+    if (!shouldStickToBottom({ isNearBottom: shouldStickToBottomRef.current })) {
       return;
     }
 
@@ -421,7 +423,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
     if (didScroll) {
       hasMountedRef.current = true;
     }
-  }, [animateThreadStart, applyProgrammaticScroll, error, getThreadBottomScrollTop, items.length, loading]);
+  }, [applyProgrammaticScroll, error, getThreadBottomScrollTop, items.length, loading]);
 
   useLayoutEffect(() => {
     if (stickToBottomSignal <= 0 || !threadViewportRef.current) {

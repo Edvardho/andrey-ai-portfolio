@@ -422,7 +422,7 @@ export type StructuredCandidateFastReviewData = {
 };
 
 export type ContactOption = {
-  id: 'telegram' | 'linkedin' | 'email';
+  id: 'telegram' | 'linkedin';
   label: string;
   helper: string;
   href: string;

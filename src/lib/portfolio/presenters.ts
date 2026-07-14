@@ -657,7 +657,7 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
     contextPanel: {
       title: 'Контакт',
       subtitle: 'Next step',
-      tags: ['Telegram', 'LinkedIn', 'e-mail'],
+      tags: ['Telegram', 'LinkedIn'],
       note: 'Это осознанное ограничение MVP: ассистент не превращается в бесконечный чат и быстро выводит на живой контакт.',
       cta: { label: 'Открыть контакты', action: { type: 'open_contact_modal', source: 'limit' } },
     },

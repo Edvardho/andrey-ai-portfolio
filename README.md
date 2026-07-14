@@ -106,6 +106,26 @@ npm run verify:assistant-v1
 
 `npm run verify` runs the baseline UI/data checks. `npm run verify:assistant-v1` is the release gate for the AI assistant: AI mode, routing, design-lead questions, synthesis quality, reply states, and case facts.
 
+## Production smoke
+
+Before sharing a portfolio link, run the local release gate and then smoke-test the deployed production URL:
+
+```bash
+npm run verify:assistant-v1
+DEPLOYMENT_SMOKE_URL="https://your-production-domain.vercel.app" npm run smoke:deployment
+```
+
+The deployment check verifies the public bootstrap endpoint, a case transition, a live synthesis answer, and the contact CTA. It expects `AI_MODE=live` and `sessionStoreMode=supabase` by default. Override these expectations only for an explicitly configured degraded test environment:
+
+```bash
+DEPLOYMENT_SMOKE_URL="https://your-production-domain.vercel.app" \
+DEPLOYMENT_EXPECT_AI_MODE="fallback" \
+DEPLOYMENT_EXPECT_SESSION_STORE="memory" \
+npm run smoke:deployment
+```
+
+Production logs retain technical metadata such as mode, latency, HTTP status, fallback state, and safe error category. They do not log full user questions or raw provider error text.
+
 ## API surface
 
 ### `GET /api/assistant/bootstrap`
