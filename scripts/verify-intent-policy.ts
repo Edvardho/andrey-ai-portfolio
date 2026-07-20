@@ -52,6 +52,7 @@ async function assertIntent(input: string, expectedIntent: string) {
     lastUserQuestion: null,
     lastAssistantAnswerPreview: null,
     lastQuestionSubject: null,
+    hasSeenCandidateFastReview: false,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,

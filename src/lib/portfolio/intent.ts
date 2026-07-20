@@ -25,6 +25,8 @@ export type IntentClassification = {
   confidence: IntentConfidence;
 };
 
+const BEHAVIORAL_FIT_PATTERN = /срыв(?:ал|ает|ать).+(?:дедлайн|срок)|(?:дедлайн|срок).+(?:срыв|горел|продалб)|продалбыва(?:л|ет)?.+(?:дедлайн|срок)|успева(?:ет|л).+(?:дедлайн|срок)|можно.+доверить.+дедлайн|исполнительн(?:ый|ая|ли)|ответственн(?:ый|ая|ли)|доводит.+(?:задач|работ).+(?:до конца|до результат)|доводит.+(?:задач|работ)/i;
+
 function buildNavigationAction(
   action: string,
   caseId?: string,
@@ -67,6 +69,10 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
     return null;
   }
 
+  if (BEHAVIORAL_FIT_PATTERN.test(lowered)) {
+    return { intent: { type: 'behavioral_fit_assessment' }, confidence: 'high' };
+  }
+
   if (/какая была.+проблем|какую проблем|зачем понадоб|что решал|основная проблем/i.test(lowered)) {
     return { intent: { type: 'case_discovery', targetCaseId: findCaseId(lowered) ?? undefined }, confidence: 'medium' };
   }
@@ -87,7 +93,7 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
     return { intent: { type: 'risk_objection' }, confidence: 'high' };
   }
 
-  if (/какой.+результ|какие.+метрик|что улучшил|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)) {
+  if (/какой.+результ|какие.+метрик|что улучшил|какой.+доход|сколько.+принес|выручк|доход|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)) {
     return { intent: { type: 'evidence_request' }, confidence: 'high' };
   }
 
@@ -288,6 +294,32 @@ export function classifyMessageDeterministically(
     };
   }
 
+  if (BEHAVIORAL_FIT_PATTERN.test(lowered)) {
+    return {
+      intent: { type: 'behavioral_fit_assessment' },
+      confidence: 'high',
+    };
+  }
+
+  // Outcome questions are factual requests even when a case name is included.
+  if (/какой.+результ|какие.+метрик|что улучшил|какой.+доход|сколько.+принес|выручк|доход|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)) {
+    return {
+      intent: { type: 'evidence_request' },
+      confidence: 'high',
+    };
+  }
+
+  if (
+    /на какой он уровень|на какие роли он подойдет|senior|middle|lead|куда его лучше приземлять|на какую роль он норм|где здесь senior сигнал|продуктов[а-яa-z-]*\s+позвоноч[а-яa-z-]*|какой у него потолок по роли|на какую команду он лучше зайдет/i.test(
+      lowered,
+    )
+  ) {
+    return {
+      intent: { type: 'role_fit_assessment' },
+      confidence: 'high',
+    };
+  }
+
   if (
     session.selectedContext.kind === 'case'
     && /как.+исслед|как.+изучал|как.+тестировал|что.+проверял.+исслед|проверял.+через.+исслед|тестировал.+гипотез|проверял.+гипотез|юзабилити|shadowing|запис[ьи].+оператор|анализ задач/i.test(lowered)
@@ -314,16 +346,6 @@ export function classifyMessageDeterministically(
   ) {
     return {
       intent: { type: 'risk_objection' },
-      confidence: 'high',
-    };
-  }
-
-  if (
-    session.selectedContext.kind === 'case'
-    && /какой.+результ|какие.+метрик|что улучшил|эффект|feedback|фидбек|отзывы|после запуска|после внедрен|nps/i.test(lowered)
-  ) {
-    return {
-      intent: { type: 'evidence_request' },
       confidence: 'high',
     };
   }
@@ -358,12 +380,19 @@ export function classifyMessageDeterministically(
   }
 
   if (
-    /расскажи коротко про андре|быстро оценить андре[яй].+кейс|оценить андре[яй].+кейс|расскажи про андре[яй].+3 минут|оценить андре[яй].+3 минут|только 3 минут.+что смотреть|3 минут.+что смотреть|коротко (?:о|об) кандидат|нет времени (?:изучать|читать|смотреть) портфолио|быстро.+(?:оценить|понять|разобрать).+андре/i.test(
+    /быстро оценить андре[яй].+кейс|оценить андре[яй].+кейс|расскажи про андре[яй].+3 минут|оценить андре[яй].+3 минут|только 3 минут.+что смотреть|3 минут.+что смотреть|нет времени (?:изучать|читать|смотреть) портфолио/i.test(
       lowered,
     )
   ) {
     return {
       intent: { type: 'portfolio_overview' },
+      confidence: 'high',
+    };
+  }
+
+  if (/(?:расскажи|расскажите)(?:\s+(?:коротко|ёмко|емко|сжато|без воды))?\s+(?:про|об)\s+андре[яй]|(?:коротко|ёмко|емко|сжато)\s+(?:о|об)\s+кандидат/i.test(lowered)) {
+    return {
+      intent: { type: 'identity_intro' },
       confidence: 'high',
     };
   }
@@ -456,8 +485,8 @@ export function classifyMessageDeterministically(
   }
 
   if (
-    session.selectedContext.kind === 'case' &&
-    /что здесь сделал андрей|что он здесь сделал|что он тут сделал|что делал андрей в этом кейсе|какая была роль|в чем была его роль|расскажи про этот кейс|расскажи про него|дай краткое саммари по кейсу|краткое саммари по кейсу|краткое summary по кейсу|дай саммари по кейсу|краткую выжимку по кейсу/i.test(
+  session.selectedContext.kind === 'case' &&
+    /что здесь сделал андрей|что он здесь сделал|что он тут сделал|что делал андрей в этом кейсе|какая была роль|в чем была его роль|расскажи про этот кейс|расскажи про него|(?:расскажи|расскажите)(?:\s+(?:коротко|кратко|ёмко|емко|сжато|без воды))?\s+(?:про|об)\s+(?:этом|этот)\s+(?:кейсе|проекте)|(?:коротко|кратко|ёмко|емко|сжато|без воды)\s*(?:[:,.-]\s*)?(?:расскажи|расскажите)(?:\s+(?:про|об))?\s+(?:этом|этот)\s+(?:кейсе|проекте)|дай краткое саммари по кейсу|краткое саммари по кейсу|краткое summary по кейсу|дай саммари по кейсу|краткую выжимку по кейсу/i.test(
       lowered,
     )
   ) {
@@ -603,6 +632,7 @@ const classificationSchema = z.object({
     'decision_process',
     'evidence_request',
     'risk_objection',
+    'behavioral_fit_assessment',
     'missing_case_request',
     'ambiguous_question',
     'unsupported_request',
@@ -641,6 +671,7 @@ const CLASSIFIER_PROMPT = `
 - decision_process
 - evidence_request
 - risk_objection
+- behavioral_fit_assessment
 - missing_case_request
 - ambiguous_question
 - unsupported_request
@@ -666,6 +697,7 @@ const CLASSIFIER_PROMPT = `
 - Если пользователь просит доказательства, подтверждения, артефакты или спрашивает, где это видно -> evidence_request.
 - Если пользователь спрашивает про слабые стороны, ограничения, риски -> risk_objection.
 - Если пользователь спрашивает, какую ошибку Андрей совершил в конкретном кейсе -> risk_objection.
+- Если пользователь спрашивает, срывает ли Андрей дедлайны, исполнительный ли он, ответственен ли он или доводит ли задачи до результата -> behavioral_fit_assessment. Не делай из этого вопрос о слабом кейсе.
 - Если пользователь просит конкретный кейс, которого нет в известном списке -> missing_case_request.
 - Если вопрос вне границ портфолио, требует внешнего мнения, world knowledge или не относится к оценке кандидата -> unsupported_request.
 - ambiguous_question только если запрос невозможно уверенно отнести ни к одному из классов выше.
@@ -735,6 +767,8 @@ Confidence:
 - "где он может не вывезти?" -> risk_objection, high
 - "если сравнивать с сильным senior, где у него зазор?" -> risk_objection, high
 - "есть ощущение что он больше про execution, это так?" -> risk_objection, high
+- "Продалбывал ли Андрей дедлайны?" -> behavioral_fit_assessment, high
+- "Исполнительный ли Андрей работник?" -> behavioral_fit_assessment, high
 - "что думаешь про нефть" -> unsupported_request, high
 - "Расскажи подробнее" -> ambiguous_question, low
 
@@ -828,6 +862,7 @@ export async function classifyMessageWithModel(
       case 'decision_process':
       case 'evidence_request':
       case 'risk_objection':
+      case 'behavioral_fit_assessment':
       case 'ambiguous_question':
       case 'unsupported_request':
         return { intent: { type: output.intent }, confidence: output.confidence };

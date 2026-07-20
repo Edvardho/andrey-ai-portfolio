@@ -255,6 +255,86 @@ export function buildCandidateFastReviewEnvelope(session: AssistantSession): Ass
   });
 }
 
+export function buildRepeatedCandidateFastReviewEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contextPanel =
+    session.selectedContext.kind === 'case'
+      ? getCaseById(session.selectedContext.id)?.contextPanel ?? portfolioContent.entry.contextPanel
+      : session.selectedContext.kind === 'experience'
+        ? portfolioContent.experience.contextPanel
+        : portfolioContent.entry.contextPanel;
+
+  return createEnvelope({
+    session,
+    viewType: 'candidate_fast_review_repeat',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: [
+          'Я уже отвечала на этот вопрос выше — там краткая оценка Андрея по кейсам.',
+          'Если хотите копнуть глубже, задавайте вопросы.',
+        ],
+      },
+    ],
+    chips: [],
+    contextPanel,
+    responseSource: 'authored',
+    assistantReplyState: 'navigation_suggestion',
+    answerType: 'candidate_fast_review',
+    queryScope: 'portfolio_wide',
+    questionSubject: 'candidate_fast_review',
+  });
+}
+
+export function buildGratitudeEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contextPanel =
+    session.selectedContext.kind === 'case'
+      ? getCaseById(session.selectedContext.id)?.contextPanel ?? portfolioContent.entry.contextPanel
+      : session.selectedContext.kind === 'experience'
+        ? portfolioContent.experience.contextPanel
+        : portfolioContent.entry.contextPanel;
+
+  return createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: ['Пожалуйста. Если захотите, могу помочь разобрать любой кейс подробнее.'],
+      },
+    ],
+    chips: [],
+    contextPanel,
+    responseSource: 'authored',
+    assistantReplyState: 'grounded_answer',
+  });
+}
+
+export function buildCaseContextRequiredEnvelope(session: AssistantSession): AssistantEnvelope {
+  return createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: ['Откройте конкретный кейс, и я кратко опишу задачу, вклад Андрея и результат по подтверждённым материалам.'],
+      },
+    ],
+    chips: [],
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: session.selectedContext.kind === 'none',
+    },
+    responseSource: 'authored',
+    assistantReplyState: 'insufficient_facts',
+  });
+}
+
 export function buildCaseEnvelope(
   session: AssistantSession,
   caseId: string,
@@ -684,10 +764,9 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Этот вопрос можно проверить несколькими способами',
+        title: 'Не понял, что именно нужно проверить',
         body: [
-          'Я не хочу угадывать за вас. В рамках портфолио Андрея вопрос можно разложить по проверяемым направлениям: кандидат, личный вклад, доказательства, слабые места или решение звать на интервью.',
-          'Если хотите быстро понять ценность кандидата, лучше спросить про доказательства, вклад или риск — там меньше самопрезентации и больше фактов.',
+          'Сформулируйте вопрос про опыт, конкретный кейс, личный вклад, доказательства или риски — отвечу по подтвержденным фактам.',
         ],
       },
     ],

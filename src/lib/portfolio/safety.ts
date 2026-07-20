@@ -29,15 +29,23 @@ const INJECTION_PATTERNS = [
   /tool schema/i,
 ];
 
-const PRIVATE_PATTERNS = [
+const PRIVATE_DATA_PATTERNS = [
   /приватн/i,
   /личн(ые|ая|ую).+данн/i,
-  /зарплат/i,
-  /salary/i,
   /телефон/i,
   /passport/i,
   /паспорт/i,
   /адрес/i,
+];
+
+const COMPENSATION_PATTERNS = [
+  /зарплат/i,
+  /salary/i,
+  /зарплатн.+ожидани/i,
+  /компенсац/i,
+  /(?:зарплатн(?:ая|ый)|денежн(?:ая|ый))?\s*вилк/i,
+  /сколько\s+(?:андр(?:ей|ею)|он)\s+хочет\s+(?:денег|получать|зарабатывать)/i,
+  /сколько\s+(?:ему|андр(?:ею|ею))\s+(?:нужно|платить|предлагать)/i,
 ];
 
 export function detectSafetyState(text: string): SafetyMatch | null {
@@ -58,13 +66,24 @@ export function detectSafetyState(text: string): SafetyMatch | null {
     };
   }
 
-  if (PRIVATE_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+  if (COMPENSATION_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+    return {
+      state: 'salary_or_private_data',
+      title: 'Условия лучше обсудить напрямую',
+      body: [
+        'Зарплатные ожидания и формат сотрудничества Андрей обсуждает лично, с учетом роли, задач и условий работы.',
+        'Напишите ему напрямую — он сориентирует без игры в испорченный телефон.',
+      ],
+    };
+  }
+
+  if (PRIVATE_DATA_PATTERNS.some((pattern) => pattern.test(trimmed))) {
     return {
       state: 'salary_or_private_data',
       title: 'Не эту дверь',
       body: [
-        'Приватные данные и зарплатные ожидания я в чате не раскрываю. Я тут не сейф с дыркой в двери.',
-        'Если вопрос серьезный, можно перейти к контакту и обсудить это напрямую с Андреем.',
+        'Приватные данные я в чате не раскрываю.',
+        'Если вопрос связан с наймом, можно перейти к контакту и обсудить это напрямую с Андреем.',
       ],
     };
   }

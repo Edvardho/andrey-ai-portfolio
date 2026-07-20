@@ -79,7 +79,7 @@ const PORTFOLIO_WIDE_CUES: CueDefinition[] = [
 ];
 
 const CURRENT_CASE_CUES: CueDefinition[] = [
-  { label: 'current_case:explicit', patterns: [/в этом кейсе/i, /в этом проекте/i] },
+  { label: 'current_case:explicit', patterns: [/в этом кейсе/i, /об этом кейсе/i, /в этом проекте/i, /об этом проекте/i] },
   { label: 'current_case:local', patterns: [/(^|[\s.,!?;:()«»"'/-])здесь($|[\s.,!?;:()«»"'/-])/i, /(^|[\s.,!?;:()«»"'/-])тут($|[\s.,!?;:()«»"'/-])/i] },
   { label: 'current_case:this_case', patterns: [/этот кейс/i, /данный кейс/i] },
 ];
@@ -135,24 +135,21 @@ const PORTFOLIO_VALUE_CUES: CueDefinition[] = [
 
 const FAST_REVIEW_CUES: CueDefinition[] = [
   {
-    label: 'fast_review:short_about_andrey',
+    label: 'fast_review:explicit_launch',
     patterns: [
-      /расскажи коротко про андре/i,
       /расскажи про андре[яй].+3 минут/i,
       /оценить андре[яй].+3 минут/i,
       /только 3 минут.+что смотреть/i,
       /3 минут.+что смотреть/i,
       /быстро оценить андре[яй].+кейс/i,
       /оценить андре[яй].+кейс/i,
-      /коротко (?:о|об) кандидат/i,
       /нет времени (?:изучать|читать|смотреть) портфолио/i,
-      /быстро.+(?:оценить|понять|разобрать).+андре/i,
     ],
   },
 ];
 
 const SUMMARY_CUES: CueDefinition[] = [
-  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /емко/i, /коротко/i, /без воды/i] },
+  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /без воды/i] },
 ];
 
 const EXPERIENCE_CUES: CueDefinition[] = [
@@ -162,6 +159,13 @@ const EXPERIENCE_CUES: CueDefinition[] = [
 ];
 
 const CANDIDATE_INTRO_CUES: CueDefinition[] = [
+  {
+    label: 'candidate_intro:direct_about',
+    patterns: [
+      /^(?:(?:можешь|можете)\s+)?(?:расскажи|расскажите)(?:\s+(?:коротко|ёмко|емко|сжато|без воды))?\s+(?:про|об)\s+андре[яй]/i,
+      /^(?:коротко|ёмко|емко|сжато)\s+(?:о|об)\s+кандидат/i,
+    ],
+  },
   {
     label: 'candidate_intro:about_andrey',
     patterns: [
@@ -192,6 +196,28 @@ const RISK_CUES: CueDefinition[] = [
   { label: 'risk:weakness', patterns: [/слабое место/i, /слабые стороны/i, /ограничения/i, /риски/i, /что смущает/i] },
   { label: 'risk:failure', patterns: [/почему продукт закрыли/i, /почему закрыли/i, /неудачный кейс/i, /слабый кейс/i] },
   { label: 'risk:error', patterns: [/ошибк/i, /что.+сделал не так/i, /какую ошибку/i] },
+];
+
+const BEHAVIORAL_FIT_CUES: CueDefinition[] = [
+  {
+    label: 'behavioral_fit:deadline_reliability',
+    patterns: [
+      /срыв(?:ал|ает|ать).+(?:дедлайн|срок)/i,
+      /(?:дедлайн|срок).+(?:срыв|горел|продалб)/i,
+      /продалбыва(?:л|ет)?.+(?:дедлайн|срок)/i,
+      /успева(?:ет|л).+(?:дедлайн|срок)/i,
+      /можно.+доверить.+дедлайн/i,
+    ],
+  },
+  {
+    label: 'behavioral_fit:execution',
+    patterns: [
+      /исполнительн(?:ый|ая|ли)/i,
+      /ответственн(?:ый|ая|ли)/i,
+      /доводит.+(?:задач|работ).+(?:до конца|до результат)/i,
+      /доводит.+(?:задач|работ)/i,
+    ],
+  },
 ];
 
 const MOTIVATION_CUES: CueDefinition[] = [
@@ -248,6 +274,8 @@ const CASE_DECISION_CUES: CueDefinition[] = [
     patterns: [
       /какие.+решени/i,
       /ключевые решени/i,
+      /как.+принимал.+решени/i,
+      /как.+решал/i,
       /механик/i,
       /архитектур/i,
       /переключени/i,
@@ -291,6 +319,10 @@ const CASE_OUTCOME_CUES: CueDefinition[] = [
       /что изменил/i,
       /что изменилось/i,
       /что улучшил/i,
+      /какой.+доход/i,
+      /сколько.+принес/i,
+      /выручк/i,
+      /доход/i,
       /эффект/i,
       /feedback/i,
       /фидбек/i,
@@ -482,6 +514,8 @@ function getGlobalSynthesisTopic(intent: MessageIntent): SynthesisTopic | null {
       return 'decision_making';
     case 'risk_objection':
       return 'risks';
+    case 'behavioral_fit_assessment':
+      return 'delivery_evidence';
     case 'evidence_request':
       return 'fit';
     default:
@@ -493,11 +527,16 @@ function resolveQuestionSubject(
   intent: MessageIntent,
   scope: QueryScope,
   text: string,
+  isExplicitFastReview: boolean,
 ): QuestionSubject {
   // `QuestionSubject` is the hiring evaluation task behind the wording:
   // proof, contribution, risk, interview decision, or candidate value.
-  if (collectCueLabels(text, FAST_REVIEW_CUES).length > 0) {
+  if (isExplicitFastReview) {
     return 'candidate_fast_review';
+  }
+
+  if (intent.type === 'behavioral_fit_assessment') {
+    return 'behavioral_evidence_check';
   }
 
   if (scope === 'current_case_only' || scope === 'named_case') {
@@ -621,6 +660,8 @@ function getAnswerType(
   }
 
   switch (questionSubject) {
+    case 'behavioral_evidence_check':
+      return 'calibrated_unknown';
     case 'case_contribution':
       return 'contribution_breakdown';
     case 'case_evidence':
@@ -671,6 +712,8 @@ function getAnswerType(
       return 'proof_map';
     case 'risk_objection':
       return 'risk_assessment';
+    case 'behavioral_fit_assessment':
+      return 'calibrated_unknown';
     case 'ambiguous_question': {
       const recoveredTopic = detectSynthesisTopic(text);
       if (!recoveredTopic) {
@@ -737,6 +780,8 @@ function getCaseAwareFacet(
       return 'strengths';
     case 'risk_check':
       return 'risks';
+    case 'behavioral_evidence_check':
+      return 'outcomes';
     default:
       break;
   }
@@ -770,6 +815,7 @@ function recoverIntentFromText(
   const experienceCueLabels = collectCueLabels(text, EXPERIENCE_CUES);
   const evidenceCueLabels = collectCueLabels(text, EVIDENCE_CUES);
   const riskCueLabels = collectCueLabels(text, RISK_CUES);
+  const behavioralFitCueLabels = collectCueLabels(text, BEHAVIORAL_FIT_CUES);
   const portfolioValueCueLabels = collectCueLabels(text, PORTFOLIO_VALUE_CUES);
   const valueBeyondUiCueLabels = collectCueLabels(text, VALUE_BEYOND_UI_CUES);
   const motivationCueLabels = collectCueLabels(text, MOTIVATION_CUES);
@@ -785,6 +831,14 @@ function recoverIntentFromText(
     ...currentCaseCueLabels,
     ...(explicitNamedCaseId ? [`named_case:${explicitNamedCaseId}`] : []),
   ];
+
+  if (behavioralFitCueLabels.length > 0) {
+    return {
+      intent: { type: 'behavioral_fit_assessment' },
+      confidence: 'high',
+      matchedCues: [...caseScopedCueLabels, ...behavioralFitCueLabels],
+    };
+  }
 
   if ((currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseProblemCueLabels.length > 0) {
     return {
@@ -1020,6 +1074,9 @@ function recoverCurrentCaseIntentFromText(text: string): MessageIntent | null {
   if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
     return { type: 'strengths_assessment' };
   }
+  if (/об этом (?:кейсе|проекте)|в этом (?:кейсе|проекте)/i.test(text)) {
+    return { type: 'case_discovery' };
+  }
   return null;
 }
 
@@ -1080,6 +1137,19 @@ function resolveScope(
         return { scope: 'current_case_only', matchedCues: ['default:current_case_context'] };
       }
       return { scope: 'global_person', matchedCues: ['default:global_person'] };
+    case 'behavioral_fit_assessment':
+      // Reliability is a candidate-level question unless the user explicitly
+      // anchors it to the current or a named case.
+      if (currentCaseCueLabels.length > 0 && session.selectedContext.kind === 'case') {
+        return { scope: 'current_case_only', matchedCues: currentCaseCueLabels };
+      }
+      if (targetCaseId && session.selectedContext.kind === 'case' && targetCaseId === session.selectedContext.id) {
+        return { scope: 'current_case_only', matchedCues: [`current_case:${targetCaseId}`] };
+      }
+      if (targetCaseId) {
+        return { scope: 'named_case', matchedCues: [`named_case:${targetCaseId}`] };
+      }
+      return { scope: 'global_person', matchedCues: ['default:global_person'] };
     case 'case_discovery':
       if (
         session.selectedContext.kind === 'case' &&
@@ -1122,10 +1192,17 @@ export function interpretQuery(
   const valueBeyondUiCueLabels = collectCueLabels(lowered, VALUE_BEYOND_UI_CUES);
   const candidateIntroCueLabels = collectCueLabels(lowered, CANDIDATE_INTRO_CUES);
   const fastReviewCueLabels = collectCueLabels(lowered, FAST_REVIEW_CUES);
+  const summaryCueLabels = collectCueLabels(lowered, SUMMARY_CUES);
   const caseOutcomeCueLabels = collectCueLabels(lowered, CASE_OUTCOME_CUES);
   const caseResearchCueLabels = collectCueLabels(lowered, CASE_RESEARCH_CUES);
   const caseConstraintCueLabels = collectCueLabels(lowered, CASE_CONSTRAINT_CUES);
+  const behavioralFitCueLabels = collectCueLabels(lowered, BEHAVIORAL_FIT_CUES);
   const explicitNamedCaseId = findExplicitNamedCaseId(lowered);
+  const hasExplicitCaseTarget = currentCaseCueLabels.length > 0 || explicitNamedCaseId !== null;
+  const isExplicitFastReview = fastReviewCueLabels.length > 0 && !hasExplicitCaseTarget;
+  const isExplicitPortfolioCompression =
+    portfolioWideCueLabels.length > 0
+    && /сожми|обзор|по каждому кейсу|какие.+кейсы|расскажи.+о кейсах/i.test(lowered);
   const lastReferencedCaseId = getLastReferencedCaseId(session);
 
   const recovered = classification.intent.type === 'ambiguous_question'
@@ -1149,30 +1226,43 @@ export function interpretQuery(
   const caseStrengthInCurrentCase =
     session.selectedContext.kind === 'case'
     && /почему этот кейс сильный|почему этот проект важен|что этот кейс доказывает/i.test(lowered);
+  // A direct question about Andrey stays global even inside an open case.
+  // It must not depend on the classifier choosing the same general intent.
+  const shouldUseCandidateIntro =
+    candidateIntroCueLabels.length > 0
+    && !hasExplicitCaseTarget;
 
   const effectiveIntent =
-    fastReviewCueLabels.length > 0
-      ? { type: 'portfolio_overview' as const }
-      : candidateIntroCueLabels.length > 0
-        ? { type: 'identity_intro' as const }
+    behavioralFitCueLabels.length > 0
+      ? { type: 'behavioral_fit_assessment' as const }
       : valueBeyondUiCueLabels.length > 0
         ? { type: 'strengths_assessment' as const }
       : (currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseOutcomeCueLabels.length > 0
         ? { type: 'evidence_request' as const }
       : (currentCaseCueLabels.length > 0 || explicitNamedCaseId) && caseConstraintCueLabels.length > 0
         ? { type: 'risk_objection' as const }
-      : !explicitNamedCaseId && caseResearchCueLabels.length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(lowered)
-        ? { type: 'decision_process' as const }
       : contributionInCurrentCase && classification.intent.type === 'ambiguous_question'
       ? { type: 'case_discovery' as const }
       : caseStrengthInCurrentCase && classification.intent.type === 'ambiguous_question'
         ? { type: 'strengths_assessment' as const }
         : currentCaseRecovered
           ? currentCaseRecovered
-        : recovered?.intent ?? classification.intent;
-  const effectiveConfidence = fastReviewCueLabels.length > 0
+        : !explicitNamedCaseId && caseResearchCueLabels.length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(lowered)
+          ? { type: 'decision_process' as const }
+        : isExplicitFastReview
+          ? { type: 'portfolio_overview' as const }
+          : isExplicitPortfolioCompression
+            ? { type: 'portfolio_overview' as const }
+            : shouldUseCandidateIntro
+              ? { type: 'identity_intro' as const }
+              : recovered?.intent ?? classification.intent;
+  const effectiveConfidence = isExplicitFastReview
     ? 'high'
-    : candidateIntroCueLabels.length > 0
+    : behavioralFitCueLabels.length > 0
+      ? 'high'
+    : isExplicitPortfolioCompression
+      ? 'high'
+    : shouldUseCandidateIntro
       ? 'high'
     : valueBeyondUiCueLabels.length > 0
       ? 'high'
@@ -1212,6 +1302,7 @@ export function interpretQuery(
     effectiveIntent,
     scopeResolution.scope,
     lowered,
+    isExplicitFastReview,
   );
   const factFacet = getCaseAwareFacet(
     scopeResolution.scope,
@@ -1245,14 +1336,17 @@ export function interpretQuery(
     factFacet,
     targetCaseId: resolvedTargetCaseId,
     confidence: effectiveConfidence,
-    matchedCues: fastReviewCueLabels.length
+    responseLength: summaryCueLabels.length > 0 ? 'compact' : 'default',
+    matchedCues: isExplicitFastReview
       ? fastReviewCueLabels
-      : candidateIntroCueLabels.length
+      : isExplicitPortfolioCompression
+        ? portfolioWideCueLabels
+      : shouldUseCandidateIntro
         ? candidateIntroCueLabels
       : valueBeyondUiCueLabels.length
         ? valueBeyondUiCueLabels
       : recovered?.matchedCues.length
         ? recovered.matchedCues
-        : [...scopeResolution.matchedCues, ...contextCaseCueLabels],
+        : [...scopeResolution.matchedCues, ...contextCaseCueLabels, ...summaryCueLabels],
   };
 }

@@ -17,7 +17,7 @@ import {
   getContextPanelRevealDelayMs,
   shouldDelayContextPanelReveal,
 } from '@/lib/portfolio/response-animation-policy';
-import type { ThreadItem, ContextId, PortfolioThreadViewHandle } from './portfolio-thread-view';
+import type { ThreadItem, ContextId, PortfolioThreadViewHandle, ReplyFocusRequest } from './portfolio-thread-view';
 import type { ThreadScrollState } from '@/lib/portfolio/response-scroll-policy';
 import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
@@ -82,6 +82,9 @@ export function PortfolioChatWorkspace({
   contextPanelPayload,
   startTransitionSource,
   caseBootstrapping,
+  replyFocusRequest,
+  onReplyFocusCancelled,
+  onReplyFocusHandled,
 }: {
   railItems: RailItem[];
   selectedRailId: string | null;
@@ -121,6 +124,9 @@ export function PortfolioChatWorkspace({
   contextPanelPayload: ContextPanelPayload | null;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
   caseBootstrapping: boolean;
+  replyFocusRequest: ReplyFocusRequest | null;
+  onReplyFocusCancelled: (id: number) => void;
+  onReplyFocusHandled: (id: number) => void;
 }) {
   const animateStageEntry = Boolean(startTransitionSource);
   const showContextPanel = caseBootstrapping || Boolean(contextPanelPayload && !contextPanelPayload.contextPanel.hidden);
@@ -202,7 +208,7 @@ export function PortfolioChatWorkspace({
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
           {showContextPanel && !caseBootstrapping ? (
-            <div className="portfolio-narrow-context-trigger justify-end px-6 pt-5">
+            <div className="portfolio-narrow-context-trigger justify-end pl-6 pt-5">
               <button
                 type="button"
                 onClick={() => setContextDrawerContextId(currentThread.contextId)}
@@ -261,6 +267,9 @@ export function PortfolioChatWorkspace({
                     onOpenArtifact={onOpenArtifact}
                     onMarkAnimatedItems={onMarkAnimatedItems}
                     onScrollStateChange={onThreadScrollStateChange}
+                    replyFocusRequest={replyFocusRequest}
+                    onReplyFocusCancelled={onReplyFocusCancelled}
+                    onReplyFocusHandled={onReplyFocusHandled}
                     startTransitionSource={startTransitionSource}
                   />
                 </motion.div>
@@ -348,7 +357,7 @@ export function PortfolioChatWorkspace({
           <motion.aside
             role="dialog"
             aria-label="Контекст проекта"
-            className="absolute bottom-6 right-0 top-6 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
+            className="absolute bottom-6 right-0 top-0 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
             initial={{ opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 28 }}
@@ -359,7 +368,7 @@ export function PortfolioChatWorkspace({
               aria-label="Закрыть контекст проекта"
               onClick={() => setContextDrawerContextId(null)}
               className={[
-                'absolute right-0 top-0 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full border text-[#202129] transition-colors duration-150',
+                'absolute right-6 top-4 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full border text-[#202129] transition-colors duration-150',
                 portfolioSoftSurfaceBorder,
                 portfolioFocusRing,
               ].join(' ')}

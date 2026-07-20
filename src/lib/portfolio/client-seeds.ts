@@ -117,36 +117,6 @@ export function buildClientErrorRetryEnvelope(
   });
 }
 
-export function buildClientRepeatedFastReviewEnvelope(
-  sessionId: string | null,
-  userMessagesUsed: number,
-): AssistantEnvelope {
-  return createSeedEnvelope({
-    sessionId,
-    userMessagesUsed,
-    viewType: 'general_synthesis',
-    presentationVariant: 'plain_text_reply',
-    selectedContext: { kind: 'none', id: null, label: null },
-    contentBlocks: [
-      {
-        type: 'lead',
-        title: '',
-        body: [
-          'Я уже отвечала на этот вопрос выше — там краткая оценка Андрея по кейсам.',
-          'Если хотите копнуть глубже, задавайте вопросы.',
-        ],
-      },
-    ],
-    chips: [],
-    contextPanel: {
-      ...entry.contextPanel,
-      hidden: true,
-    },
-    responseSource: 'authored',
-    assistantReplyState: 'navigation_suggestion',
-  });
-}
-
 function buildEntrySeed(sessionId: string | null, userMessagesUsed: number): AssistantEnvelope {
   const chips = getEntryPrompts();
 

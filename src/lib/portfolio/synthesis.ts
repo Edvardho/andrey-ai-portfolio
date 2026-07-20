@@ -16,6 +16,7 @@ import type {
   PromptChip,
   QueryScope,
   QuestionSubject,
+  ResponseLength,
   SynthesisSnapshot,
   SynthesisTopic,
 } from '@/lib/portfolio/types';
@@ -87,6 +88,7 @@ type SynthesisRequestConfig = {
   answerType: AnswerType;
   queryScope: QueryScope;
   questionSubject: QuestionSubject;
+  responseLength: ResponseLength;
   answerPlan: AnswerPlan;
   title: string;
   facts: string[];
@@ -178,6 +180,7 @@ function finalizeSnapshot(
     answerType: request.answerType,
     queryScope: request.queryScope,
     questionSubject: request.questionSubject,
+    responseLength: request.responseLength,
     answerPlan: request.answerPlan,
     question,
     answerStatus: draft.answerStatus,
@@ -187,6 +190,22 @@ function finalizeSnapshot(
     sections: normalizedSections,
     bullets: normalizedBullets,
     chips: request.chips,
+  };
+}
+
+function applyResponseLength(
+  answerPlan: AnswerPlan,
+  responseLength: ResponseLength,
+): AnswerPlan {
+  if (responseLength === 'default') {
+    return answerPlan;
+  }
+
+  return {
+    ...answerPlan,
+    maxParagraphs: Math.min(answerPlan.maxParagraphs, 2),
+    allowSections: false,
+    allowBullets: false,
   };
 }
 
@@ -362,6 +381,16 @@ function buildAnswerPlan(
         allowBullets: false,
         targetCaseIds: options.targetCaseIds,
       };
+    case 'calibrated_unknown':
+      return {
+        answerType,
+        requiredMoves: ['сразу назвать границу подтвержденных фактов', 'дать ближайшее подтвержденное evidence', 'отделить delivery от непроверяемого качества', 'предложить один точный вопрос для интервью'],
+        avoid: ['категоричное да или нет о дисциплине', 'психологический портрет', 'общая заглушка', 'неподтвержденные сроки'],
+        maxParagraphs: 2,
+        allowSections: false,
+        allowBullets: false,
+        targetCaseIds: options.targetCaseIds,
+      };
     default:
       return {
         answerType,
@@ -401,6 +430,14 @@ function buildFewShotExamples(
 Но продукт закрыли. Главная причина — ценность проверили слишком поздно.
 
 Для Андрея этот кейс важен не как история успеха, а как урок: сначала проверять, нужен ли продукт, и только потом глубоко вкладываться в решение.
+`;
+    case 'calibrated_unknown':
+      return `
+Хороший пример:
+Вопрос: Срывал ли Андрей дедлайны?
+Ответ: В портфолио нет данных, чтобы честно сказать, срывал ли Андрей дедлайны: там не описаны сроки, оценки задач или просрочки.
+
+Есть подтверждение другого уровня: в Альфа-Смарте и SIEBEL решения дошли до реализации, включая handoff и проверку после релиза. Это показывает доведение работы до результата, но не доказывает личную дисциплину по срокам. На интервью стоит спросить, как он оценивает задачи и эскалирует риск срыва.
 `;
     case 'hiring_argument':
       if (questionSubject === 'interview_decision') {
@@ -521,22 +558,28 @@ function isCandidateQualityQuestion(question: string): boolean {
   return /андре[йя].+хорош.+дизайнер|хорош.+дизайнер.+андре[йя]|андре[йя].+сильн.+дизайнер|нормальн.+дизайнер/i.test(question);
 }
 
+function isDeadlineReliabilityQuestion(question: string): boolean {
+  return /дедлайн|срок|продалб|срыв|успева/i.test(question);
+}
+
 function buildGlobalSynthesisRequest(
   question: string,
   topic: SynthesisTopic,
   answerType: AnswerType,
   queryScope: QueryScope,
   questionSubject: QuestionSubject,
+  responseLength: ResponseLength,
   session: AssistantSession,
 ): SynthesisRequestConfig {
   const config = getSynthesisTopicConfig(topic);
   const valueBeyondUiQuestion = isValueBeyondUiQuestion(question);
   const candidateQualityQuestion = isCandidateQualityQuestion(question);
-  const answerPlan = buildAnswerPlan(answerType, {
+  const deadlineReliabilityQuestion = isDeadlineReliabilityQuestion(question);
+  const answerPlan = applyResponseLength(buildAnswerPlan(answerType, {
     questionSubject,
     isValueBeyondUiQuestion: valueBeyondUiQuestion,
     isCandidateQualityQuestion: candidateQualityQuestion,
-  });
+  }), responseLength);
   const facts = config.subjectFacts?.[questionSubject] ?? config.facts;
   const portfolioValueVariant =
     topic === 'portfolio_value' && questionSubject === 'ai_format_value'
@@ -611,6 +654,24 @@ function buildGlobalSynthesisRequest(
           ],
         }
       : null;
+  const behavioralEvidenceVariant =
+    topic === 'delivery_evidence' && questionSubject === 'behavioral_evidence_check'
+      ? deadlineReliabilityQuestion
+        ? {
+            title: 'Что можно сказать о сроках',
+            fallbackParagraphs: [
+              'В портфолио нет данных, чтобы честно сказать, срывал ли Андрей дедлайны: там не описаны сроки, оценки задач или просрочки.',
+              'Есть подтверждение другого уровня: в Альфа-Смарте и SIEBEL решения дошли до реализации, включая дизайн-чек, handoff и проверку после реализации. Это показывает доведение работы до результата, но не доказывает личную дисциплину по срокам. На интервью стоит спросить, как он оценивает задачи и эскалирует риск срыва.',
+            ],
+          }
+        : {
+            title: 'Что можно сказать об исполнительности',
+            fallbackParagraphs: [
+              'По материалам скорее видно, что Андрей доводит дизайн-работу до реализации: в Альфа-Смарте прошел путь от требований до handoff и запуска, а в SIEBEL — от исследования до MVP и релиза.',
+              'Но портфолио не подтверждает ежедневную исполнительность или соблюдение сроков как личное качество. На интервью стоит попросить конкретный пример: как он вел задачу, когда срок был под риском.',
+            ],
+          }
+      : null;
   const processVariant =
     topic === 'decision_making' && questionSubject === 'design_process'
       ? {
@@ -676,6 +737,7 @@ function buildGlobalSynthesisRequest(
     ?? strengthsVariant
     ?? proofVariant
     ?? identityMotivationVariant
+    ?? behavioralEvidenceVariant
     ?? processVariant
     ?? designSystemVariant;
   const resolvedTitle = variant?.title ?? config.title;
@@ -685,6 +747,7 @@ function buildGlobalSynthesisRequest(
     answerType,
     queryScope,
     questionSubject,
+    responseLength,
     answerPlan,
     title: resolvedTitle,
     facts,
@@ -791,6 +854,7 @@ ${request.answerPlan.targetCaseIds?.length ? `- targetCaseIds: ${request.answerP
 - impact_measurement: отвечай про измерение влияния и метрики; не придумывай метрики
 - design_system_work: отвечай про дизайн-системы, компоненты и UI-kit только по подтвержденным фактам
 - learning_adaptation: отвечай про обучение новому только по подтвержденным фактам
+- behavioral_evidence_check: не делай вывод "срывает" или "не срывает" без прямых данных о сроках. Сначала назови границу данных, затем ближайшее подтвержденное evidence о delivery и в конце предложи один конкретный вопрос для интервью
 
 Предыдущий диалог:
 - previousUserQuestion: ${request.previousUserQuestion ?? 'none'}
@@ -824,6 +888,7 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
 - каждая section должна держать одну мысль
 - обычный ответ должен быть компактным: 350-700 символов
 - для простого вопроса достаточно 1-2 абзацев без секций
+- если responseLength = compact, ответь максимум двумя короткими абзацами без секций и списков
 - если allowSections = no, не используй заголовки и разделы
 - если allowBullets = no, не превращай ответ в список
 - если mustStartWith задан, начни именно так
@@ -840,6 +905,7 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
 - если предыдущий вопрос близок по теме, но у текущего другой QuestionSubject, не повторяй прошлый ответ дословно
 - contribution_breakdown всегда отвечает про личный вклад кандидата, а не продает кейс целиком
 - для case_strength не своди силу кейса только к красивому UI или визуалу
+- для calibrated_unknown не подменяй отсутствие данных общей заглушкой и не приписывай кандидату дисциплину, ответственность или проблемы со сроками
 
 Запрещено:
 - выдумывать новые кейсы
@@ -913,11 +979,20 @@ export async function synthesizeGeneralAnswer(
   answerType: AnswerType,
   queryScope: QueryScope,
   questionSubject: QuestionSubject,
+  responseLength: ResponseLength = 'default',
 ): Promise<SynthesisSnapshot> {
   return synthesizeAnswerFromRequest(
     question,
     session,
-    buildGlobalSynthesisRequest(question, topic, answerType, queryScope, questionSubject, session),
+    buildGlobalSynthesisRequest(
+      question,
+      topic,
+      answerType,
+      queryScope,
+      questionSubject,
+      responseLength,
+      session,
+    ),
   );
 }
 
@@ -1044,6 +1119,7 @@ export async function synthesizeCaseAwareAnswer(
   answerType: AnswerType,
   queryScope: QueryScope,
   questionSubject: QuestionSubject,
+  responseLength: ResponseLength = 'default',
 ): Promise<SynthesisSnapshot | null> {
   const config = getCaseSynthesisConfig(caseId, facet);
   const pack = getCaseFactPack(caseId);
@@ -1051,7 +1127,10 @@ export async function synthesizeCaseAwareAnswer(
     return null;
   }
 
-  const answerPlan = buildAnswerPlan(answerType, { targetCaseIds: [caseId], questionSubject });
+  const answerPlan = applyResponseLength(
+    buildAnswerPlan(answerType, { targetCaseIds: [caseId], questionSubject }),
+    responseLength,
+  );
   const outcomeGapOverride =
     answerType === 'outcome_summary' && pack
       ? buildOutcomeGapOverride(question, pack)
@@ -1070,9 +1149,23 @@ export async function synthesizeCaseAwareAnswer(
           fallbackBullets: [],
         }
       : null;
-  const fallbackIntro = failureOverride?.fallbackIntro ?? outcomeGapOverride?.fallbackIntro ?? config.fallbackIntro;
+  const behavioralEvidenceOverride =
+    answerType === 'calibrated_unknown' && pack
+      ? {
+          fallbackTitle: `Что известно о сроках в кейсе ${caseId}`,
+          fallbackIntro: `В материалах кейса ${caseId} нет данных о дедлайнах, просрочках или оценке сроков, поэтому утверждать, что Андрей их срывал или не срывал, нельзя.`,
+          fallbackFollowupParagraphs: [
+            pack.outcomes[0] ?? pack.evidence[0] ?? '',
+            'Это подтверждает результат по кейсу, но не личную дисциплину по срокам. На интервью стоит спросить, как Андрей оценивал задачу и сообщал о риске срыва.',
+          ].filter(Boolean),
+          fallbackSections: [],
+          fallbackBullets: [],
+        }
+      : null;
+  const fallbackIntro = behavioralEvidenceOverride?.fallbackIntro ?? failureOverride?.fallbackIntro ?? outcomeGapOverride?.fallbackIntro ?? config.fallbackIntro;
   const fallbackFollowupParagraphs =
-    failureOverride?.fallbackFollowupParagraphs
+    behavioralEvidenceOverride?.fallbackFollowupParagraphs
+    ?? failureOverride?.fallbackFollowupParagraphs
     ?? (outcomeGapOverride ? [] : null)
     ?? (!answerPlan.allowSections
       ? dedupeFallbackParagraphs(
@@ -1083,7 +1176,7 @@ export async function synthesizeCaseAwareAnswer(
   const fallbackSections = dedupeFallbackSections(
     fallbackIntro,
     fallbackFollowupParagraphs,
-    failureOverride?.fallbackSections ?? outcomeGapOverride?.fallbackSections ?? config.fallbackSections,
+    behavioralEvidenceOverride?.fallbackSections ?? failureOverride?.fallbackSections ?? outcomeGapOverride?.fallbackSections ?? config.fallbackSections,
   );
 
   return synthesizeAnswerFromRequest(question, session, {
@@ -1091,15 +1184,16 @@ export async function synthesizeCaseAwareAnswer(
     answerType,
     queryScope,
     questionSubject,
+    responseLength,
     answerPlan,
     title: config.fallbackTitle,
     facts: config.facts,
-    fallbackTitle: failureOverride?.fallbackTitle ?? config.fallbackTitle,
+    fallbackTitle: behavioralEvidenceOverride?.fallbackTitle ?? failureOverride?.fallbackTitle ?? config.fallbackTitle,
     fallbackIntro,
     fallbackFollowupParagraphs,
     fallbackSections,
-    fallbackBullets: failureOverride?.fallbackBullets ?? outcomeGapOverride?.fallbackBullets ?? config.fallbackBullets,
-    fallbackAnswerStatus: failureOverride ? 'grounded' : outcomeGapOverride ? 'insufficient_facts' : config.fallbackAnswerStatus,
+    fallbackBullets: behavioralEvidenceOverride?.fallbackBullets ?? failureOverride?.fallbackBullets ?? outcomeGapOverride?.fallbackBullets ?? config.fallbackBullets,
+    fallbackAnswerStatus: behavioralEvidenceOverride ? 'insufficient_facts' : failureOverride ? 'grounded' : outcomeGapOverride ? 'insufficient_facts' : config.fallbackAnswerStatus,
     chips: config.chips,
     previousUserQuestion: session.lastUserQuestion,
     previousAssistantAnswerPreview: session.lastAssistantAnswerPreview,

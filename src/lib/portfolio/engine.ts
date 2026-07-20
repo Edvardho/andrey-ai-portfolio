@@ -15,6 +15,8 @@ import {
   buildCaseDiscoveryEnvelope,
   buildCaseRouteEnvelope,
   buildCandidateFastReviewEnvelope,
+  buildCaseContextRequiredEnvelope,
+  buildRepeatedCandidateFastReviewEnvelope,
   buildContactModalEnvelope,
   buildDecisionProcessEnvelope,
   buildEvidenceEnvelope,
@@ -23,6 +25,7 @@ import {
   buildExperienceEnvelope,
   buildExperienceRouteEnvelope,
   buildGeneralSynthesisEnvelope,
+  buildGratitudeEnvelope,
   buildIdentityIntroEnvelope,
   buildImageModalEnvelope,
   buildLimitEnvelope,
@@ -150,6 +153,8 @@ function rebuildCurrentViewEnvelope(session: AssistantSession): AssistantEnvelop
       return buildEntryEnvelope(session);
     case 'candidate_fast_review':
       return buildCandidateFastReviewEnvelope(session);
+    case 'candidate_fast_review_repeat':
+      return buildRepeatedCandidateFastReviewEnvelope(session);
     case 'case_summary':
       return session.selectedContext.kind === 'case'
         ? buildCaseEnvelope(session, session.selectedContext.id, 'summary')
@@ -239,6 +244,7 @@ async function resolveCaseAwareSynthesis(
   answerType: AnswerType,
   queryScope: QueryInterpretation['scope'],
   questionSubject: QueryInterpretation['questionSubject'],
+  responseLength: QueryInterpretation['responseLength'],
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   let synthesis: SynthesisSnapshot;
   try {
@@ -250,9 +256,10 @@ async function resolveCaseAwareSynthesis(
       answerType,
       queryScope,
       questionSubject,
+      responseLength,
     );
     if (!nextSynthesis) {
-      return { session, envelope: buildAmbiguousEnvelope(session) };
+      return { session, envelope: buildCaseContextRequiredEnvelope(session) };
     }
     synthesis = nextSynthesis;
   } catch {
@@ -295,6 +302,7 @@ async function resolveGlobalSynthesis(
       interpretation.answerType,
       interpretation.scope,
       interpretation.questionSubject,
+      interpretation.responseLength,
     );
   } catch {
     return {
@@ -327,12 +335,30 @@ async function resolveCandidateFastReview(
     lastUserQuestion: text,
     lastAssistantAnswerPreview: 'Короткий структурированный обзор Андрея, ключевых кейсов и проверки для интервью.',
     lastQuestionSubject: 'candidate_fast_review',
+    hasSeenCandidateFastReview: true,
     recentHistory: appendHistory(session, 'candidate_fast_review'),
   });
 
   return {
     session: nextSession,
     envelope: buildCandidateFastReviewEnvelope(nextSession),
+  };
+}
+
+async function resolveRepeatedCandidateFastReview(
+  session: AssistantSession,
+  text: string,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const nextSession = await persistSession(session, {
+    lastUserQuestion: text,
+    lastAssistantAnswerPreview: 'Я уже отвечала на этот вопрос выше — там краткая оценка Андрея по кейсам.',
+    lastQuestionSubject: 'candidate_fast_review',
+    recentHistory: appendHistory(session, 'candidate_fast_review_reference'),
+  });
+
+  return {
+    session: nextSession,
+    envelope: buildRepeatedCandidateFastReviewEnvelope(nextSession),
   };
 }
 
@@ -396,6 +422,29 @@ async function resolveIntentClassification(
   text: string,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   const { intent, confidence } = interpretation;
+  const isDeicticCompactCaseSummary = isDeicticCompactCaseSummaryRequest(text);
+  const isCandidateFastReviewContext =
+    session.hasSeenCandidateFastReview
+    && session.selectedContext.kind === 'none';
+
+  if (isDeicticCompactCaseSummary) {
+    if (session.selectedContext.kind === 'case') {
+      return resolveCaseAwareSynthesis(
+        session,
+        text,
+        session.selectedContext.id,
+        'overview',
+        'case_summary',
+        'current_case_only',
+        'case_summary',
+        'compact',
+      );
+    }
+
+    if (isCandidateFastReviewContext) {
+      return resolveRepeatedCandidateFastReview(session, text);
+    }
+  }
 
   if (intent.type === 'ambiguous_question' && interpretation.answerType === null) {
     return { session, envelope: buildAmbiguousEnvelope(session) };
@@ -424,16 +473,32 @@ async function resolveIntentClassification(
   }
 
   if (interpretation.answerType === 'candidate_fast_review') {
-    return resolveCandidateFastReview(session, text);
+    return session.hasSeenCandidateFastReview
+      ? resolveRepeatedCandidateFastReview(session, text)
+      : resolveCandidateFastReview(session, text);
+  }
+
+  const isCompactCandidateReviewRepeat =
+    session.hasSeenCandidateFastReview
+    && session.selectedContext.kind === 'none'
+    && interpretation.intent.type === 'identity_intro'
+    && interpretation.scope === 'global_person'
+    && interpretation.questionSubject === 'candidate_value'
+    && interpretation.responseLength === 'compact';
+
+  if (isCompactCandidateReviewRepeat) {
+    return resolveRepeatedCandidateFastReview(session, text);
   }
 
   if (interpretation.scope === 'current_case_only') {
-    if (
-      !interpretation.factFacet
-      || session.selectedContext.kind !== 'case'
-      || !interpretation.answerType
-    ) {
-      return resolveMessageIntent(session, intent);
+    if (session.selectedContext.kind !== 'case') {
+      return isCandidateFastReviewContext
+        ? resolveRepeatedCandidateFastReview(session, text)
+        : { session, envelope: buildCaseContextRequiredEnvelope(session) };
+    }
+
+    if (!interpretation.factFacet || !interpretation.answerType) {
+      return { session, envelope: buildCaseContextRequiredEnvelope(session) };
     }
 
     return resolveCaseAwareSynthesis(
@@ -444,6 +509,7 @@ async function resolveIntentClassification(
       interpretation.answerType,
       interpretation.scope,
       interpretation.questionSubject,
+      interpretation.responseLength,
     );
   }
 
@@ -460,6 +526,7 @@ async function resolveIntentClassification(
       interpretation.answerType,
       interpretation.scope,
       interpretation.questionSubject,
+      interpretation.responseLength,
     );
   }
 
@@ -468,6 +535,32 @@ async function resolveIntentClassification(
   }
 
   return resolveMessageIntent(session, intent);
+}
+
+function isDeicticCompactCaseSummaryRequest(text: string): boolean {
+  const normalized = text
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .replace(/[!?.,…:;()[\]"'«»—–-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) return false;
+
+  const words = new Set(normalized.split(' '));
+  const hasCompactCue =
+    ['коротко', 'кратко', 'емко', 'кротоко', 'сжато'].some((cue) => words.has(cue))
+    || normalized.includes('без воды');
+  const hasTellCue = ['расскажи', 'объясни', 'опиши', 'пройдись'].some((cue) => words.has(cue));
+  const hasDeicticCaseCue = [
+    'об этом кейсе',
+    'про этот кейс',
+    'об этом проекте',
+    'про этот проект',
+    'здесь',
+  ].some((cue) => normalized.includes(cue));
+
+  return hasCompactCue && hasTellCue && hasDeicticCaseCue;
 }
 
 export async function resolveBootstrap(session: AssistantSession): Promise<AssistantEnvelope> {
@@ -555,6 +648,16 @@ export async function resolveMessage(
     };
   }
 
+  if (isGratitudeOnly(text)) {
+    const nextSession = await persistSession(session, {
+      lastUserQuestion: text,
+      lastAssistantAnswerPreview: 'Пожалуйста. Если захотите, могу помочь разобрать любой кейс подробнее.',
+      recentHistory: appendHistory(session, 'gratitude'),
+    });
+
+    return { session: nextSession, envelope: buildGratitudeEnvelope(nextSession) };
+  }
+
   const incrementedCount = session.userMessageCount + 1;
   const nextSession = await persistSession(session, {
     userMessageCount: incrementedCount,
@@ -583,6 +686,58 @@ export async function resolveMessage(
   );
 
   return resolveIntentClassification(nextSession, interpretation, text);
+}
+
+function isGratitudeOnly(text: string): boolean {
+  const normalized = text
+    .toLocaleLowerCase('ru-RU')
+    .replace(/[!?.,…:;()[\]"'«»—–-]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  const words = normalized.split(' ');
+  const hasGratitudeWord = words.some((word) => (
+    word === 'спасибо'
+    || word === 'спс'
+    || word === 'спасибки'
+    || word === 'спасибочки'
+    || word === 'благодарю'
+    || word === 'благодарствую'
+  ));
+
+  if (!hasGratitudeWord) {
+    return false;
+  }
+
+  const allowedGratitudeWords = new Set([
+    'спасибо',
+    'спс',
+    'спасибки',
+    'спасибочки',
+    'благодарю',
+    'благодарствую',
+    'тебе',
+    'вам',
+    'большое',
+    'огромное',
+    'очень',
+    'понял',
+    'поняла',
+    'понятно',
+    'ясно',
+    'ок',
+    'окей',
+    'окэй',
+    'супер',
+    'класс',
+  ]);
+
+  return words.every((word) => allowedGratitudeWords.has(word));
 }
 
 export async function resolveChatRequest(

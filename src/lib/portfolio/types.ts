@@ -8,6 +8,7 @@ export type CaseCategory =
 export type ViewType =
   | 'entry'
   | 'candidate_fast_review'
+  | 'candidate_fast_review_repeat'
   | 'case_summary'
   | 'case_detail'
   | 'case_route'
@@ -51,6 +52,7 @@ export type SafetyState =
   | 'limit_reached';
 
 export type AnswerMode = 'summary' | 'detail';
+export type ResponseLength = 'default' | 'compact';
 
 export type ResponseSource = 'authored' | 'facts_constrained_synthesis';
 export type SessionStoreMode = 'supabase' | 'memory' | 'degraded_memory';
@@ -90,7 +92,8 @@ export type AnswerType =
   | 'proof_map'
   | 'hiring_argument'
   | 'failure_postmortem'
-  | 'risk_assessment';
+  | 'risk_assessment'
+  | 'calibrated_unknown';
 
 export type AnswerPlan = {
   answerType: AnswerType;
@@ -116,6 +119,7 @@ export type QuestionSubject =
   | 'candidate_fast_review'
   | 'candidate_value'
   | 'candidate_motivation'
+  | 'behavioral_evidence_check'
   | 'interview_decision'
   | 'candidate_portfolio_value'
   | 'ai_format_value'
@@ -151,7 +155,8 @@ export type SynthesisTopic =
   | 'product_approach'
   | 'collaboration'
   | 'fit'
-  | 'risks';
+  | 'risks'
+  | 'delivery_evidence';
 
 export type CaseFactFacet =
   | 'overview'
@@ -176,6 +181,7 @@ export type SynthesisSnapshot = {
   answerType: AnswerType;
   queryScope: QueryScope;
   questionSubject: QuestionSubject;
+  responseLength: ResponseLength;
   answerPlan: AnswerPlan;
   question: string;
   answerStatus: SynthesisAnswerStatus;
@@ -199,6 +205,7 @@ export type QueryInterpretation = {
   factFacet: CaseFactFacet | null;
   targetCaseId: string | null;
   confidence: IntentConfidence;
+  responseLength: ResponseLength;
   matchedCues: string[];
 };
 
@@ -671,6 +678,7 @@ export type MessageIntent =
   | { type: 'decision_process' }
   | { type: 'evidence_request' }
   | { type: 'risk_objection' }
+  | { type: 'behavioral_fit_assessment' }
   | { type: 'missing_case_request'; requestedCase?: string }
   | { type: 'ambiguous_question' }
   | { type: 'unsupported_request' };
@@ -717,6 +725,7 @@ export type AssistantSession = {
   lastUserQuestion: string | null;
   lastAssistantAnswerPreview: string | null;
   lastQuestionSubject: QuestionSubject | null;
+  hasSeenCandidateFastReview: boolean;
   recentHistory: string[];
   createdAt: string;
   updatedAt: string;

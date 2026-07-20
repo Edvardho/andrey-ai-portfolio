@@ -10,6 +10,7 @@ import type {
   MessageIntent,
   QuestionSubject,
   QueryScope,
+  ResponseLength,
 } from '@/lib/portfolio/types';
 
 process.env.OPENAI_API_KEY = '';
@@ -25,6 +26,7 @@ type Scenario = {
   expectedScope: QueryScope;
   expectedQuestionSubject: QuestionSubject;
   expectedAnswerType: AnswerType;
+  expectedResponseLength?: ResponseLength;
   expectedTargetCaseId?: string | null;
   session: AssistantSession;
 };
@@ -48,6 +50,13 @@ async function assertScenario(scenario: Scenario) {
   assert.equal(interpretation.scope, scenario.expectedScope, `${scenario.label}: scope`);
   assert.equal(interpretation.questionSubject, scenario.expectedQuestionSubject, `${scenario.label}: questionSubject`);
   assert.equal(interpretation.answerType, scenario.expectedAnswerType, `${scenario.label}: answerType`);
+  if (scenario.expectedResponseLength !== undefined) {
+    assert.equal(
+      interpretation.responseLength,
+      scenario.expectedResponseLength,
+      `${scenario.label}: responseLength`,
+    );
+  }
 
   if (scenario.expectedTargetCaseId !== undefined) {
     assert.equal(
@@ -59,6 +68,9 @@ async function assertScenario(scenario: Scenario) {
 
   const { envelope } = await resolveMessage(scenario.session, scenario.input);
   assert.notEqual(envelope.viewType, 'ambiguous_question', `${scenario.label}: must not fall into ambiguous`);
+  assert.notEqual(envelope.viewType, 'no_matching_case', `${scenario.label}: must not fall into no-match fallback`);
+  assert.notEqual(envelope.viewType, 'unsupported_request', `${scenario.label}: must not fall into unsupported fallback`);
+  assert.notEqual(envelope.viewType, 'safety_refusal', `${scenario.label}: must not fall into safety fallback`);
   assert.equal(envelope.meta.answerType, scenario.expectedAnswerType, `${scenario.label}: envelope answerType`);
   assert.equal(envelope.meta.queryScope, scenario.expectedScope, `${scenario.label}: envelope queryScope`);
   assert.equal(envelope.meta.questionSubject, scenario.expectedQuestionSubject, `${scenario.label}: envelope questionSubject`);
@@ -68,6 +80,15 @@ async function main() {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const baseSession = await getOrCreateSession(`verify-query-interpretation-${suffix}`);
 
+  const allCaseIds = [
+    'alfa-smart',
+    'siebel',
+    'expenses-card-holders',
+    'subscription-sharing',
+    'chatpoint',
+    'ux-ui-wannabelike',
+  ];
+
   const { session: alfaSession } = await resolveAction(baseSession, {
     type: 'open_case_summary',
     caseId: 'alfa-smart',
@@ -76,15 +97,20 @@ async function main() {
     type: 'open_case_summary',
     caseId: 'chatpoint',
   });
+  const { session: siebelSession } = await resolveAction(baseSession, {
+    type: 'open_case_summary',
+    caseId: 'siebel',
+  });
 
   const scenarios: Scenario[] = [
     {
-      label: 'candidate fast review default',
-      input: 'Расскажи коротко про Андрея',
-      expectedIntent: 'portfolio_overview',
-      expectedScope: 'portfolio_wide',
-      expectedQuestionSubject: 'candidate_fast_review',
-      expectedAnswerType: 'candidate_fast_review',
+      label: 'compact candidate intro is not fast review',
+      input: 'Расскажи емко про Андрея',
+      expectedIntent: 'identity_intro',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'candidate_value',
+      expectedAnswerType: 'candidate_positioning',
+      expectedResponseLength: 'compact',
       session: baseSession,
     },
     {
@@ -94,6 +120,7 @@ async function main() {
       expectedScope: 'portfolio_wide',
       expectedQuestionSubject: 'candidate_fast_review',
       expectedAnswerType: 'candidate_fast_review',
+      expectedResponseLength: 'default',
       session: baseSession,
     },
     {
@@ -103,6 +130,7 @@ async function main() {
       expectedScope: 'portfolio_wide',
       expectedQuestionSubject: 'candidate_fast_review',
       expectedAnswerType: 'candidate_fast_review',
+      expectedResponseLength: 'default',
       session: baseSession,
     },
     {
@@ -112,6 +140,7 @@ async function main() {
       expectedScope: 'portfolio_wide',
       expectedQuestionSubject: 'candidate_fast_review',
       expectedAnswerType: 'candidate_fast_review',
+      expectedResponseLength: 'default',
       session: baseSession,
     },
     {
@@ -184,6 +213,7 @@ async function main() {
       expectedScope: 'global_person',
       expectedQuestionSubject: 'experience_summary',
       expectedAnswerType: 'experience_overview',
+      expectedResponseLength: 'compact',
       session: baseSession,
     },
     {
@@ -193,6 +223,7 @@ async function main() {
       expectedScope: 'global_person',
       expectedQuestionSubject: 'experience_summary',
       expectedAnswerType: 'experience_overview',
+      expectedResponseLength: 'compact',
       session: baseSession,
     },
     {
@@ -337,6 +368,34 @@ async function main() {
       session: baseSession,
     },
     {
+      label: 'deadline reliability is calibrated globally',
+      input: 'Продалбывал ли Андрей дедлайны?',
+      expectedIntent: 'behavioral_fit_assessment',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'behavioral_evidence_check',
+      expectedAnswerType: 'calibrated_unknown',
+      session: alfaSession,
+    },
+    {
+      label: 'execution question is calibrated globally',
+      input: 'Исполнительный ли Андрей работник?',
+      expectedIntent: 'behavioral_fit_assessment',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'behavioral_evidence_check',
+      expectedAnswerType: 'calibrated_unknown',
+      session: baseSession,
+    },
+    {
+      label: 'named case deadline question narrows to the case',
+      input: 'В Альфа-Смарте он срывал сроки?',
+      expectedIntent: 'behavioral_fit_assessment',
+      expectedScope: 'named_case',
+      expectedQuestionSubject: 'behavioral_evidence_check',
+      expectedAnswerType: 'calibrated_unknown',
+      expectedTargetCaseId: 'alfa-smart',
+      session: baseSession,
+    },
+    {
       label: 'chatpoint closed',
       input: 'Почему продукт закрыли?',
       expectedIntent: 'risk_objection',
@@ -356,10 +415,98 @@ async function main() {
       expectedTargetCaseId: 'chatpoint',
       session: baseSession,
     },
+    {
+      label: 'compact current SIEBEL case summary',
+      input: 'Коротко расскажи об этом кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: 'siebel',
+      session: siebelSession,
+    },
+    {
+      label: 'compact current case research',
+      input: 'Емко: как Андрей исследовал проблему?',
+      expectedIntent: 'decision_process',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_research',
+      expectedAnswerType: 'decision_breakdown',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: 'siebel',
+      session: siebelSession,
+    },
+    {
+      label: 'compact current case risk',
+      input: 'Коротко: какую ошибку совершили?',
+      expectedIntent: 'risk_objection',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'risk_check',
+      expectedAnswerType: 'risk_assessment',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: 'chatpoint',
+      session: chatpointSession,
+    },
+    {
+      label: 'compact candidate intro stays global inside SIEBEL',
+      input: 'Расскажи емко про Андрея',
+      expectedIntent: 'identity_intro',
+      expectedScope: 'global_person',
+      expectedQuestionSubject: 'candidate_value',
+      expectedAnswerType: 'candidate_positioning',
+      expectedResponseLength: 'compact',
+      session: siebelSession,
+    },
   ];
 
   for (const scenario of scenarios) {
     await assertScenario(scenario);
+  }
+
+  // These phrases must keep the selected case context for every case, not just
+  // the examples that happened to be covered by the product scenarios above.
+  for (const caseId of allCaseIds) {
+    const { session } = await resolveAction(baseSession, {
+      type: 'open_case_summary',
+      caseId,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary`,
+      input: 'Коротко расскажи об этом кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary reversed wording`,
+      input: 'Кратко расскажи об этом кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case research`,
+      input: 'Емко: как Андрей исследовал проблему?',
+      expectedIntent: 'decision_process',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_research',
+      expectedAnswerType: 'decision_breakdown',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
   }
 
   console.log('Query interpretation contract passed.');

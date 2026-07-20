@@ -13,7 +13,8 @@ export type ProgrammaticScrollReason =
   | 'jump_to_latest'
   | 'initial_thread_top'
   | 'sticky_bottom'
-  | 'disclosure_anchor';
+  | 'disclosure_anchor'
+  | 'reply_anchor';
 
 export const DEFAULT_THREAD_SCROLL_STATE: ThreadScrollState = {
   scrollTop: 0,

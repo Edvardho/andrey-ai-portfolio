@@ -51,6 +51,14 @@ export type PortfolioThreadViewHandle = {
   captureScrollState: () => ThreadScrollState | null;
 };
 
+export type ReplyFocusRequest = {
+  id: number;
+  contextId: ContextId;
+  userItemId: string;
+  assistantItemId: string | null;
+  status: 'pending' | 'focused';
+};
+
 function getLatestAssistantItemId(items: ThreadItem[]) {
   return [...items].reverse().find((item) => item.kind === 'assistant')?.id ?? null;
 }
@@ -184,6 +192,9 @@ type PortfolioThreadViewProps = {
   ) => void;
   onScrollStateChange: (contextId: ContextId, scrollState: ThreadScrollState) => void;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
+  replyFocusRequest: ReplyFocusRequest | null;
+  onReplyFocusCancelled: (id: number) => void;
+  onReplyFocusHandled: (id: number) => void;
 };
 
 export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, PortfolioThreadViewProps>(function PortfolioThreadView({
@@ -208,6 +219,9 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   onMarkAnimatedItems,
   onScrollStateChange,
   startTransitionSource,
+  replyFocusRequest,
+  onReplyFocusCancelled,
+  onReplyFocusHandled,
 }, ref) {
   const animateThreadStart = Boolean(startTransitionSource);
   const threadViewportRef = useRef<HTMLDivElement | null>(null);
@@ -222,6 +236,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   const manualScrollLockUntilRef = useRef(0);
   const lastProgrammaticScrollReasonRef = useRef<ProgrammaticScrollReason | null>(null);
   const isProgrammaticScrollInFlightRef = useRef(false);
+  const replyAnchorInFlightRef = useRef<number | null>(null);
   const preservedDisclosureScrollTopRef = useRef<number | null>(null);
   const disclosureRestoreTimeoutsRef = useRef<ReturnType<typeof globalThis.setTimeout>[]>([]);
   const latestAssistantItemId = getLatestAssistantItemId(items);
@@ -312,7 +327,8 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
     const nextScrollState = readScrollStateFromViewport();
     const programmaticReason = lastProgrammaticScrollReasonRef.current;
     const isProgrammaticScroll = isProgrammaticScrollInFlightRef.current && programmaticReason !== null;
-    if (!isProgrammaticScroll || programmaticReason === 'sticky_bottom' || programmaticReason === 'jump_to_latest') {
+    const isReplyAnchorActive = replyAnchorInFlightRef.current !== null;
+    if ((!isProgrammaticScroll && !isReplyAnchorActive) || programmaticReason === 'sticky_bottom' || programmaticReason === 'jump_to_latest') {
       shouldStickToBottomRef.current = nextScrollState.isNearBottom;
     }
     setNextScrollState(nextScrollState);
@@ -355,6 +371,10 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   }
 
   function handleManualScrollIntent() {
+    if (replyFocusRequest) {
+      replyAnchorInFlightRef.current = null;
+      onReplyFocusCancelled(replyFocusRequest.id);
+    }
     shouldStickToBottomRef.current = false;
     manualScrollLockUntilRef.current = Math.max(
       manualScrollLockUntilRef.current,
@@ -379,6 +399,99 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
 
     handleManualScrollIntent();
   }
+
+  const getThreadItemScrollTop = useCallback((itemId: string) => {
+    const viewport = threadViewportRef.current;
+    const item = threadContentRef.current?.querySelector<HTMLElement>(`[data-thread-item-id="${itemId}"]`);
+    if (!viewport || !item) {
+      return null;
+    }
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+
+    return Math.max(0, itemRect.top - viewportRect.top + viewport.scrollTop - 24);
+  }, []);
+
+  useEffect(() => {
+    if (!replyFocusRequest || replyFocusRequest.contextId !== contextId) {
+      replyAnchorInFlightRef.current = null;
+    }
+  }, [contextId, replyFocusRequest]);
+
+  useLayoutEffect(() => {
+    if (
+      !replyFocusRequest
+      || replyFocusRequest.contextId !== contextId
+      || replyFocusRequest.status === 'focused'
+    ) {
+      return undefined;
+    }
+
+    let frameId: number | null = null;
+    let hasRetried = false;
+
+    const focusReply = () => {
+      const targetItemId = replyFocusRequest.assistantItemId ?? replyFocusRequest.userItemId;
+      const targetTop = getThreadItemScrollTop(targetItemId);
+
+      if (targetTop === null && !hasRetried) {
+        hasRetried = true;
+        frameId = globalThis.requestAnimationFrame(focusReply);
+        return;
+      }
+
+      if (targetTop === null) {
+        onReplyFocusCancelled(replyFocusRequest.id);
+        return;
+      }
+
+      shouldStickToBottomRef.current = false;
+      const didScroll = applyProgrammaticScroll({
+        reason: 'reply_anchor',
+        top: targetTop,
+        behavior: 'smooth',
+      });
+
+      if (!didScroll) {
+        onReplyFocusCancelled(replyFocusRequest.id);
+        return;
+      }
+
+      replyAnchorInFlightRef.current = replyFocusRequest.id;
+      setNextScrollState(
+        {
+          ...liveScrollStateRef.current,
+          scrollTop: targetTop,
+          isNearBottom: false,
+          hasUnseenAssistantContent: false,
+          lastSeenAssistantItemId: replyFocusRequest.assistantItemId ?? liveScrollStateRef.current.lastSeenAssistantItemId,
+        },
+        { flushImmediately: true },
+      );
+
+      if (replyFocusRequest.assistantItemId) {
+        onReplyFocusHandled(replyFocusRequest.id);
+      }
+    };
+
+    focusReply();
+
+    return () => {
+      if (frameId !== null) {
+        globalThis.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [
+    applyProgrammaticScroll,
+    contextId,
+    getThreadItemScrollTop,
+    liveScrollStateRef,
+    onReplyFocusCancelled,
+    onReplyFocusHandled,
+    replyFocusRequest,
+    setNextScrollState,
+  ]);
 
   function handleToggleDisclosure(disclosureId: string) {
     const viewport = threadViewportRef.current;
@@ -405,6 +518,10 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       return;
     }
 
+    if (replyFocusRequest?.contextId === contextId) {
+      return;
+    }
+
     if (globalThis.performance.now() < suppressAutoScrollUntilRef.current) {
       return;
     }
@@ -423,7 +540,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
     if (didScroll) {
       hasMountedRef.current = true;
     }
-  }, [applyProgrammaticScroll, error, getThreadBottomScrollTop, items.length, loading]);
+  }, [applyProgrammaticScroll, contextId, error, getThreadBottomScrollTop, items.length, loading, replyFocusRequest]);
 
   useLayoutEffect(() => {
     if (stickToBottomSignal <= 0 || !threadViewportRef.current) {
@@ -752,12 +869,13 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
 
           {items.map((item) =>
             item.kind === 'user' ? (
-              <motion.div key={item.id} {...getItemMotion(item)}>
+              <motion.div key={item.id} data-thread-item-id={item.id} {...getItemMotion(item)}>
                 <PortfolioUserBubble text={item.text} />
               </motion.div>
             ) : (
               <motion.div
                 key={item.id}
+                data-thread-item-id={item.id}
                 {...getItemMotion(item)}
               >
                 <PortfolioAssistantEnvelopeView

@@ -35,6 +35,17 @@ async function main() {
   const { envelope: privateEnvelope } = await resolveMessage(alfaSession, 'Какая у Андрея зарплата и телефон?');
   assert.equal(privateEnvelope.safetyState, 'salary_or_private_data');
 
+  const { envelope: compensationEnvelope } = await resolveMessage(bootstrapSession, 'Сколько Андрей хочет денег?');
+  assert.equal(compensationEnvelope.safetyState, 'salary_or_private_data');
+
+  const { envelope: behavioralEnvelope } = await resolveMessage(bootstrapSession, 'Можно ли ему доверить важный дедлайн?');
+  assert.equal(behavioralEnvelope.viewType, 'general_synthesis');
+  assert.equal(behavioralEnvelope.meta.answerType, 'calibrated_unknown');
+  assert.equal(behavioralEnvelope.meta.questionSubject, 'behavioral_evidence_check');
+
+  const { envelope: incomeEnvelope } = await resolveMessage(bootstrapSession, 'Какой доход принес Альфа-Смарт?');
+  assert.notEqual(incomeEnvelope.safetyState, 'salary_or_private_data');
+
   const { envelope: assistantIntroEnvelope } = await resolveMessage(bootstrapSession, 'Кто ты такой?');
   assert.equal(assistantIntroEnvelope.viewType, 'assistant_intro');
 
