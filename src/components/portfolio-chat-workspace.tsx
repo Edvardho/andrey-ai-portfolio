@@ -347,17 +347,11 @@ export function PortfolioChatWorkspace({
       </div>
 
       {showContextPanel && contextPanelPayload && isContextDrawerOpen ? (
-        <div className="portfolio-context-drawer-layer absolute inset-0 z-30">
-          <button
-            type="button"
-            aria-label="Закрыть контекст проекта"
-            className="absolute inset-0 cursor-default bg-[#202129]/10"
-            onClick={() => setContextDrawerContextId(null)}
-          />
+        <div className="portfolio-context-drawer-layer pointer-events-none fixed inset-x-0 bottom-0 top-[84px] z-30">
           <motion.aside
             role="dialog"
             aria-label="Контекст проекта"
-            className="absolute bottom-6 right-0 top-0 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
+            className="pointer-events-auto absolute inset-y-0 right-0 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
             initial={{ opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 28 }}
