@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import { motion } from 'framer-motion';
-import { ChevronDown, Copy } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 import type {
   ArtifactOpenTarget,
@@ -15,6 +15,7 @@ import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-polic
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 import { PortfolioCaseCollection } from './portfolio-case-collection';
+import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
 import { PortfolioStructuredIntroPreview } from './portfolio-structured-intro-preview';
 const SUMMARY_BODY_TEXT_16_CLASS =
   'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]';
@@ -193,17 +194,15 @@ export function PortfolioStructuredCaseSummary({
           ) : null}
         </motion.section>
 
-        <motion.div className="flex items-start gap-3" {...getRevealProps(11)}>
-          <div
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#ECECF1] bg-white text-[#6B7182]"
-          >
-            <Copy className="size-4" strokeWidth={1.8} />
-          </div>
+        <motion.div className="flex items-start" {...getRevealProps(11)}>
           <button
             type="button"
             onClick={() => onCta(summary.footerAction.action)}
-            className="flex h-8 cursor-pointer items-center rounded-full bg-[#1A1C22] px-[14px] text-[14px] font-medium leading-5 text-white transition hover:bg-[#242832] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'flex h-8 cursor-pointer items-center rounded-full border px-[14px] text-[14px] font-medium leading-5 transition-colors duration-150',
+              portfolioPrimaryAction,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             {summary.footerAction.label}
           </button>

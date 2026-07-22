@@ -9,8 +9,11 @@ import {
   getProgressiveReplyBlockTiming,
 } from '@/lib/portfolio/response-animation-policy';
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
+import { portfolioChipSurface, portfolioFocusRing } from './portfolio-interaction-styles';
 import { PortfolioProgressiveText } from './portfolio-progressive-text';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
+
+const ASSISTANT_BODY_TEXT_CLASS = 'text-[16px] font-normal leading-6 tracking-[0] text-[#202129]';
 
 export function PortfolioAssistantSynthesisReply({
   envelope,
@@ -19,6 +22,7 @@ export function PortfolioAssistantSynthesisReply({
   canRetryError = false,
   onRetryError,
   renderMode = 'instant',
+  showChips = true,
 }: {
   envelope: AssistantEnvelope;
   onChipClick: (chip: PromptChip) => void;
@@ -26,6 +30,7 @@ export function PortfolioAssistantSynthesisReply({
   canRetryError?: boolean;
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 }) {
   const progressive = renderMode === 'progressive_text';
   const textRenderMode = progressive ? 'progressive_text' : 'instant';
@@ -52,7 +57,7 @@ export function PortfolioAssistantSynthesisReply({
 
       {leadParagraphs.length ? (
         <motion.div
-          className="w-full max-w-[680px] space-y-3 text-[17px] font-normal leading-6 tracking-[-0.005em] text-[#4A4A4A]"
+          className={`w-full max-w-[680px] space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}
           initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(0).translateY } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -92,7 +97,7 @@ export function PortfolioAssistantSynthesisReply({
                   startDelayMs={getProgressiveReplyBlockTiming(sectionTimingOffset + sectionIndex).delayMs}
                 />
               </h3>
-              <div className="space-y-2 text-[17px] font-normal leading-6 tracking-[-0.005em] text-[#4A4A4A]">
+              <div className={`space-y-2 ${ASSISTANT_BODY_TEXT_CLASS}`}>
                 {block.body.map((paragraph, paragraphIndex) => (
                   <p key={paragraph}>
                     <PortfolioProgressiveText
@@ -113,7 +118,7 @@ export function PortfolioAssistantSynthesisReply({
 
       {bullets.length ? (
         <motion.ul
-          className="flex w-full max-w-[680px] flex-col gap-2 pl-6 text-[17px] font-normal leading-6 tracking-[-0.005em] text-[#4A4A4A]"
+          className={`flex w-full max-w-[680px] flex-col gap-2 pl-6 ${ASSISTANT_BODY_TEXT_CLASS}`}
           initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(bulletTimingIndex).translateY } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -123,7 +128,7 @@ export function PortfolioAssistantSynthesisReply({
         >
           {bullets.map((item, index) => (
             <li key={item} className="flex gap-3">
-              <span className="shrink-0 text-[17px] font-medium leading-6 text-[#202129]">•</span>
+              <span className="shrink-0 text-[16px] font-medium leading-6 text-[#202129]">•</span>
               <span className="min-w-0">
                 <PortfolioProgressiveText
                   text={item}
@@ -146,7 +151,11 @@ export function PortfolioAssistantSynthesisReply({
               key={`${block.label}-${block.action.type}`}
               type="button"
               onClick={() => onCta(block.action)}
-              className="inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#dedfe5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150 hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              className={[
+                'inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#DEDFE5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150',
+                portfolioChipSurface,
+                portfolioFocusRing,
+              ].join(' ')}
             >
               {block.label}
             </button>
@@ -159,14 +168,18 @@ export function PortfolioAssistantSynthesisReply({
           <button
             type="button"
             onClick={onRetryError}
-            className="inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#dedfe5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150 hover:border-transparent hover:bg-[#EAF0FF] hover:text-[#3F4454] active:border-transparent active:bg-[#F2F4FF] active:text-[#1F2129] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border border-[#DEDFE5] bg-white px-[18px] py-[7px] text-[15px] leading-[22px] text-[#5A5E68] transition-colors duration-150',
+              portfolioChipSurface,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             Повторить
           </button>
         </div>
       ) : null}
 
-      {envelope.chips.length ? (
+      {showChips && envelope.chips.length ? (
         <div className="flex max-w-full flex-wrap gap-3 pt-2">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip

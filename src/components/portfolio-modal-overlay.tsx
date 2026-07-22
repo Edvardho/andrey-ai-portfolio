@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { ArrowRight, X } from 'lucide-react';
 import type { ModalPayload, ContactOption } from '@/lib/portfolio/types';
+import { portfolioFocusRing, portfolioSoftSurfaceBorder } from './portfolio-interaction-styles';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -16,11 +17,6 @@ const contactOptionIcons: Record<ContactOption['id'], { src: string; bgClass?: s
     src: '/contact-modal/linkedin.png',
     imageClassName: 'absolute inset-0 h-full w-full max-w-none object-cover',
   },
-  email: {
-    src: '/contact-modal/email.svg',
-    bgClass: 'bg-[#787F8D]',
-    imageClassName: 'absolute left-1/2 top-1/2 h-[30px] w-[30px] max-w-none -translate-x-1/2 -translate-y-1/2',
-  },
 };
 
 function ContactOptionRow({ option }: { option: ContactOption }) {
@@ -29,9 +25,13 @@ function ContactOptionRow({ option }: { option: ContactOption }) {
   return (
     <a
       href={option.href}
-      target={option.id === 'email' ? undefined : '_blank'}
-      rel={option.id === 'email' ? undefined : 'noreferrer'}
-      className="flex w-full cursor-pointer items-center gap-[14px] overflow-hidden rounded-[20px] border border-[#E6EAF3] bg-white p-[18px] transition-colors duration-150 hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+      target="_blank"
+      rel="noreferrer"
+      className={cx(
+        'flex w-full cursor-pointer items-center gap-[14px] overflow-hidden rounded-[20px] border p-[18px] transition-colors duration-150',
+        portfolioSoftSurfaceBorder,
+        portfolioFocusRing,
+      )}
     >
       <div
         className={cx(
@@ -118,7 +118,11 @@ export function PortfolioModalOverlay({
               ref={closeButtonRef}
               type="button"
               onClick={onClose}
-              className="flex size-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white text-[#202129] transition-colors duration-150 hover:bg-[#FCFDFF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              className={cx(
+                'flex size-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border text-[#202129] transition-colors duration-150',
+                portfolioSoftSurfaceBorder,
+                portfolioFocusRing,
+              )}
               aria-label="Закрыть"
             >
               <X className="size-6" strokeWidth={1.8} />
@@ -133,14 +137,14 @@ export function PortfolioModalOverlay({
         </div>
       ) : isImage ? (
         <div className="relative z-10 flex max-w-[calc(100vw-48px)] items-start gap-4">
-          <div className="h-[min(736px,calc(100vh-142px))] w-[min(1200px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] border border-[#EBEDF2] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
+          <div className="h-[min(820px,calc(100dvh-142px))] w-[min(1280px,calc(100vw-116px))] shrink-0 overflow-hidden rounded-[24px] bg-[#D1D7E3] shadow-[0px_24px_60px_rgba(0,0,0,0.16)]">
             {modal.imageUrl ? (
               <Image
                 src={modal.imageUrl}
                 alt={modal.title}
-                width={1200}
-                height={736}
-                sizes="min(1200px, calc(100vw - 116px))"
+                width={1280}
+                height={820}
+                sizes="min(1280px, calc(100vw - 116px))"
                 className="block h-full w-full object-contain"
               />
             ) : (
@@ -153,7 +157,11 @@ export function PortfolioModalOverlay({
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className="flex h-[52px] w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border border-[#EBEDF2] bg-white shadow-[0px_10px_14px_rgba(0,0,0,0.14)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={cx(
+              'flex h-[52px] w-[52px] shrink-0 cursor-pointer items-center justify-center rounded-[34px] border shadow-[0px_10px_14px_rgba(0,0,0,0.14)] transition-colors duration-150',
+              portfolioSoftSurfaceBorder,
+              portfolioFocusRing,
+            )}
             aria-label="Закрыть"
           >
             <X className="size-6 text-[#202129]" strokeWidth={1.8} />

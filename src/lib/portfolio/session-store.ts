@@ -35,6 +35,7 @@ function createEmptySession(sessionId: string): AssistantSession {
     lastUserQuestion: null,
     lastAssistantAnswerPreview: null,
     lastQuestionSubject: null,
+    hasSeenCandidateFastReview: false,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,

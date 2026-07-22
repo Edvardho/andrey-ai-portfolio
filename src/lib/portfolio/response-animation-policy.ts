@@ -19,6 +19,13 @@ export type AnimationThreadItemLike = UserThreadItemLike | AssistantThreadItemLi
 const SUMMARY_REVEAL_DURATION_MS = 180;
 const SUMMARY_REVEAL_STAGGER_MS = 80;
 const SUMMARY_REVEAL_MAX_ORDER = 11;
+const CANDIDATE_FAST_REVIEW_REVEAL_DURATION_MS = 260;
+const CANDIDATE_FAST_REVIEW_REVEAL_STAGGER_MS = 130;
+const CANDIDATE_FAST_REVIEW_REVEAL_MAX_ORDER = 10;
+const CANDIDATE_FAST_REVIEW_REVEAL_START_DELAY_MS =
+  portfolioResponseAnimationConfig.assistantContainer.initialDelayMs +
+  portfolioResponseAnimationConfig.assistantContainer.animation.durationMs +
+  80;
 const USER_ITEM_REVEAL_DURATION_MS = 280;
 const USER_ITEM_REVEAL_TRANSLATE_Y = 24;
 const USER_ITEM_REVEAL_SCALE_FROM = 0.99;
@@ -47,7 +54,11 @@ function countEnvelopeWords(envelope: AssistantEnvelope) {
 }
 
 export function isSummaryPresentationVariant(variant: PresentationVariant) {
-  return variant === 'case_summary' || variant === 'experience_summary';
+  return (
+    variant === 'case_summary' ||
+    variant === 'experience_summary' ||
+    variant === 'candidate_fast_review'
+  );
 }
 
 export function getAutoScrollThresholdPx() {
@@ -74,6 +85,10 @@ export function getAssistantRenderMode(
 ): AssistantRenderMode {
   if (item.hasAnimated) {
     return 'instant';
+  }
+
+  if (item.envelope.presentationVariant === 'candidate_fast_review') {
+    return 'reveal';
   }
 
   if (isSummaryPresentationVariant(item.envelope.presentationVariant) && !hasPlayedInitialReveal) {
@@ -109,6 +124,13 @@ export function getSummaryRevealTiming(order: number) {
   return {
     durationMs: SUMMARY_REVEAL_DURATION_MS,
     delayMs: order * SUMMARY_REVEAL_STAGGER_MS,
+  };
+}
+
+export function getCandidateFastReviewRevealTiming(order: number) {
+  return {
+    durationMs: CANDIDATE_FAST_REVIEW_REVEAL_DURATION_MS,
+    delayMs: CANDIDATE_FAST_REVIEW_REVEAL_START_DELAY_MS + order * CANDIDATE_FAST_REVIEW_REVEAL_STAGGER_MS,
   };
 }
 
@@ -180,6 +202,14 @@ export function estimateAssistantAnimationMs(
   const renderMode = getAssistantRenderMode(item, hasPlayedInitialReveal);
 
   if (renderMode === 'reveal') {
+    if (item.envelope.presentationVariant === 'candidate_fast_review') {
+      return (
+        CANDIDATE_FAST_REVIEW_REVEAL_START_DELAY_MS +
+        CANDIDATE_FAST_REVIEW_REVEAL_DURATION_MS +
+        CANDIDATE_FAST_REVIEW_REVEAL_STAGGER_MS * CANDIDATE_FAST_REVIEW_REVEAL_MAX_ORDER
+      );
+    }
+
     return SUMMARY_REVEAL_DURATION_MS + SUMMARY_REVEAL_STAGGER_MS * SUMMARY_REVEAL_MAX_ORDER;
   }
 

@@ -1,4 +1,8 @@
 import type { RailItem } from '@/lib/portfolio/types';
+import {
+  portfolioFocusRing,
+  portfolioSoftSurfaceBorder,
+} from './portfolio-interaction-styles';
 import { PortfolioProjectRailItem } from './portfolio-project-rail-item';
 import { PortfolioSessionLimitCard } from './portfolio-session-limit-card';
 
@@ -7,6 +11,8 @@ export function PortfolioRailSidebar({
   selectedRailId,
   showAssistantReturn,
   assistantReturnSelected,
+  assistantReturnLabel = 'Ответ ИИ-ассистента',
+  railTitle = 'Мои проекты',
   messagesRemaining,
   onRailClick,
   onAssistantReturnClick,
@@ -16,6 +22,8 @@ export function PortfolioRailSidebar({
   selectedRailId: string | null;
   showAssistantReturn: boolean;
   assistantReturnSelected: boolean;
+  assistantReturnLabel?: string;
+  railTitle?: string;
   messagesRemaining: number;
   onRailClick: (item: RailItem) => void;
   onAssistantReturnClick: () => void;
@@ -29,19 +37,24 @@ export function PortfolioRailSidebar({
           onClick={onAssistantReturnClick}
           disabled={assistantReturnSelected}
           aria-current={assistantReturnSelected ? 'page' : undefined}
-          className="mb-8 flex w-[280px] cursor-pointer items-center gap-3 rounded-[18px] border border-[#EBEDF2] bg-white p-4 text-left transition-colors duration-150 hover:border-transparent hover:bg-[#EAF0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2 disabled:cursor-default disabled:border-[#E5E7F1] disabled:bg-[#F2F4FF]"
+          className={[
+            'mb-8 flex w-[280px] cursor-pointer items-center gap-3 rounded-[18px] border p-4 text-left transition-colors duration-150 disabled:cursor-default',
+            portfolioSoftSurfaceBorder,
+            'disabled:border-[#E5E7F1] disabled:bg-[#F2F4FF]',
+            portfolioFocusRing,
+          ].join(' ')}
         >
           <span className="flex size-7 shrink-0 items-center justify-center rounded-[14px] bg-[#F2F4FF] text-[17px] leading-none text-[#202129]">
             ✦
           </span>
           <span className="min-w-0 flex-1 text-[13px] font-normal leading-[1.35] text-[#5E606A]">
-            Ответ ИИ-ассистента
+            {assistantReturnLabel}
           </span>
         </button>
       ) : null}
 
-      <div className="w-[280px] text-[15px] font-medium text-[#151310]">Мои проекты</div>
-      <div className="mt-4 w-[280px] space-y-3 overflow-hidden">
+      <div className="w-[280px] shrink-0 text-[15px] font-medium text-[#151310]">{railTitle}</div>
+      <div className="mt-4 min-h-0 w-[280px] flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {railItems.map((item) => (
           <button
             key={item.id}
@@ -49,7 +62,7 @@ export function PortfolioRailSidebar({
             onClick={() => onRailClick(item)}
             disabled={selectedRailId === item.id}
             aria-current={selectedRailId === item.id ? 'page' : undefined}
-            className="w-[280px] cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2 disabled:cursor-default"
+            className={['w-[280px] cursor-pointer text-left disabled:cursor-default', portfolioFocusRing].join(' ')}
           >
             <PortfolioProjectRailItem
               id={item.id}
@@ -61,7 +74,7 @@ export function PortfolioRailSidebar({
         ))}
       </div>
 
-      <div className="mt-auto w-[280px]">
+      <div className="mt-4 w-[280px] shrink-0">
         <PortfolioSessionLimitCard messagesRemaining={messagesRemaining} onContactClick={onContactClick} />
       </div>
     </aside>

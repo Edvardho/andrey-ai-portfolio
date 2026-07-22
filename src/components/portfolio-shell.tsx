@@ -11,8 +11,11 @@ import {
   loadCaseById,
 } from '@/data/portfolio-case-loader.client';
 import { additionalCasesContent, experience, mobileOverview } from '@/data/portfolio-global-content';
-import { getContactContent, getEntryPrompts, getRailItems } from '@/data/portfolio-index';
-import { buildClientEnvelopeForAction, buildClientErrorRetryEnvelope } from '@/lib/portfolio/client-seeds';
+import { getContactContent, getRailItems } from '@/data/portfolio-index';
+import {
+  buildClientEnvelopeForAction,
+  buildClientErrorRetryEnvelope,
+} from '@/lib/portfolio/client-seeds';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -32,12 +35,13 @@ import {
   shouldRestoreThreadScrollOnSwitch,
   type ThreadScrollState,
 } from '@/lib/portfolio/response-scroll-policy';
+import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
 
 import { PortfolioEntryView } from './portfolio-entry-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
-import type { PortfolioThreadViewHandle } from './portfolio-thread-view';
+import type { PortfolioThreadViewHandle, ReplyFocusRequest } from './portfolio-thread-view';
 import {
   useDebouncedPortfolioPersistence,
   usePortfolioModalController,
@@ -78,6 +82,10 @@ type ContextUiState = {
 type ContextUiStateStore = Record<string, ContextUiState>;
 
 type WorkspaceMode = 'landing' | 'chat';
+
+const LANDING_DEFAULT_PROMPT = 'Быстро оценить Андрея по кейсам';
+const FAST_REVIEW_DEFAULT_DISCLOSURE_ID = 'candidate-review-alfa-smart';
+const LANDING_FAST_REVIEW_REVEAL_DELAY_MS = 520;
 type TransitionSource = 'submit' | 'chip' | 'case' | null;
 
 type PersistedThreadState = {
@@ -226,6 +234,12 @@ function createAssistantThreadItem(envelope: AssistantEnvelope): ThreadItem {
     envelope,
     hasAnimated: false,
   };
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    globalThis.setTimeout(resolve, ms);
+  });
 }
 
 function getLastAssistantItemId(items: ThreadItem[]) {
@@ -540,6 +554,7 @@ function normalizeEnvelope(envelope: AssistantEnvelope): AssistantEnvelope {
       answerType: envelope.meta.answerType ?? null,
       queryScope: envelope.meta.queryScope ?? null,
       questionSubject: envelope.meta.questionSubject ?? null,
+      aiMode: envelope.meta.aiMode ?? 'fallback',
     },
     contextPanel: getCurrentContextPanel(envelope),
   };
@@ -692,7 +707,7 @@ export function PortfolioShell() {
   const [contextUiStateByContextId, setContextUiStateByContextId] = useState<ContextUiStateStore>({});
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('landing');
   const [sessionMeta, setSessionMeta] = useState(DEFAULT_SESSION_META);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(LANDING_DEFAULT_PROMPT);
   const [loadingContextId, setLoadingContextId] = useState<ContextId | null>(null);
   const [bootstrappingContextId, setBootstrappingContextId] = useState<ContextId | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -703,9 +718,15 @@ export function PortfolioShell() {
   const [scrollToTopSignal, setScrollToTopSignal] = useState(0);
   const [restoreThreadScrollSignal, setRestoreThreadScrollSignal] = useState(0);
   const [restoreThreadScrollTop, setRestoreThreadScrollTop] = useState<number | null>(null);
+  const [replyFocusRequest, setReplyFocusRequest] = useState<ReplyFocusRequest | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const threadViewRef = useRef<PortfolioThreadViewHandle | null>(null);
+  const replyFocusIdRef = useRef(0);
   const serverContextIdRef = useRef<ContextId | null>(null);
+  // A case can be rendered locally before React commits its thread state. Keep
+  // the action synchronously so the first user question still syncs the right
+  // server-side case context.
+  const contextSyncActionsRef = useRef<Partial<Record<ContextId, UIAction>>>({});
   const transitionTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
   const caseLoadRequestRef = useRef(0);
   const sessionIdRef = useSyncedRef(sessionId);
@@ -730,6 +751,12 @@ export function PortfolioShell() {
     threadsByContextId: normalizedThreadsByContextId,
     workspaceMode,
   });
+  const entryThread = normalizedThreadsByContextId.entry;
+  const assistantReturnLabel =
+    entryThread?.lastEnvelope?.viewType === 'candidate_fast_review'
+      ? 'Коротко об Андрее'
+      : 'Ответ ИИ-ассистента';
+  const railTitle = showChatStage ? 'Подробнее о кейсах' : 'Мои проекты';
 
   useDebouncedPortfolioPersistence({
     activeContextId,
@@ -864,6 +891,31 @@ export function PortfolioShell() {
     });
   }
 
+  function beginReplyFocus(contextId: ContextId, userItemId: string) {
+    const id = ++replyFocusIdRef.current;
+    setReplyFocusRequest({
+      id,
+      contextId,
+      userItemId,
+      assistantItemId: null,
+      status: 'pending',
+    });
+  }
+
+  function clearReplyFocusForRequest(id: number) {
+    setReplyFocusRequest((current) => (current?.id === id ? null : current));
+  }
+
+  function clearReplyFocusForContext(contextId: ContextId) {
+    setReplyFocusRequest((current) => (current?.contextId === contextId ? null : current));
+  }
+
+  function handleReplyFocusHandled(id: number) {
+    setReplyFocusRequest((current) => (
+      current?.id === id ? { ...current, status: 'focused' } : current
+    ));
+  }
+
   function startWorkspaceTransition(source: Exclude<TransitionSource, null>) {
     if (workspaceModeRef.current === 'landing') {
       setWorkspaceMode('chat');
@@ -890,17 +942,30 @@ export function PortfolioShell() {
     });
   }
 
-  function appendUserToThread(contextId: ContextId, text: string) {
+  function appendUserToThread(contextId: ContextId, text: string): string {
+    const userItem = createUserThreadItem(text);
     upsertThread(contextId, (thread) => ({
       ...thread,
-      items: [...thread.items, createUserThreadItem(text)],
+      items: [...thread.items, userItem],
       updatedAt: new Date().toISOString(),
     }));
+    return userItem.id;
   }
 
   function appendAssistantToThread(contextId: ContextId, envelope: AssistantEnvelope) {
+    if (envelope.viewType === 'candidate_fast_review') {
+      upsertContextUiState(contextId, (state) => (
+        state.expandedDisclosureIds.length
+          ? state
+          : {
+              ...state,
+              expandedDisclosureIds: [FAST_REVIEW_DEFAULT_DISCLOSURE_ID],
+            }
+      ));
+    }
+
+    const assistantItem = createAssistantThreadItem(envelope);
     upsertThread(contextId, (thread) => {
-      const assistantItem = createAssistantThreadItem(envelope);
       const isThreadNearBottom = thread.scrollState.isNearBottom;
       const shouldMarkUnseenAssistantContent = thread.initialized && !isThreadNearBottom;
 
@@ -920,6 +985,12 @@ export function PortfolioShell() {
         updatedAt: new Date().toISOString(),
       };
     });
+
+    setReplyFocusRequest((current) => (
+      current && current.contextId === contextId && current.status === 'pending'
+        ? { ...current, assistantItemId: assistantItem.id }
+        : current
+    ));
   }
 
   function removeErrorRetryItems(contextId: ContextId) {
@@ -1013,52 +1084,37 @@ export function PortfolioShell() {
     return (await response.json()) as AssistantEnvelope;
   }
 
-  async function ensureServerContextSynced(contextId: ContextId) {
-    if (!sessionIdRef.current || serverContextIdRef.current === contextId) {
-      return;
+  async function ensureServerContextSynced(contextId: ContextId): Promise<string | undefined> {
+    if (serverContextIdRef.current === contextId) {
+      return sessionIdRef.current ?? undefined;
     }
 
     const thread = threadsRef.current[contextId];
-    const syncAction = thread ? getSyncActionForContext(thread) : null;
+    const syncAction = contextSyncActionsRef.current[contextId]
+      ?? (thread ? getSyncActionForContext(thread) : null);
 
     if (!syncAction) {
-      return;
+      return sessionIdRef.current ?? undefined;
     }
 
     const envelope = await fetchChatEnvelope({
-      sessionId: sessionIdRef.current,
+      sessionId: sessionIdRef.current ?? undefined,
       input: { type: 'action', action: syncAction },
     });
 
     setSessionId(envelope.sessionId);
+    // State updates are asynchronous. Keep the next request on this exact server session.
+    sessionIdRef.current = envelope.sessionId;
     updateSessionMeta(envelope);
     setServerContextId(getContextIdFromEnvelope(envelope));
-  }
-
-  async function syncKnownContextInBackground(action: UIAction) {
-    try {
-      const envelope = await fetchChatEnvelope({
-        sessionId: sessionIdRef.current ?? undefined,
-        input: { type: 'action', action },
-      });
-      await ensureEnvelopeCaseLoaded(envelope);
-      const nextContextId = getContextIdFromEnvelope(envelope);
-
-      setSessionId(envelope.sessionId);
-      updateSessionMeta(envelope);
-
-      if (activeContextIdRef.current === nextContextId) {
-        setServerContextId(nextContextId);
-      }
-    } catch (caughtError) {
-      console.error('Silent context sync failed', caughtError);
-    }
+    return envelope.sessionId;
   }
 
   async function openKnownContextLocally(
     action: UIAction,
     options?: { userLabel?: string; appendUserBubble?: boolean },
   ): Promise<boolean> {
+    setReplyFocusRequest(null);
     const targetContextId = getContextIdFromAction(action);
     const caseId = getCaseIdFromAction(action);
     const wasCaseCold = Boolean(caseId && !isCaseLoaded(caseId));
@@ -1066,6 +1122,10 @@ export function PortfolioShell() {
     const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
+
+    if (targetContextId) {
+      contextSyncActionsRef.current[targetContextId] = action;
+    }
 
     clearModal();
     setError(null);
@@ -1138,7 +1198,6 @@ export function PortfolioShell() {
         ensureContextUiState(resolvedContextId);
       }
 
-      void syncKnownContextInBackground(action);
       if (caseId) {
         reportCaseTransitionMetric({
           caseId,
@@ -1180,8 +1239,11 @@ export function PortfolioShell() {
     action: UIAction,
     options?: { userLabel?: string; appendUserBubble?: boolean },
   ) {
+    setReplyFocusRequest(null);
     const userLabel = options?.userLabel;
     const shouldAppendUserBubble = options?.appendUserBubble ?? Boolean(userLabel);
+
+    contextSyncActionsRef.current[targetContextId] = action;
 
     captureActiveThreadScrollState();
     clearModal();
@@ -1203,6 +1265,8 @@ export function PortfolioShell() {
       });
       await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
+
+      contextSyncActionsRef.current[nextContextId] = action;
 
       setSessionId(envelope.sessionId);
       updateSessionMeta(envelope);
@@ -1235,33 +1299,63 @@ export function PortfolioShell() {
       syncBeforeRequest?: boolean;
       clearInputOnSuccess?: boolean;
       forceThreadContextId?: ContextId;
+      keepThreadAtTop?: boolean;
     },
   ) {
+    let userItemId: string | null = null;
     if (options?.userText) {
-      appendUserToThread(contextId, options.userText);
+      userItemId = appendUserToThread(contextId, options.userText);
+      if (!options.keepThreadAtTop) {
+        beginReplyFocus(contextId, userItemId);
+      }
     }
 
     clearModal();
     setLoadingContextId(contextId);
     setError(null);
     setLastFailedRequest(null);
-    if (threadsRef.current[contextId]?.scrollState.isNearBottom ?? true) {
+    if (options?.keepThreadAtTop) {
+      requestThreadTopScroll();
+    } else if (!options?.userText && (threadsRef.current[contextId]?.scrollState.isNearBottom ?? true)) {
       requestStickyScroll();
     }
 
     try {
-      if (options?.syncBeforeRequest) {
-        await ensureServerContextSynced(contextId);
+      const shouldSyncBeforeRequest = options?.syncBeforeRequest ?? body.input.type === 'message';
+      let requestSessionId = sessionIdRef.current ?? body.sessionId;
+      if (shouldSyncBeforeRequest) {
+        requestSessionId = (await ensureServerContextSynced(contextId)) ?? requestSessionId;
       }
 
-      const envelope = await fetchChatEnvelope(body);
+      // A local case can be opened before its background server sync finishes.
+      // Read the session ID after syncing so the message keeps that case context.
+      const envelope = await fetchChatEnvelope({
+        ...body,
+        sessionId: requestSessionId,
+      });
       await ensureEnvelopeCaseLoaded(envelope);
       const nextContextId = getContextIdFromEnvelope(envelope);
       const targetContextId = options?.forceThreadContextId ?? resolveReplyThreadContextId(contextId, body, envelope);
+      if (targetContextId !== contextId) {
+        clearReplyFocusForContext(contextId);
+      }
+      const shouldDelayLandingFastReviewReveal =
+        options?.forceThreadContextId === 'entry' &&
+        envelope.viewType === 'candidate_fast_review' &&
+        !threadsRef.current.entry?.items.some((item) => (
+          item.kind === 'assistant' && item.envelope.viewType === 'candidate_fast_review'
+        ));
+
+      if (shouldDelayLandingFastReviewReveal) {
+        await wait(LANDING_FAST_REVIEW_REVEAL_DELAY_MS);
+      }
 
       setSessionId(envelope.sessionId);
       updateSessionMeta(envelope);
       appendAssistantToThread(targetContextId, envelope);
+      if (options?.keepThreadAtTop) {
+        requestThreadTopScroll();
+      }
       setActiveContextId(targetContextId);
       setServerContextId(nextContextId);
       if (options?.clearInputOnSuccess) {
@@ -1270,6 +1364,9 @@ export function PortfolioShell() {
       setLastFailedRequest(null);
     } catch (caughtError) {
       const targetContextId = options?.forceThreadContextId ?? contextId;
+      if (targetContextId !== contextId) {
+        clearReplyFocusForContext(contextId);
+      }
       const errorEnvelope = buildClientErrorRetryEnvelope(
         sessionIdRef.current,
         sessionMeta.used,
@@ -1284,6 +1381,9 @@ export function PortfolioShell() {
         forceThreadContextId: options?.forceThreadContextId,
       });
       appendAssistantToThread(targetContextId, errorEnvelope);
+      if (options?.keepThreadAtTop) {
+        requestThreadTopScroll();
+      }
       setError(null);
     } finally {
       setLoadingContextId(null);
@@ -1291,6 +1391,7 @@ export function PortfolioShell() {
   }
 
   async function restoreExistingContext(contextId: ContextId) {
+    setReplyFocusRequest(null);
     const targetThread = threadsRef.current[contextId];
     const startedAt = typeof performance !== 'undefined' ? performance.now() : 0;
     if (isCaseContextId(contextId)) {
@@ -1503,6 +1604,7 @@ export function PortfolioShell() {
 
   async function handleRailClick(item: RailItem) {
     if (workspaceModeRef.current === 'landing') {
+      setInput('');
       startWorkspaceTransition('case');
     }
 
@@ -1536,6 +1638,18 @@ export function PortfolioShell() {
     }
 
     void restoreExistingContext('entry');
+  }
+
+  function handleHomeClick() {
+    clearModal();
+    clearChatError();
+    captureActiveThreadScrollState();
+    setActiveContextId('entry');
+    setWorkspaceMode('landing');
+    setBootstrappingContextId(null);
+    setLoadingContextId(null);
+    setInput(LANDING_DEFAULT_PROMPT);
+    requestThreadTopScroll();
   }
 
   async function handleCta(action: UIAction) {
@@ -1604,6 +1718,7 @@ export function PortfolioShell() {
         syncBeforeRequest: true,
         clearInputOnSuccess: true,
         forceThreadContextId: isLandingTextSubmit ? 'entry' : undefined,
+        keepThreadAtTop: isLandingTextSubmit,
       },
     );
   }
@@ -1634,7 +1749,11 @@ export function PortfolioShell() {
           <button
             type="button"
             onClick={() => handleCta({ type: 'open_contact_modal', source: 'desktop-blocker' })}
-            className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#1A1C22] px-6 py-3 text-[15px] font-medium leading-5 text-white transition-colors duration-150 hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17191F]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+            className={[
+              'inline-flex cursor-pointer items-center justify-center rounded-full border px-6 py-3 text-[15px] font-medium leading-5 transition-colors duration-150',
+              portfolioPrimaryAction,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             Написать Андрею
           </button>
@@ -1646,6 +1765,7 @@ export function PortfolioShell() {
           <div className="portfolio-desktop-frame flex h-full flex-col overflow-hidden bg-white">
             <PortfolioDesktopHeader
               onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
+              onHomeClick={handleHomeClick}
               ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}
               showDivider={showChatStage}
               constrainToLandingFrame={showLandingStage && !showChatStage}
@@ -1664,9 +1784,6 @@ export function PortfolioShell() {
                       onSubmit={handleSubmit}
                       loading={Boolean(loadingContextId) || sessionMeta.remaining <= 0}
                       textareaRef={textareaRef}
-                      chips={getEntryPrompts()}
-                      onChipClick={handleChipClick}
-                      composerLayoutId="portfolio-composer-shell"
                     />
                   ) : null}
 
@@ -1677,6 +1794,8 @@ export function PortfolioShell() {
                       selectedRailId={selectedRailId}
                       showAssistantReturn={showAssistantReturn}
                       assistantReturnSelected={activeContextId === 'entry'}
+                      assistantReturnLabel={assistantReturnLabel}
+                      railTitle={railTitle}
                       messagesRemaining={messagesRemaining}
                       onRailClick={handleRailClick}
                       onAssistantReturnClick={handleAssistantReturnClick}
@@ -1697,13 +1816,15 @@ export function PortfolioShell() {
                       onOpenArtifact={handleOpenArtifact}
                       onMarkAnimatedItems={markThreadItemsAnimated}
                       onThreadScrollStateChange={handleThreadScrollStateChange}
+                      replyFocusRequest={replyFocusRequest}
+                      onReplyFocusCancelled={clearReplyFocusForRequest}
+                      onReplyFocusHandled={handleReplyFocusHandled}
                       input={input}
                       onChangeInput={setInput}
                       onSubmit={handleSubmit}
                       textareaRef={textareaRef}
                       threadViewRef={threadViewRef}
                       contextPanelPayload={currentContextPanelPayload}
-                      composerLayoutId="portfolio-composer-shell"
                       startTransitionSource={transitionSource}
                       caseBootstrapping={bootstrappingContextId === activeContextId}
                     />

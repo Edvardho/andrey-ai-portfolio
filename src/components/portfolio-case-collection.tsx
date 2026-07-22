@@ -3,7 +3,9 @@
 import clsx from 'clsx';
 
 import {
+  CASE_COLLECTION_IMAGE_SURFACE_COLOR,
   CASE_COLLECTION_SECTION_WIDTH,
+  getCaseCollectionCardWidth,
   getCaseCollectionContract,
 } from '@/lib/portfolio/case-layout-contract';
 import type {
@@ -60,22 +62,26 @@ export function PortfolioCaseCollection({
     >
       {items.map((card) => {
         const artifactTarget = buildArtifactTarget(card.artifactId, caseId);
+        const cardWidth = getCaseCollectionCardWidth({
+          layoutType,
+          requestedWidth: card.width,
+        });
 
         const content = (
-          <div className="flex flex-col gap-3 text-left" style={{ width: `${card.width}px` }}>
+          <div className="flex flex-col gap-3 text-left" style={{ width: `${cardWidth}px` }}>
             <div
               className="relative h-[224px] overflow-hidden rounded-[24px] border"
               style={{
-                backgroundColor: card.preview.backgroundColor,
+                backgroundColor: CASE_COLLECTION_IMAGE_SURFACE_COLOR,
                 borderColor: card.preview.borderColor ?? '#E7EAF2',
               }}
             >
               <PortfolioFadeInImage
                 src={card.preview.src}
                 alt={card.title ?? 'Case preview'}
-                width={Math.max(card.width, 320)}
+                width={Math.max(cardWidth, 320)}
                 height={224}
-                sizes={`${Math.max(card.width, 320)}px`}
+                sizes={`${Math.max(cardWidth, 320)}px`}
                 className={card.preview.imageClassName}
                 overlayClassName="bg-white/18"
               />
@@ -84,9 +90,9 @@ export function PortfolioCaseCollection({
                   src={card.preview.overlaySrc}
                   alt=""
                   aria-hidden="true"
-                  width={Math.max(card.width, 320)}
+                  width={Math.max(cardWidth, 320)}
                   height={224}
-                  sizes={`${Math.max(card.width, 320)}px`}
+                  sizes={`${Math.max(cardWidth, 320)}px`}
                   className={
                     card.preview.overlayImageClassName ??
                     'absolute inset-0 h-full w-full max-w-none object-cover'
@@ -139,7 +145,7 @@ export function PortfolioCaseCollection({
         className={clsx('overflow-visible', className)}
         style={{ width: '100%', maxWidth: `${CASE_COLLECTION_SECTION_WIDTH}px` }}
       >
-        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {cardsRow}
         </div>
       </div>
@@ -152,7 +158,7 @@ export function PortfolioCaseCollection({
       style={{ width: '100%', maxWidth: `${contract.sectionWidth}px` }}
     >
       <div
-        className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={contract.viewportStyle}
       >
         <div className="pr-4">

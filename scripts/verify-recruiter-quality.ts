@@ -52,6 +52,34 @@ function assertNotContains(label: string, text: string, parts: string[]) {
 async function main() {
   const base = await getOrCreateSession(`verify-recruiter-quality-${Date.now()}`);
 
+  const fastReview = await resolveMessage(base, 'Быстро оценить Андрея по кейсам');
+  const fastReviewText = extractText(fastReview.envelope);
+  assert.equal(fastReview.envelope.viewType, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.presentationVariant, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.meta.responseSource, 'authored');
+  assert.equal(fastReview.envelope.meta.answerType, 'candidate_fast_review');
+  assert.equal(fastReview.envelope.meta.questionSubject, 'candidate_fast_review');
+  assertContainsAll('Candidate fast review', fastReviewText, [
+    'кто такой андрей',
+    'альфа-смарт',
+    'siebel',
+    'chatpoint',
+    'если вы нанимающий лид',
+  ]);
+
+  const compactIdentity = await resolveMessage(
+    fastReview.session,
+    'Расскажи коротко про Андрея',
+  );
+  const compactIdentityText = extractText(compactIdentity.envelope);
+  assert.equal(compactIdentity.envelope.viewType, 'candidate_fast_review_repeat');
+  assert.equal(compactIdentity.envelope.contentBlocks.length, 1);
+  assert.equal(compactIdentity.envelope.contentBlocks[0]?.type, 'lead');
+  assertContainsAll('Repeated compact identity', compactIdentityText, [
+    'уже отвечала',
+    'краткая оценка андрея',
+  ]);
+
   const chatpoint = await resolveMessage(base, 'Расскажи про ChatPoint');
   const chatpointText = extractText(chatpoint.envelope);
   assert.equal(chatpoint.envelope.viewType, 'general_synthesis');
@@ -104,6 +132,19 @@ async function main() {
   assertContainsAll('Experience summary', experienceText, ['mts', 'альфа', 'positive']);
   assertNotContains('Experience summary', experienceText, ['ориентир']);
 
+  const webExperience = await resolveMessage(base, 'Что делал в web?');
+  const webExperienceText = extractText(webExperience.envelope);
+  assert.equal(webExperience.envelope.viewType, 'general_synthesis');
+  assert.equal(webExperience.envelope.meta.answerType, 'experience_overview');
+  assertContainsAll('Web experience', webExperienceText, ['siebel', 'chatpoint', 'positive']);
+
+  const designerMotivation = await resolveMessage(base, 'Нравится ли Андрею работа дизайнером?');
+  const designerMotivationText = extractText(designerMotivation.envelope);
+  assert.equal(designerMotivation.envelope.viewType, 'general_synthesis');
+  assert.equal(designerMotivation.envelope.meta.questionSubject, 'candidate_motivation');
+  assert.match(designerMotivationText, /^Да\./, 'Designer motivation: should start with a direct yes');
+  assertContainsAll('Designer motivation', designerMotivationText, ['кейсы', 'доказательства']);
+
   const compression = await resolveMessage(
     base,
     'Сожми весь опыт в один ответ: кратко расскажи про Андрея, а потом по каждому кейсу дай по паре строк — что это за кейс, что он там делал и где лежат доказательства',
@@ -113,10 +154,9 @@ async function main() {
   assert.equal(compression.envelope.meta.answerType, 'portfolio_compression');
   assertContainsAll('Portfolio compression', compressionText, [
     'если сжать опыт андрея',
-    'альфа-смарт',
-    'siebel',
-    'chatpoint',
-    'подтверждение',
+    'финтех',
+    'b2b',
+    'запуск',
   ]);
   assertNotContains('Portfolio compression', compressionText, [
     'если сжать опыт в одну мысль: если сжать',
@@ -265,6 +305,42 @@ async function main() {
     'флагман',
     'proof',
   ]);
+
+  const chatpointMistake = await resolveMessage(base, 'Какую ошибку совершил Андрей на ChatPoint?');
+  const chatpointMistakeText = extractText(chatpointMistake.envelope);
+  assert.equal(chatpointMistake.envelope.meta.answerType, 'risk_assessment');
+  assert.equal(chatpointMistake.envelope.meta.questionSubject, 'risk_check');
+  assert.equal(chatpointMistake.envelope.meta.queryScope, 'named_case');
+  assertContainsAll('ChatPoint mistake', chatpointMistakeText, ['chatpoint', 'owner', 'функционал', 'ценност']);
+
+  const deadlineReliability = await resolveMessage(base, 'Срывал ли Андрей сроки?');
+  const deadlineReliabilityText = extractText(deadlineReliability.envelope);
+  assert.equal(deadlineReliability.envelope.viewType, 'general_synthesis');
+  assert.equal(deadlineReliability.envelope.meta.answerType, 'calibrated_unknown');
+  assert.equal(deadlineReliability.envelope.meta.questionSubject, 'behavioral_evidence_check');
+  assert.equal(deadlineReliability.envelope.meta.queryScope, 'global_person');
+  assertContainsAll('Deadline reliability', deadlineReliabilityText, ['нет данных', 'срок', 'интервью']);
+  assertNotContains('Deadline reliability', deadlineReliabilityText, ['да, срывал', 'нет, не срывал']);
+
+  const executionReliability = await resolveMessage(base, 'Он доводит задачи до конца?');
+  const executionReliabilityText = extractText(executionReliability.envelope);
+  assert.equal(executionReliability.envelope.meta.answerType, 'calibrated_unknown');
+  assertContainsAll('Execution reliability', executionReliabilityText, ['реализац', 'не подтверждает', 'интервью']);
+
+  const compensation = await resolveMessage(base, 'Какие у него зарплатные ожидания?');
+  const compensationText = extractText(compensation.envelope);
+  assert.equal(compensation.envelope.safetyState, 'salary_or_private_data');
+  assertContainsAll('Compensation safety', compensationText, ['ожидани', 'напрямую']);
+  assert.ok(
+    compensation.envelope.chips.some((chip) => chip.label === 'Написать Андрею'),
+    'Compensation safety must expose contact CTA.',
+  );
+
+  const productIncome = await resolveMessage(base, 'Какой доход принес Альфа-Смарт?');
+  const productIncomeText = extractText(productIncome.envelope);
+  assert.notEqual(productIncome.envelope.safetyState, 'salary_or_private_data');
+  assert.equal(productIncome.envelope.meta.answerType, 'outcome_summary');
+  assertContainsAll('Product income', productIncomeText, ['1,1 млн', 'доход']);
 
   console.log('Recruiter quality contract passed.');
 }

@@ -8,7 +8,8 @@ import { PortfolioPreviewSurface } from './portfolio-preview-surface';
 import { PortfolioFadeInImage } from './portfolio-fade-in-image';
 import { PortfolioMetricRow } from './portfolio-metric-row';
 
-export const PORTFOLIO_CONTEXT_PANEL_BASE_CLASS = 'h-full overflow-hidden bg-white';
+export const PORTFOLIO_CONTEXT_PANEL_BASE_CLASS =
+  'h-full overflow-y-auto overflow-x-hidden bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
 function getCasePreview(caseId: string | null) {
   if (!caseId) {

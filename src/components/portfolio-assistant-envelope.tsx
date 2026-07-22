@@ -8,6 +8,7 @@ import type {
   UIAction,
 } from '@/lib/portfolio/types';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
+import { PortfolioAssistantCandidateFastReview } from './portfolio-assistant-candidate-fast-review';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
 import { PortfolioAssistantLoadingRow } from './portfolio-assistant-loading-row';
 import { PortfolioAssistantSectionedReply } from './portfolio-assistant-sectioned-reply';
@@ -23,6 +24,7 @@ export function PortfolioAssistantEnvelopeView({
   canRetryError = false,
   onRetryError,
   renderMode = 'instant',
+  showChips = true,
 }: {
   envelope: AssistantEnvelope;
   expandedDisclosureIds: string[];
@@ -33,9 +35,22 @@ export function PortfolioAssistantEnvelopeView({
   canRetryError?: boolean;
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 }) {
   if (envelope.presentationVariant === 'loading_row') {
     return <PortfolioAssistantLoadingRow />;
+  }
+
+  if (envelope.presentationVariant === 'candidate_fast_review') {
+    return (
+      <PortfolioAssistantCandidateFastReview
+        expandedDisclosureIds={expandedDisclosureIds}
+        onToggleDisclosure={onToggleDisclosure}
+        onCta={onCta}
+        onOpenArtifact={onOpenArtifact}
+        renderMode={renderMode}
+      />
+    );
   }
 
   const isStructuredSummary =
@@ -54,6 +69,7 @@ export function PortfolioAssistantEnvelopeView({
         canRetryError={canRetryError}
         onRetryError={onRetryError}
         renderMode={renderMode}
+        showChips={showChips}
       />
     );
   }
@@ -69,6 +85,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'experience_summary':
@@ -81,6 +98,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'sectioned_reply':
@@ -93,6 +111,7 @@ export function PortfolioAssistantEnvelopeView({
           onCta={onCta}
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
     case 'refusal_reply':
@@ -105,6 +124,7 @@ export function PortfolioAssistantEnvelopeView({
           canRetryError={canRetryError}
           onRetryError={onRetryError}
           renderMode={renderMode}
+          showChips={showChips}
         />
       );
   }

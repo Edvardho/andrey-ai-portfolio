@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
+import { portfolioSelectedSurface, portfolioSoftSurfaceBorder } from './portfolio-interaction-styles';
 
 type RailThumbConfig = {
   src: string;
@@ -80,9 +81,7 @@ export function PortfolioProjectRailItem({
     <div
       className={clsx(
         'relative flex h-[90px] w-[280px] items-center gap-3 overflow-hidden rounded-[18px] border px-4 py-4 text-left transition-colors duration-150',
-        selected
-          ? 'border-[#E5E7F1] bg-[#F2F4FF]'
-          : 'border-[#E8EAF2] bg-white hover:bg-[#FAFBFF]',
+        selected ? portfolioSelectedSurface : portfolioSoftSurfaceBorder,
       )}
     >
       <div

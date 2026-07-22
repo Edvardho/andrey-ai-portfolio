@@ -1,4 +1,6 @@
 import type { RefObject } from 'react';
+import { ArrowUp } from 'lucide-react';
+import { portfolioFocusRing } from './portfolio-interaction-styles';
 
 export function PortfolioComposer({
   input,
@@ -15,12 +17,15 @@ export function PortfolioComposer({
   placeholder?: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
 }) {
+  const hasInput = input.trim().length > 0;
+  const isSubmitDisabled = disabled || !hasInput;
+
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== 'Enter' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
       return;
     }
 
-    if (event.nativeEvent.isComposing || disabled) {
+    if (event.nativeEvent.isComposing || isSubmitDisabled) {
       return;
     }
 
@@ -48,13 +53,18 @@ export function PortfolioComposer({
 
       <button
         type="submit"
-        disabled={disabled}
-        className="absolute bottom-[10px] right-[10px] flex size-[42px] shrink-0 cursor-pointer items-center justify-center rounded-[999px] bg-[#000000] transition-colors duration-150 hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-[#000000]"
+        disabled={isSubmitDisabled}
+        className={[
+          'absolute bottom-[10px] right-[10px] flex size-[42px] shrink-0 items-center justify-center rounded-[999px] text-white transition-colors duration-150',
+          portfolioFocusRing,
+          isSubmitDisabled
+            ? 'cursor-not-allowed bg-[#A6A6A6]'
+            : 'cursor-pointer bg-[#1A1C22] hover:bg-[#242832]',
+        ].join(' ')}
         aria-label="Отправить"
       >
-        <span className="relative block size-[18.667px]">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/entry/icon-send.svg" alt="" className="absolute inset-0 block size-full max-w-none" />
+        <span className="flex size-[20px] items-center justify-center">
+          <ArrowUp className="size-[20px] text-white" strokeWidth={2.2} />
         </span>
       </button>
     </form>

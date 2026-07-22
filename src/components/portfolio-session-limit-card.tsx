@@ -1,3 +1,5 @@
+import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
+
 function MessageIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -70,7 +72,11 @@ export function PortfolioSessionLimitCard({
           <button
             type="button"
             onClick={onContactClick}
-            className="mt-2 h-8 cursor-pointer rounded-full bg-[#1A1C22] px-3 text-[13px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'mt-2 h-8 cursor-pointer rounded-full border px-3 text-[13px] font-medium leading-5 transition-colors duration-150',
+              portfolioPrimaryAction,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             Написать Андрею
           </button>

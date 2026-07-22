@@ -23,7 +23,6 @@ export interface PreCallPayload {
   schemaChars: number;
   totalPayloadChars: number;
   estimatedInputChars: number;
-  userMessagePreview?: string;
   retrievedChunksCount?: number;
   messagesCount: number;
 }
@@ -58,6 +57,28 @@ function ensureLogDirExists() {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
+}
+
+function getSafeErrorCategory(error: unknown): string {
+  const message = String(error).toLowerCase();
+
+  if (/rate.?limit|too many requests|429/.test(message)) return 'rate_limit';
+  if (/timeout|timed out|deadline/.test(message)) return 'timeout';
+  if (/unauthori[sz]ed|forbidden|api key|401|403/.test(message)) return 'authentication';
+  if (/network|fetch failed|econn|enotfound/.test(message)) return 'network';
+
+  return 'request_failed';
+}
+
+export function redactProductionTelemetry(entry: OpenAILogEntry): OpenAILogEntry {
+  const { error, ...safeEntry } = entry;
+
+  return error === undefined
+    ? safeEntry
+    : {
+        ...safeEntry,
+        errorCategory: getSafeErrorCategory(error),
+      };
 }
 
 /**
@@ -153,9 +174,9 @@ export function logOpenAICallEnd(callId: string, metrics: PostCallMetrics): void
 function writeLog(entry: OpenAILogEntry) {
   const logString = JSON.stringify(entry);
 
-  // В prod-окружении (или Vercel) всегда пишем в console.log
+  // В production оставляем только технические метаданные без текста вопроса и raw ошибок.
   if (!isLocalDev) {
-    console.log(`[OPENAI_TELEMETRY] ${logString}`);
+    console.log(`[OPENAI_TELEMETRY] ${JSON.stringify(redactProductionTelemetry(entry))}`);
     return;
   }
 

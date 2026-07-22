@@ -24,6 +24,7 @@ type Props = {
   onCta: (action: UIAction) => void;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 };
 
 export function PortfolioAssistantExperienceSummary({
@@ -34,6 +35,7 @@ export function PortfolioAssistantExperienceSummary({
   onCta,
   onOpenArtifact,
   renderMode = 'instant',
+  showChips = true,
 }: Props) {
   const reveal = renderMode === 'reveal';
 
@@ -44,6 +46,7 @@ export function PortfolioAssistantExperienceSummary({
         onChipClick={onChipClick}
         onCta={onCta}
         renderMode={renderMode}
+        showChips={showChips}
       />
     );
   }
@@ -68,12 +71,13 @@ export function PortfolioAssistantExperienceSummary({
               onChipClick,
               onCta,
               onOpenArtifact,
+              showChips,
             })}
           </motion.div>,
         )}
       </div>
 
-      {envelope.chips.length ? (
+      {showChips && envelope.chips.length ? (
         <div className="mt-6 flex flex-wrap gap-3">
           {envelope.chips.map((chip) => (
             <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />

@@ -1,15 +1,15 @@
 import { getCaseFactPack } from '@/data/portfolio-case-facts';
+import { candidateFastReview } from '@/data/portfolio-candidate-review';
 import { getSynthesisTopicConfig } from '@/data/portfolio-facts';
 import {
   getCaseById,
   getContactContent,
-  getEntryPrompts,
   getExperienceRoute,
   getHiringGuide,
   getRailItems,
   portfolioContent,
 } from '@/data/portfolio-content.server';
-import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getAIMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {
   AnswerType,
@@ -171,6 +171,7 @@ function createEnvelope({
       answerType,
       queryScope,
       questionSubject,
+      aiMode: getAIMode(),
     },
   };
 }
@@ -190,8 +191,6 @@ function getReplyStateForSynthesis(status: SynthesisSnapshot['answerStatus']): A
 }
 
 export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope {
-  const chips = getEntryPrompts();
-
   return createEnvelope({
     session,
     viewType: 'entry',
@@ -204,9 +203,135 @@ export function buildEntryEnvelope(session: AssistantSession): AssistantEnvelope
         body: [portfolioContent.entry.subtitle],
       },
     ],
-    chips,
     contextPanel: portfolioContent.entry.contextPanel,
-    nextActions: getPromptChipActions(chips),
+  });
+}
+
+export function buildCandidateFastReviewEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contentBlocks: ContentBlock[] = [
+    {
+      type: 'lead',
+      title: candidateFastReview.intro.title,
+      body: candidateFastReview.intro.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.projectScope.title,
+      body: candidateFastReview.projectScope.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.watchOrder.title,
+      body: candidateFastReview.watchOrder.body,
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.disclosureTitle,
+      body: candidateFastReview.disclosures.map((item) => `${item.label}. ${item.body}`),
+    },
+    {
+      type: 'section',
+      title: candidateFastReview.hiringLeadNote.title,
+      body: candidateFastReview.hiringLeadNote.body,
+    },
+  ];
+
+  return createEnvelope({
+    session,
+    viewType: 'candidate_fast_review',
+    presentationVariant: 'candidate_fast_review',
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    nextActions: [candidateFastReview.footerAction.action],
+    responseSource: 'authored',
+    assistantReplyState: 'grounded_answer',
+    answerType: 'candidate_fast_review',
+    queryScope: 'portfolio_wide',
+    questionSubject: 'candidate_fast_review',
+  });
+}
+
+export function buildRepeatedCandidateFastReviewEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contextPanel =
+    session.selectedContext.kind === 'case'
+      ? getCaseById(session.selectedContext.id)?.contextPanel ?? portfolioContent.entry.contextPanel
+      : session.selectedContext.kind === 'experience'
+        ? portfolioContent.experience.contextPanel
+        : portfolioContent.entry.contextPanel;
+
+  return createEnvelope({
+    session,
+    viewType: 'candidate_fast_review_repeat',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: [
+          'Я уже отвечала на этот вопрос выше — там краткая оценка Андрея по кейсам.',
+          'Если хотите копнуть глубже, задавайте вопросы.',
+        ],
+      },
+    ],
+    chips: [],
+    contextPanel,
+    responseSource: 'authored',
+    assistantReplyState: 'navigation_suggestion',
+    answerType: 'candidate_fast_review',
+    queryScope: 'portfolio_wide',
+    questionSubject: 'candidate_fast_review',
+  });
+}
+
+export function buildGratitudeEnvelope(session: AssistantSession): AssistantEnvelope {
+  const contextPanel =
+    session.selectedContext.kind === 'case'
+      ? getCaseById(session.selectedContext.id)?.contextPanel ?? portfolioContent.entry.contextPanel
+      : session.selectedContext.kind === 'experience'
+        ? portfolioContent.experience.contextPanel
+        : portfolioContent.entry.contextPanel;
+
+  return createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: ['Пожалуйста. Если захотите, могу помочь разобрать любой кейс подробнее.'],
+      },
+    ],
+    chips: [],
+    contextPanel,
+    responseSource: 'authored',
+    assistantReplyState: 'grounded_answer',
+  });
+}
+
+export function buildCaseContextRequiredEnvelope(session: AssistantSession): AssistantEnvelope {
+  return createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    presentationVariant: 'plain_text_reply',
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: ['Откройте конкретный кейс, и я кратко опишу задачу, вклад Андрея и результат по подтверждённым материалам.'],
+      },
+    ],
+    chips: [],
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: session.selectedContext.kind === 'none',
+    },
+    responseSource: 'authored',
+    assistantReplyState: 'insufficient_facts',
   });
 }
 
@@ -457,6 +582,38 @@ export function buildAssistantIntroEnvelope(session: AssistantSession): Assistan
   return buildHiringGuideEnvelope(session, 'assistantProfile');
 }
 
+export function buildAssistantTrustEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips: PromptChip[] = [
+    { id: 'trust-proof', label: 'Где доказательства?', message: 'Где доказательства его опыта?' },
+    { id: 'trust-weak-case', label: 'Проверь слабый кейс', message: 'Был ли слабый кейс?' },
+    { id: 'trust-contribution', label: 'Что он сделал сам?', message: 'Что Андрей сделал сам в Альфа-Смарте, а не команда?' },
+  ];
+
+  return createEnvelope({
+    session,
+    viewType: 'assistant_intro',
+    presentationVariant: 'plain_text_reply',
+    selectedContext: session.selectedContext,
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: 'Честно? Частично ты прав.',
+        body: [
+          'Я не свободный чат-бот обо всем и не притворяюсь человеком. Я специально ограничен портфолио Андрея: беру вопрос, сопоставляю его с кейсами и отвечаю только по подтвержденным фактам.',
+          'Это сделано не чтобы “зашаблонить” ответ, а чтобы не выдумывать опыт и не подстраиваться под лида. Проверять меня лучше неудобными вопросами: что Андрей сделал сам, где есть метрики, какой кейс слабый и где продукт не сработал.',
+        ],
+      },
+    ],
+    chips,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    nextActions: getPromptChipActions(chips),
+    assistantReplyState: 'authored_reply',
+  });
+}
+
 export function buildCareerSummaryEnvelope(session: AssistantSession): AssistantEnvelope {
   return buildHiringGuideEnvelope(session, 'careerSummary', {
     assistantReplyState: 'navigation_suggestion',
@@ -580,7 +737,7 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
     contextPanel: {
       title: 'Контакт',
       subtitle: 'Next step',
-      tags: ['Telegram', 'LinkedIn', 'e-mail'],
+      tags: ['Telegram', 'LinkedIn'],
       note: 'Это осознанное ограничение MVP: ассистент не превращается в бесконечный чат и быстро выводит на живой контакт.',
       cta: { label: 'Открыть контакты', action: { type: 'open_contact_modal', source: 'limit' } },
     },
@@ -591,10 +748,10 @@ export function buildLimitEnvelope(session: AssistantSession): AssistantEnvelope
 
 export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'ambiguous-identity', label: 'Расскажи про Андрея', message: 'Расскажи про Андрея' },
-    { id: 'ambiguous-exp', label: 'Какой у него опыт работы', message: 'Какой у него опыт работы' },
-    { id: 'ambiguous-mobile', label: 'Что делал в мобилке', message: 'Что делал в мобилке?' },
-    { id: 'ambiguous-web', label: 'Что делал в web', message: 'Что делал в web?' },
+    { id: 'ambiguous-interview', label: 'Почему его стоит звать?', message: 'Почему его стоит звать на интервью?' },
+    { id: 'ambiguous-proof', label: 'Где доказательства?', message: 'Если я не верю словам, на что смотреть в кейсах?' },
+    { id: 'ambiguous-contribution', label: 'Что он сделал сам?', message: 'Что Андрей сделал сам, а не команда?' },
+    { id: 'ambiguous-risk', label: 'Где слабое место?', message: 'Где у него слабое место?' },
   ];
 
   return createEnvelope({
@@ -607,9 +764,9 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Прости, но я не знаю ответа на этот вопрос.',
+        title: 'Не понял, что именно нужно проверить',
         body: [
-          'Я могу быстро представить Андрея, показать его опыт, сильный кейс, ограничения или доказательства.',
+          'Сформулируйте вопрос про опыт, конкретный кейс, личный вклад, доказательства или риски — отвечу по подтвержденным фактам.',
         ],
       },
     ],
@@ -645,8 +802,8 @@ export function buildNoMatchingEnvelope(
         type: 'lead',
         title: requestedCase ? `Кейса «${requestedCase}» в портфолио нет` : 'В базе нет такого кейса',
         body: [
-          'Ассистент не выдумывает кейсы и не притворяется, что знает больше, чем реально есть в портфолио.',
-          'Лучше перейти к одному из подтвержденных кейсов или к общему опыту работы.',
+          'Я не буду притворяться, что в портфолио есть этот проект. Проверять Андрея лучше по тем кейсам, где есть материалы: Альфа-Смарт, SIEBEL, ChatPoint и мобильные сценарии.',
+          'Можно открыть подтвержденный кейс или перейти к общему опыту работы.',
         ],
       },
     ],
@@ -662,10 +819,10 @@ export function buildNoMatchingEnvelope(
 
 export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEnvelope {
   const chips: PromptChip[] = [
-    { id: 'unsupported-assistant', label: 'Кто ты такой?', message: 'Кто ты такой?' },
     { id: 'unsupported-identity', label: 'Кто такой Андрей?', message: 'Кто такой Андрей?' },
-    { id: 'unsupported-exp', label: 'Какой опыт работы?', message: 'Какой опыт работы?' },
-    { id: 'unsupported-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },
+    { id: 'unsupported-proof', label: 'Где доказательства?', message: 'Если я не верю словам, на что смотреть в кейсах?' },
+    { id: 'unsupported-risk', label: 'Где слабое место?', message: 'Где у него слабое место?' },
+    { id: 'unsupported-interview', label: 'Почему его стоит звать?', message: 'Почему его стоит звать на интервью?' },
   ];
 
   return createEnvelope({
@@ -678,10 +835,10 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
     contentBlocks: [
       {
         type: 'lead',
-        title: 'Этот вопрос вне границ ассистента',
+        title: 'По этому вопросу в портфолио нет подтвержденных фактов',
         body: [
-          'Я тут не для того, чтобы развлекать тебя случайными байками. За этим лучше к КВН, Comedy Club или в любую соцсеть, где алгоритм уже потерял надежду.',
-          'Моя зона уже: быстро оценить Андрея по опыту, кейсам, сильным сторонам, ограничениям и доказательствам.',
+          'Я не буду отвечать уверенно там, где материалы Андрея ничего не подтверждают.',
+          'Могу помочь с тем, что влияет на оценку кандидата: опыт, кейсы, личный вклад, доказательства, метрики, слабые места и релевантность для интервью.',
         ],
       },
     ],

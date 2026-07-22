@@ -11,6 +11,7 @@ function read(path: string) {
 const envelope = read('src/components/portfolio-assistant-envelope.tsx');
 const synthesis = read('src/components/portfolio-assistant-synthesis-reply.tsx');
 const assistantComponents = [
+  'src/components/portfolio-assistant-candidate-fast-review.tsx',
   'src/components/portfolio-assistant-case-summary.tsx',
   'src/components/portfolio-assistant-experience-summary.tsx',
   'src/components/portfolio-assistant-sectioned-reply.tsx',
@@ -38,6 +39,10 @@ assert(
   envelope.includes('if (!isStructuredSummary && !isEntitySectionedReply)'),
   'Conversational replies must be routed to the synthesis renderer before variant switch.',
 );
+assert(
+  envelope.includes("envelope.presentationVariant === 'candidate_fast_review'"),
+  'Candidate fast review must have an explicit structured renderer before synthesis fallback.',
+);
 
 assert(
   !synthesis.includes('<motion.h2') && !synthesis.includes('</motion.h2>'),
@@ -52,8 +57,8 @@ assert(
   'Conversational chips/CTA containers must not render divider borders.',
 );
 assert(
-  synthesis.includes('text-[17px] font-normal leading-6'),
-  'Conversational paragraph styles must use 17px / 24px.',
+  synthesis.includes('text-[16px] font-normal leading-6'),
+  'Conversational paragraph styles must use 16px / 24px.',
 );
 
 for (const { path, source } of assistantComponents) {

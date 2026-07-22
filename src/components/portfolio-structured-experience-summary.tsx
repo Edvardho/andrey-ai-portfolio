@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Copy } from 'lucide-react';
 
 import { getSummaryRevealTiming } from '@/lib/portfolio/response-animation-policy';
 import type {
@@ -13,6 +12,7 @@ import type {
 
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
+import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { PortfolioStructuredIntroPreview } from './portfolio-structured-intro-preview';
 
@@ -23,6 +23,7 @@ type Props = {
   onChipClick: (chip: PromptChip) => void;
   onCta: (action: UIAction) => void;
   renderMode?: AssistantRenderMode;
+  showChips?: boolean;
 };
 
 function Section({ title, body }: { title: string; body: string }) {
@@ -48,6 +49,7 @@ export function PortfolioStructuredExperienceSummary({
   onChipClick,
   onCta,
   renderMode = 'instant',
+  showChips = true,
 }: Props) {
   const summary = experience.structuredSummary;
   const reveal = renderMode === 'reveal';
@@ -153,28 +155,28 @@ export function PortfolioStructuredExperienceSummary({
           </div>
         </motion.section>
 
-        <motion.section className="w-full max-w-[932px] space-y-[10px]" {...getRevealProps(5)}>
-          <h4 className="text-[16px] font-semibold leading-[22px] text-[#202129]">
-            {summary.casePromptSection.title}
-          </h4>
-          <div className="flex flex-wrap gap-3">
-            {summary.casePromptSection.chips.map((chip) => (
-              <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
-            ))}
-          </div>
-        </motion.section>
+        {showChips ? (
+          <motion.section className="w-full max-w-[932px] space-y-[10px]" {...getRevealProps(5)}>
+            <h4 className="text-[16px] font-semibold leading-[22px] text-[#202129]">
+              {summary.casePromptSection.title}
+            </h4>
+            <div className="flex flex-wrap gap-3">
+              {summary.casePromptSection.chips.map((chip) => (
+                <PortfolioPromptChip key={chip.id} chip={chip} onClick={onChipClick} emphasis />
+              ))}
+            </div>
+          </motion.section>
+        ) : null}
 
-        <motion.div className="flex items-start gap-3" {...getRevealProps(6)}>
-          <div
-            aria-hidden="true"
-            className="flex size-8 shrink-0 items-center justify-center rounded-full border border-[#ECECF1] bg-white text-[#6B7182]"
-          >
-            <Copy className="size-4" strokeWidth={1.8} />
-          </div>
+        <motion.div className="flex items-start" {...getRevealProps(6)}>
           <button
             type="button"
             onClick={() => onCta(summary.footerAction.action)}
-            className="flex h-8 cursor-pointer items-center rounded-full bg-[#1A1C22] px-[14px] text-[14px] font-medium leading-5 text-white transition hover:bg-[#4D4D4D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+            className={[
+              'flex h-8 cursor-pointer items-center rounded-full border px-[14px] text-[14px] font-medium leading-5 transition-colors duration-150',
+              portfolioPrimaryAction,
+              portfolioFocusRing,
+            ].join(' ')}
           >
             {summary.footerAction.label}
           </button>

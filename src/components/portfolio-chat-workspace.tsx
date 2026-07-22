@@ -17,7 +17,7 @@ import {
   getContextPanelRevealDelayMs,
   shouldDelayContextPanelReveal,
 } from '@/lib/portfolio/response-animation-policy';
-import type { ThreadItem, ContextId, PortfolioThreadViewHandle } from './portfolio-thread-view';
+import type { ThreadItem, ContextId, PortfolioThreadViewHandle, ReplyFocusRequest } from './portfolio-thread-view';
 import type { ThreadScrollState } from '@/lib/portfolio/response-scroll-policy';
 import { PortfolioRailSidebar } from './portfolio-rail-sidebar';
 import { PortfolioThreadView } from './portfolio-thread-view';
@@ -27,6 +27,7 @@ import {
   PortfolioContextPanelSkeleton,
 } from './portfolio-case-workspace-skeleton';
 import { PortfolioComposer } from './portfolio-composer';
+import { portfolioFocusRing, portfolioSoftSurfaceBorder } from './portfolio-interaction-styles';
 import { COMPOSER_DOCK_SPRING, STAGE_FADE, WORKSPACE_EASE } from './portfolio-motion';
 
 interface ContextThread {
@@ -51,6 +52,8 @@ export function PortfolioChatWorkspace({
   selectedRailId,
   showAssistantReturn,
   assistantReturnSelected,
+  assistantReturnLabel,
+  railTitle,
   messagesRemaining,
   onRailClick,
   onAssistantReturnClick,
@@ -77,14 +80,18 @@ export function PortfolioChatWorkspace({
   textareaRef,
   threadViewRef,
   contextPanelPayload,
-  composerLayoutId,
   startTransitionSource,
   caseBootstrapping,
+  replyFocusRequest,
+  onReplyFocusCancelled,
+  onReplyFocusHandled,
 }: {
   railItems: RailItem[];
   selectedRailId: string | null;
   showAssistantReturn: boolean;
   assistantReturnSelected: boolean;
+  assistantReturnLabel?: string;
+  railTitle?: string;
   messagesRemaining: number;
   onRailClick: (item: RailItem) => void;
   onAssistantReturnClick: () => void;
@@ -115,9 +122,11 @@ export function PortfolioChatWorkspace({
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   threadViewRef: RefObject<PortfolioThreadViewHandle | null>;
   contextPanelPayload: ContextPanelPayload | null;
-  composerLayoutId: string;
   startTransitionSource: 'submit' | 'chip' | 'case' | null;
   caseBootstrapping: boolean;
+  replyFocusRequest: ReplyFocusRequest | null;
+  onReplyFocusCancelled: (id: number) => void;
+  onReplyFocusHandled: (id: number) => void;
 }) {
   const animateStageEntry = Boolean(startTransitionSource);
   const showContextPanel = caseBootstrapping || Boolean(contextPanelPayload && !contextPanelPayload.contextPanel.hidden);
@@ -181,6 +190,8 @@ export function PortfolioChatWorkspace({
             selectedRailId={selectedRailId}
             showAssistantReturn={showAssistantReturn}
             assistantReturnSelected={assistantReturnSelected}
+            assistantReturnLabel={assistantReturnLabel}
+            railTitle={railTitle}
             messagesRemaining={messagesRemaining}
             onRailClick={onRailClick}
             onAssistantReturnClick={onAssistantReturnClick}
@@ -197,11 +208,15 @@ export function PortfolioChatWorkspace({
           transition={{ duration: 0.56, ease: WORKSPACE_EASE }}
         >
           {showContextPanel && !caseBootstrapping ? (
-            <div className="portfolio-narrow-context-trigger justify-end px-6 pt-5">
+            <div className="portfolio-narrow-context-trigger justify-end pl-6 pt-5">
               <button
                 type="button"
                 onClick={() => setContextDrawerContextId(currentThread.contextId)}
-                className="flex h-9 cursor-pointer items-center rounded-full border border-[#EBEDF2] bg-white px-4 text-[14px] font-medium leading-5 text-[#202129] shadow-[0px_6px_14px_rgba(17,19,26,0.06)] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+                className={[
+                  'flex h-9 cursor-pointer items-center rounded-full border px-4 text-[14px] font-medium leading-5 text-[#202129] shadow-[0px_6px_14px_rgba(17,19,26,0.06)] transition-colors duration-150',
+                  portfolioSoftSurfaceBorder,
+                  portfolioFocusRing,
+                ].join(' ')}
               >
                 Контекст проекта
               </button>
@@ -252,6 +267,9 @@ export function PortfolioChatWorkspace({
                     onOpenArtifact={onOpenArtifact}
                     onMarkAnimatedItems={onMarkAnimatedItems}
                     onScrollStateChange={onThreadScrollStateChange}
+                    replyFocusRequest={replyFocusRequest}
+                    onReplyFocusCancelled={onReplyFocusCancelled}
+                    onReplyFocusHandled={onReplyFocusHandled}
                     startTransitionSource={startTransitionSource}
                   />
                 </motion.div>
@@ -267,7 +285,6 @@ export function PortfolioChatWorkspace({
               className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-b from-white/0 to-white"
             />
             <motion.div
-              layoutId={composerLayoutId}
               className="relative z-[1] w-full"
               transition={COMPOSER_DOCK_SPRING}
             >
@@ -330,17 +347,11 @@ export function PortfolioChatWorkspace({
       </div>
 
       {showContextPanel && contextPanelPayload && isContextDrawerOpen ? (
-        <div className="portfolio-context-drawer-layer absolute inset-0 z-30">
-          <button
-            type="button"
-            aria-label="Закрыть контекст проекта"
-            className="absolute inset-0 cursor-default bg-[#202129]/10"
-            onClick={() => setContextDrawerContextId(null)}
-          />
+        <div className="portfolio-context-drawer-layer pointer-events-none fixed inset-x-0 bottom-0 top-[84px] z-30">
           <motion.aside
             role="dialog"
             aria-label="Контекст проекта"
-            className="absolute bottom-6 right-0 top-6 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
+            className="pointer-events-auto absolute inset-y-0 right-0 w-[304px] overflow-y-auto bg-white shadow-[0px_18px_48px_rgba(17,19,26,0.14)]"
             initial={{ opacity: 0, x: 28 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 28 }}
@@ -350,7 +361,11 @@ export function PortfolioChatWorkspace({
               type="button"
               aria-label="Закрыть контекст проекта"
               onClick={() => setContextDrawerContextId(null)}
-              className="absolute right-0 top-0 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full bg-white text-[#202129] transition hover:bg-[#F2F4FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2"
+              className={[
+                'absolute right-6 top-4 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full border text-[#202129] transition-colors duration-150',
+                portfolioSoftSurfaceBorder,
+                portfolioFocusRing,
+              ].join(' ')}
             >
               <X className="size-4" strokeWidth={1.8} />
             </button>

@@ -52,6 +52,7 @@ async function assertIntent(input: string, expectedIntent: string) {
     lastUserQuestion: null,
     lastAssistantAnswerPreview: null,
     lastQuestionSubject: null,
+    hasSeenCandidateFastReview: false,
     recentHistory: [],
     createdAt: now,
     updatedAt: now,
@@ -74,11 +75,18 @@ async function assertIntent(input: string, expectedIntent: string) {
   );
 }
 
+function envelopeText(envelope: { contentBlocks: unknown[] }): string {
+  return JSON.stringify(envelope.contentBlocks);
+}
+
 async function main() {
   await assertIntent('Покажи опыт работы', 'experience_overview');
   await assertIntent('Покажи сильный кейс', 'case_discovery');
   await assertIntent('Расскажи про ChatPoint', 'case_discovery');
   await assertIntent('Что делал в мобилке?', 'mobile_overview');
+  await assertIntent('Не верю! Я думаю, что ты не ИИ, а хитро зашаблонированный роутер', 'assistant_intro');
+  await assertIntent('Если убрать красивые экраны, что останется?', 'strengths_assessment');
+  await assertIntent('Андрей хороший дизайнер, как ты думаешь?', 'strengths_assessment');
   await assertIntent('Открой опыт работы', 'navigation_action');
   await assertIntent('Перейди к ChatPoint', 'navigation_action');
 
@@ -102,10 +110,31 @@ async function main() {
 
   const baseSession = await getOrCreateSession(`verify-intent-policy-${Date.now()}`);
 
+  const { envelope: trustEnvelope } = await resolveMessage(
+    baseSession,
+    'Не верю! Я думаю, что ты не ИИ, а хитро зашаблонированный роутер',
+  );
+  const trustText = envelopeText(trustEnvelope);
+  assert.equal(trustEnvelope.viewType, 'assistant_intro', 'assistant trust challenge must render assistant intro');
+  assert.match(trustText, /Честно\? Частично ты прав|подтвержденным фактам/i);
+  assert.doesNotMatch(trustText, /Я могу быстро представить Андрея/i);
+
   assertNoHiddenNavigation('ambiguous fallback', buildAmbiguousEnvelope(baseSession).chips);
   assertNoHiddenNavigation('unsupported fallback', buildUnsupportedEnvelope(baseSession).chips);
   assertNoHiddenNavigation('no matching fallback', buildNoMatchingEnvelope(baseSession, 'Озон').chips);
   assertNoHiddenNavigation('safety fallback', getSafetyFallbackChips());
+
+  const ambiguousText = envelopeText(buildAmbiguousEnvelope(baseSession));
+  assert.doesNotMatch(ambiguousText, /Я могу быстро представить Андрея/i);
+  assert.match(ambiguousText, /проверяемым направлениям|личный вклад|доказательства/i);
+
+  const unsupportedText = envelopeText(buildUnsupportedEnvelope(baseSession));
+  assert.doesNotMatch(unsupportedText, /КВН|Comedy Club|развлекать/i);
+  assert.match(unsupportedText, /нет подтвержденных фактов|оценку кандидата/i);
+
+  const noMatchingText = envelopeText(buildNoMatchingEnvelope(baseSession, 'Озон'));
+  assert.doesNotMatch(noMatchingText, /не выдумывает кейсы/i);
+  assert.match(noMatchingText, /кейса «Озон» в портфолио нет|подтвержденный кейс/i);
 
   const { session: alfaSession } = await resolveAction(baseSession, {
     type: 'open_case_summary',
