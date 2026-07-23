@@ -8,7 +8,7 @@ Use this checklist before sharing the portfolio with external testers.
 - Confirm the public production domain opens in a private/incognito desktop window without a Vercel login.
 - Set `AI_MODE=live`.
 - Set `OPENAI_API_KEY` and the intended `OPENAI_MODEL`.
-- Set the Supabase URL and server/service-role key used by the session store.
+- Set the Supabase URL, server/service-role key, and session table used by the session store. Production does not fall back to in-memory sessions; a store outage must return a retryable 503 instead of losing the active case context.
 - Redeploy after changing environment variables.
 
 ## Automated Gate
@@ -33,6 +33,7 @@ Run this in Chrome and Safari on macOS at `1280px`, `1440px`, and `1680px` width
 - Click the header name to return to the landing page.
 - Check the composer: gray and disabled when empty; black with a white arrow after text is entered.
 - Ask: `Нравится ли Андрею работа дизайнером?`, `Какую ошибку совершил Андрей на ChatPoint?`, `Что делал в web?`, and `Что делал в мобилке?`.
+- In an opened SIEBEL case, ask both `Коротко расскажи о кейсе` and `Емко расскажи о кейсе`; both must return a SIEBEL summary.
 - Check the contact CTA and the 20-message limit.
 
 Do not share a link until every item above passes.

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { resolveBootstrap } from '@/lib/portfolio/engine';
-import { getOrCreateSession } from '@/lib/portfolio/session-store';
+import { getOrCreateSession, SessionStoreUnavailableError } from '@/lib/portfolio/session-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +29,18 @@ export async function GET(request: Request) {
           issues: error.issues,
         },
         { status: 400 },
+      );
+    }
+
+    if (error instanceof SessionStoreUnavailableError) {
+      console.error('AI portfolio bootstrap session store unavailable:', error.code);
+      return NextResponse.json(
+        {
+          error: 'Assistant session temporarily unavailable',
+          code: error.code,
+          retryable: true,
+        },
+        { status: 503 },
       );
     }
 

@@ -71,6 +71,7 @@ Optional for persistence:
 - `SUPABASE_SESSION_TABLE`
 
 Do not use a public anon key for server-side session persistence in production. The current backend writes server state and should use a server-only key.
+On Vercel Production, these variables are required: an unavailable Supabase store returns a retryable `503 SESSION_STORE_UNAVAILABLE` instead of silently falling back to in-memory sessions.
 
 ## Important security note
 

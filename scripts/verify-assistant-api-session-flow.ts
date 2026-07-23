@@ -55,6 +55,16 @@ async function main() {
   assert.equal(compact.meta.questionSubject, 'case_summary');
   assert.equal(compact.meta.assistantReplyState, 'grounded_answer');
 
+  const compactWithoutDeicticCue = await post(sessionId, {
+    type: 'message',
+    text: 'Емко расскажи о кейсе',
+  });
+  assert.equal(compactWithoutDeicticCue.selectedContext.id, 'siebel');
+  assert.equal(compactWithoutDeicticCue.viewType, 'general_synthesis');
+  assert.equal(compactWithoutDeicticCue.meta.answerType, 'case_summary');
+  assert.equal(compactWithoutDeicticCue.meta.queryScope, 'current_case_only');
+  assert.equal(compactWithoutDeicticCue.meta.questionSubject, 'case_summary');
+
   const restored = await bootstrapRoute(
     new Request(`http://localhost/api/assistant/bootstrap?sessionId=${sessionId}`),
   );

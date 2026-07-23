@@ -21,6 +21,19 @@ type SessionStore = {
 
 const GLOBAL_KEY = '__aiPortfolioMemorySessions__';
 
+export class SessionStoreUnavailableError extends Error {
+  readonly code = 'SESSION_STORE_UNAVAILABLE';
+
+  constructor() {
+    super('Assistant session storage is temporarily unavailable.');
+    this.name = 'SessionStoreUnavailableError';
+  }
+}
+
+function requiresPersistentSessionStore(): boolean {
+  return process.env.VERCEL_ENV === 'production';
+}
+
 function createEmptySession(sessionId: string): AssistantSession {
   const now = new Date().toISOString();
 
@@ -131,8 +144,15 @@ export function getSessionStore(): SessionStore {
       sessionStoreSingleton = new SupabaseSessionStore();
       return sessionStoreSingleton;
     } catch {
+      if (requiresPersistentSessionStore()) {
+        throw new SessionStoreUnavailableError();
+      }
       return switchToDegradedMemoryStore('supabase_init_failed');
     }
+  }
+
+  if (requiresPersistentSessionStore()) {
+    throw new SessionStoreUnavailableError();
   }
 
   sessionStoreSingleton = new MemorySessionStore();
@@ -157,6 +177,9 @@ async function safeStoreGet(sessionId: string): Promise<AssistantSession | null>
     return await store.get(sessionId);
   } catch (error) {
     if (store.mode === 'supabase') {
+      if (requiresPersistentSessionStore()) {
+        throw new SessionStoreUnavailableError();
+      }
       return switchToDegradedMemoryStore('supabase_read_failed').get(sessionId);
     }
 
@@ -171,6 +194,9 @@ async function safeStoreSave(session: AssistantSession): Promise<void> {
     await store.save(session);
   } catch (error) {
     if (store.mode === 'supabase') {
+      if (requiresPersistentSessionStore()) {
+        throw new SessionStoreUnavailableError();
+      }
       await switchToDegradedMemoryStore('supabase_write_failed').save(session);
       return;
     }
