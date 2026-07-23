@@ -444,7 +444,7 @@ export function isCompactCurrentCaseSummaryRequest(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   const hasCompactCue = collectCueLabels(normalized, SUMMARY_CUES).length > 0;
-  const hasTellCue = /(?:^|[\s.,!?;:()«»"'/-])(?:расскажи|объясни|опиши|пройдись)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
+  const hasTellCue = /(?:^|[\s.,!?;:()«»"'/-])(?:расскажи|скажи|объясни|опиши|пройдись)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
   const hasCurrentCaseReference = [
     'об этом кейсе',
     'про этот кейс',
