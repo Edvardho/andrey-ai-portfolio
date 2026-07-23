@@ -40,7 +40,7 @@ export function PortfolioAssistantSectionedReply({
   const progressive = renderMode === 'progressive_text';
 
   return (
-    <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>
+    <PortfolioAssistantMessageFrame>
       <div
         className="space-y-6"
         aria-live={progressive ? portfolioResponseAnimationConfig.global.accessibility.ariaLive : undefined}

@@ -42,7 +42,11 @@ import {
 } from '@/lib/portfolio/presenters';
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
 import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
-import { synthesizeCaseAwareAnswer, synthesizeGeneralAnswer } from '@/lib/portfolio/synthesis';
+import {
+  synthesizeCaseAwareAnswer,
+  synthesizeContextualSummary,
+  synthesizeGeneralAnswer,
+} from '@/lib/portfolio/synthesis';
 import { interpretQuery, isCompactCurrentCaseSummaryRequest } from '@/lib/portfolio/query-interpretation';
 import type {
   AnswerType,
@@ -326,6 +330,46 @@ async function resolveGlobalSynthesis(
   };
 }
 
+async function resolveContextualSummary(
+  session: AssistantSession,
+  text: string,
+  interpretation: QueryInterpretation,
+): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const caseId = interpretation.scope === 'portfolio_wide'
+    ? null
+    : interpretation.targetCaseId
+      ?? (session.selectedContext.kind === 'case' ? session.selectedContext.id : null);
+
+  let synthesis: SynthesisSnapshot | null;
+  try {
+    synthesis = await synthesizeContextualSummary(text, session, {
+      caseId,
+      queryScope: interpretation.scope,
+      responseLength: interpretation.responseLength,
+    });
+  } catch {
+    return { session, envelope: buildErrorRetryEnvelope(session) };
+  }
+
+  if (!synthesis) {
+    return { session, envelope: buildCaseContextRequiredEnvelope(session) };
+  }
+
+  const synthesisSession = await persistSession(session, {
+    currentView: 'general_synthesis',
+    lastSynthesis: synthesis,
+    lastUserQuestion: text,
+    lastAssistantAnswerPreview: buildAssistantAnswerPreview(synthesis),
+    lastQuestionSubject: synthesis.questionSubject,
+    recentHistory: appendHistory(session, `contextual_summary:${interpretation.summaryContextSource ?? 'unknown'}`),
+  });
+
+  return {
+    session: synthesisSession,
+    envelope: buildGeneralSynthesisEnvelope(synthesisSession, synthesis),
+  };
+}
+
 async function resolveCandidateFastReview(
   session: AssistantSession,
   text: string,
@@ -480,6 +524,10 @@ async function resolveIntentClassification(
     return session.hasSeenCandidateFastReview
       ? resolveRepeatedCandidateFastReview(session, text)
       : resolveCandidateFastReview(session, text);
+  }
+
+  if (interpretation.answerType === 'contextual_summary') {
+    return resolveContextualSummary(session, text, interpretation);
   }
 
   const isCompactCandidateReviewRepeat =

@@ -201,6 +201,15 @@ function applyResponseLength(
     return answerPlan;
   }
 
+  if (answerPlan.answerType === 'contextual_summary') {
+    return {
+      ...answerPlan,
+      maxParagraphs: 3,
+      allowSections: true,
+      allowBullets: false,
+    };
+  }
+
   return {
     ...answerPlan,
     maxParagraphs: Math.min(answerPlan.maxParagraphs, 2),
@@ -263,6 +272,20 @@ function buildAnswerPlan(
         maxParagraphs: 7,
         allowSections: false,
         allowBullets: false,
+      };
+    case 'contextual_summary':
+      return {
+        answerType,
+        requiredMoves: [
+          'дать главный вывод для hiring lead',
+          'подтвердить вывод только фактами и артефактами',
+          'назвать, что проверить в кейсе или на интервью',
+        ],
+        avoid: ['пересказ экрана', 'смешение фактов разных кейсов', 'общие качества без фактов', 'выдуманные метрики'],
+        maxParagraphs: 3,
+        allowSections: true,
+        allowBullets: false,
+        targetCaseIds: options.targetCaseIds,
       };
     case 'portfolio_value_argument':
       return {
@@ -889,6 +912,7 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
 - обычный ответ должен быть компактным: 350-700 символов
 - для простого вопроса достаточно 1-2 абзацев без секций
 - если responseLength = compact, ответь максимум двумя короткими абзацами без секций и списков
+- для contextual_summary всегда дай три коротких блока: главный вывод, чем он подтверждается, что проверить; это правило важнее compact
 - если allowSections = no, не используй заголовки и разделы
 - если allowBullets = no, не превращай ответ в список
 - если mustStartWith задан, начни именно так
@@ -921,7 +945,9 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
   const totalPayloadChars = prompt.length + schemaChars;
 
   const callId = logOpenAICallStart({
-    route: 'synthesizeGeneralAnswer',
+    route: request.answerType === 'contextual_summary'
+      ? 'synthesizeContextualSummary'
+      : 'synthesizeGeneralAnswer',
     model: getOpenAIModel(),
     systemPromptChars: 0,
     developerPromptChars,
@@ -994,6 +1020,134 @@ export async function synthesizeGeneralAnswer(
       session,
     ),
   );
+}
+
+const PORTFOLIO_CONTEXTUAL_CASE_IDS = ['alfa-smart', 'siebel', 'chatpoint'];
+
+function uniqueFacts(facts: string[]): string[] {
+  return [...new Set(facts.map((fact) => fact.trim()).filter(Boolean))];
+}
+
+function buildCaseContextualSummaryRequest(
+  caseId: string,
+  queryScope: QueryScope,
+  responseLength: ResponseLength,
+): SynthesisRequestConfig | null {
+  const pack = getCaseFactPack(caseId);
+  if (!pack) {
+    return null;
+  }
+
+  const evidence = uniqueFacts([
+    ...pack.whatThisProves,
+    ...pack.recruiterTakeaway,
+    ...pack.evidence,
+    ...pack.hiringSignal,
+  ]);
+  const factBoundary = pack.missing[0] ?? pack.risks[0] ?? 'На интервью стоит уточнить личный вклад и метрики после запуска.';
+
+  return {
+    topic: 'fit',
+    answerType: 'contextual_summary',
+    queryScope,
+    questionSubject: 'case_recruiter_summary',
+    responseLength,
+    answerPlan: applyResponseLength(
+      buildAnswerPlan('contextual_summary', {
+        targetCaseIds: [caseId],
+        questionSubject: 'case_recruiter_summary',
+      }),
+      responseLength,
+    ),
+    title: 'Резюме кейса для hiring lead',
+    facts: uniqueFacts([
+      pack.recruiterSummary.intro,
+      pack.recruiterSummary.followup ?? '',
+      ...pack.whatThisProves,
+      ...pack.recruiterTakeaway,
+      ...pack.evidence,
+      ...pack.hiringSignal,
+      ...pack.risks,
+      ...pack.missing,
+    ]),
+    fallbackTitle: 'Резюме кейса для hiring lead',
+    fallbackIntro: `Главный вывод: ${pack.recruiterSummary.intro}`,
+    fallbackFollowupParagraphs: [],
+    fallbackSections: [
+      {
+        title: 'Чем подтверждается',
+        body: evidence.slice(0, 2).join(' '),
+      },
+      {
+        title: 'Что проверить',
+        body: factBoundary,
+      },
+    ].filter((section) => section.body),
+    fallbackBullets: [],
+    chips: [],
+  };
+}
+
+function buildPortfolioContextualSummaryRequest(
+  responseLength: ResponseLength,
+): SynthesisRequestConfig {
+  const config = getSynthesisTopicConfig('portfolio_overview');
+  return {
+    topic: 'portfolio_overview',
+    answerType: 'contextual_summary',
+    queryScope: 'portfolio_wide',
+    questionSubject: 'portfolio_recruiter_summary',
+    responseLength,
+    answerPlan: applyResponseLength(
+      buildAnswerPlan('contextual_summary', {
+        targetCaseIds: PORTFOLIO_CONTEXTUAL_CASE_IDS,
+        questionSubject: 'portfolio_recruiter_summary',
+      }),
+      responseLength,
+    ),
+    title: 'Резюме портфолио для hiring lead',
+    facts: config.facts,
+    fallbackTitle: 'Резюме портфолио для hiring lead',
+    fallbackIntro: 'Главный вывод: по портфолио видно не набор красивых экранов, а опыт работы со сложными продуктами — от исследования и сценариев до передачи в разработку или релиза.',
+    fallbackFollowupParagraphs: [],
+    fallbackSections: [
+      {
+        title: 'Чем подтверждается',
+        body: 'Альфа-Смарт показывает запуск и продуктовые метрики, SIEBEL — исследование operator workflow и измеримый эффект, ChatPoint — честную границу и выводы из неудачного продукта.',
+      },
+      {
+        title: 'Что проверить',
+        body: 'На интервью стоит пройти по личному вкладу, артефактам решений и границе метрик в каждом релевантном кейсе, а не принимать общий вывод на веру.',
+      },
+    ],
+    fallbackBullets: [],
+    chips: config.chips,
+  };
+}
+
+export async function synthesizeContextualSummary(
+  question: string,
+  session: AssistantSession,
+  options: {
+    caseId: string | null;
+    queryScope: QueryScope;
+    responseLength: ResponseLength;
+  },
+): Promise<SynthesisSnapshot | null> {
+  const request = options.caseId
+    ? buildCaseContextualSummaryRequest(options.caseId, options.queryScope, options.responseLength)
+    : buildPortfolioContextualSummaryRequest(options.responseLength);
+
+  if (!request) {
+    return null;
+  }
+
+  return synthesizeAnswerFromRequest(question, session, {
+    ...request,
+    previousUserQuestion: session.lastUserQuestion,
+    previousAssistantAnswerPreview: session.lastAssistantAnswerPreview,
+    previousQuestionSubject: session.lastQuestionSubject,
+  });
 }
 
 const CASE_FACET_TOPIC_MAP: Record<CaseFactFacet, SynthesisTopic> = {
