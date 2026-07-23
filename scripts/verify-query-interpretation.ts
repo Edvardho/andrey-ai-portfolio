@@ -533,6 +533,30 @@ async function main() {
     });
 
     await assertScenario({
+      label: `${caseId}: compact current case summary with comparative wording`,
+      input: 'Расскажи короче о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary with colloquial comparative wording`,
+      input: 'Расскажи покороче об этом кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
       label: `${caseId}: compact current case research`,
       input: 'Емко: как Андрей исследовал проблему?',
       expectedIntent: 'decision_process',

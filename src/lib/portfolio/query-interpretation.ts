@@ -149,7 +149,7 @@ const FAST_REVIEW_CUES: CueDefinition[] = [
 ];
 
 const SUMMARY_CUES: CueDefinition[] = [
-  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /без воды/i] },
+  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /покороче/i, /короче/i, /без воды/i] },
 ];
 
 const EXPERIENCE_CUES: CueDefinition[] = [
