@@ -1658,6 +1658,10 @@ export function PortfolioShell() {
       startWorkspaceTransition('submit');
     }
 
+    // The message is already represented by a user bubble. Retaining it on a
+    // failed server reply would make a retry look like a second submission.
+    setInput('');
+
     void appendAssistantResponse(
       activeContextId,
       { sessionId: sessionIdRef.current ?? undefined, input: { type: 'message', text } },
