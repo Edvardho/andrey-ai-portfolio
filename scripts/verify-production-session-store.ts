@@ -6,14 +6,26 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = '';
 process.env.SUPABASE_SERVICE_ROLE_KEY = '';
 
 async function main() {
-  const { getOrCreateSession } = await import('@/lib/portfolio/session-store');
+  const { getOrCreateSession, SessionStoreUnavailableError } = await import('@/lib/portfolio/session-store');
   const { GET: bootstrap } = await import('@/app/api/assistant/bootstrap/route');
   const { POST: chat } = await import('@/app/api/chat/route');
 
-  await assert.rejects(
-    () => getOrCreateSession('verify-production-session-store'),
-    { code: 'SESSION_STORE_UNAVAILABLE' },
+  let unavailableError: unknown;
+  try {
+    await getOrCreateSession('verify-production-session-store');
+  } catch (error) {
+    unavailableError = error;
+  }
+
+  assert.ok(
+    unavailableError instanceof SessionStoreUnavailableError,
     'production must not create an in-memory session when Supabase is unavailable',
+  );
+  assert.equal(unavailableError.code, 'SESSION_STORE_UNAVAILABLE');
+  assert.equal(
+    unavailableError.reason,
+    'supabase_config_missing',
+    'the server log must identify missing configuration without exposing values',
   );
 
   const bootstrapResponse = await bootstrap(new Request('http://localhost/api/assistant/bootstrap'));

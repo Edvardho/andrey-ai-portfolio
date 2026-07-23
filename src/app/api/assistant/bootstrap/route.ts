@@ -33,7 +33,11 @@ export async function GET(request: Request) {
     }
 
     if (error instanceof SessionStoreUnavailableError) {
-      console.error('AI portfolio bootstrap session store unavailable:', error.code);
+      console.error('AI portfolio bootstrap session store unavailable:', {
+        code: error.code,
+        reason: error.reason,
+        diagnostics: error.diagnostics,
+      });
       return NextResponse.json(
         {
           error: 'Assistant session temporarily unavailable',

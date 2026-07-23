@@ -207,6 +207,40 @@ async function assertComposerStates(page: Page) {
   await textarea.fill('');
 }
 
+async function assertSubmittedDraftClearsAfterChatFailure(page: Page, state: RuntimeSmokeState) {
+  const textarea = page.locator('textarea:visible');
+  assert.equal(await textarea.count(), 1, 'Expected one visible chat composer');
+  const composer = page.getByRole('button', { name: 'Отправить' });
+  assert.equal(await composer.count(), 1, 'Expected one chat submit button');
+
+  await page.route('**/api/chat', async (route) => {
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: 'Assistant session temporarily unavailable',
+        code: 'SESSION_STORE_UNAVAILABLE',
+        retryable: true,
+      }),
+    });
+  });
+  resetRuntimeSmokeState(state, [/Failed to load resource:.*503/i]);
+
+  await textarea.fill('Проверка очистки черновика');
+  await composer.click();
+  await page.getByText('Сессия ассистента временно недоступна. Повторите попытку.').waitFor({
+    state: 'visible',
+    timeout: 8_000,
+  });
+  assert.equal(
+    await textarea.inputValue(),
+    '',
+    'A submitted message must clear from the composer even when the server request fails',
+  );
+  await page.unroute('**/api/chat');
+  resetRuntimeSmokeState(state);
+}
+
 async function main() {
   let server: ChildProcess | null = null;
   let browser: Browser | null = null;
@@ -247,12 +281,15 @@ async function main() {
 
     await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
     await page.getByRole('heading', { name: 'Андрей Макаревич' }).waitFor({ state: 'visible', timeout: 15_000 });
+    await delay(720);
     await assertHealthy(page, state, 'initial landing load');
     await assertComposerStates(page);
 
     await getEntryAlfaCard(page).click();
     await page.getByText('ИИ ассистент').first().waitFor({ state: 'visible', timeout: 15_000 });
+    await delay(720);
     await assertHealthy(page, state, 'landing case click');
+    await assertSubmittedDraftClearsAfterChatFailure(page, state);
 
     await page.getByRole('button', { name: 'Вернуться на главную' }).click();
     await getEntryAlfaCard(page).waitFor({
