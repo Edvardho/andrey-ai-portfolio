@@ -417,7 +417,11 @@ export function buildGeneralSynthesisEnvelope(
   return createEnvelope({
     session,
     viewType: 'general_synthesis',
-    presentationVariant: synthesis.bullets.length ? 'bullet_reply' : 'plain_text_reply',
+    presentationVariant: synthesis.bullets.length
+      ? 'bullet_reply'
+      : synthesis.answerType === 'contextual_summary' && synthesis.sections.length
+        ? 'sectioned_reply'
+        : 'plain_text_reply',
     contentBlocks,
     chips,
     contextPanel,

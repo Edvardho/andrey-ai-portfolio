@@ -7,6 +7,7 @@ import {
   extractExplicitCaseRequest,
   findCaseId,
   hasExplicitNavigationVerb,
+  isBareCompactCurrentCaseSummaryRequest,
   mobileCaseIds,
   normalizeRequestedCase,
 } from '@/lib/portfolio/query-interpretation';
@@ -26,6 +27,8 @@ export type IntentClassification = {
 };
 
 const BEHAVIORAL_FIT_PATTERN = /срыв(?:ал|ает|ать).+(?:дедлайн|срок)|(?:дедлайн|срок).+(?:срыв|горел|продалб)|продалбыва(?:л|ет)?.+(?:дедлайн|срок)|успева(?:ет|л).+(?:дедлайн|срок)|можно.+доверить.+дедлайн|исполнительн(?:ый|ая|ли)|ответственн(?:ый|ая|ли)|доводит.+(?:задач|работ).+(?:до конца|до результат)|доводит.+(?:задач|работ)/i;
+const CONTEXTUAL_SUMMARY_PATTERN = /сожми|обобщи|резюмир|выжимк|сводк|(?:дай|какой).+итог|что (?:здесь|тут).+(?:главное|важное)|на что (?:здесь|тут)?\s*(?:(?:нужно|стоит)\s*)?обратить внимание|что важно понять|что проверить(?: на интервью)?/i;
+const SPECIALIZED_CASE_QUESTION_PATTERN = /док[ао]зательств|артефакт|метрик|результат|эффект|личн(?:ый|ого).+вклад|что.+сделал|какая.+роль|какие.+решени|исслед|гипотез|риск|ограничени|безопасност/i;
 
 function buildNavigationAction(
   action: string,
@@ -62,7 +65,10 @@ function buildNavigationAction(
   }
 }
 
-function classifyMessageWithFallbackHeuristics(text: string): IntentClassification | null {
+function classifyMessageWithFallbackHeuristics(
+  text: string,
+  session?: AssistantSession,
+): IntentClassification | null {
   const lowered = text.trim().toLowerCase();
 
   if (!lowered) {
@@ -71,6 +77,14 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
 
   if (BEHAVIORAL_FIT_PATTERN.test(lowered)) {
     return { intent: { type: 'behavioral_fit_assessment' }, confidence: 'high' };
+  }
+
+  if (session?.selectedContext.kind === 'case' && isBareCompactCurrentCaseSummaryRequest(lowered)) {
+    return { intent: { type: 'contextual_summary_request' }, confidence: 'high' };
+  }
+
+  if (CONTEXTUAL_SUMMARY_PATTERN.test(lowered) && !SPECIALIZED_CASE_QUESTION_PATTERN.test(lowered)) {
+    return { intent: { type: 'contextual_summary_request' }, confidence: 'high' };
   }
 
   if (/какая была.+проблем|какую проблем|зачем понадоб|что решал|основная проблем/i.test(lowered)) {
@@ -224,7 +238,7 @@ function classifyMessageWithFallbackHeuristics(text: string): IntentClassificati
   }
 
   if (
-    /где это подтверждается|где это видно|чем это доказывается|артефакт|доказательств|окей а пруфы где|на чем выводы основаны|чем это вообще подтверждается|не верю словам|на что смотреть в кейсах|где видно что это не слова|где видно что он влияет на продукт|какой кейс лучше открыть первым для оценки|на чем вообще основан вывод про senior|какой кейс лучше всего показывает мозги|где смотреть если мне важен research/i.test(
+    /где это подтверждается|где это видно|чем это доказывается|артефакт|док[ао]зательств|окей а пруфы где|на чем выводы основаны|чем это вообще подтверждается|не верю словам|на что смотреть в кейсах|где видно что это не слова|где видно что он влияет на продукт|какой кейс лучше открыть первым для оценки|на чем вообще основан вывод про senior|какой кейс лучше всего показывает мозги|где смотреть если мне важен research/i.test(
       lowered,
     )
   ) {
@@ -297,6 +311,20 @@ export function classifyMessageDeterministically(
   if (BEHAVIORAL_FIT_PATTERN.test(lowered)) {
     return {
       intent: { type: 'behavioral_fit_assessment' },
+      confidence: 'high',
+    };
+  }
+
+  if (session.selectedContext.kind === 'case' && isBareCompactCurrentCaseSummaryRequest(lowered)) {
+    return {
+      intent: { type: 'contextual_summary_request' },
+      confidence: 'high',
+    };
+  }
+
+  if (CONTEXTUAL_SUMMARY_PATTERN.test(lowered) && !SPECIALIZED_CASE_QUESTION_PATTERN.test(lowered)) {
+    return {
+      intent: { type: 'contextual_summary_request' },
       confidence: 'high',
     };
   }
@@ -625,6 +653,7 @@ const classificationSchema = z.object({
     'experience_overview',
     'portfolio_overview',
     'portfolio_value_request',
+    'contextual_summary_request',
     'case_discovery',
     'mobile_overview',
     'strengths_assessment',
@@ -664,6 +693,7 @@ const CLASSIFIER_PROMPT = `
 - experience_overview
 - portfolio_overview
 - portfolio_value_request
+- contextual_summary_request
 - case_discovery
 - mobile_overview
 - strengths_assessment
@@ -685,6 +715,8 @@ const CLASSIFIER_PROMPT = `
 - Если пользователь спрашивает, что Андрей делал в web/вебе -> experience_overview.
 - Если пользователь просит сжать весь опыт и кратко пройтись по кейсам одним ответом -> portfolio_overview.
 - Если пользователь спрашивает, зачем вообще смотреть это портфолио или что дает такой формат -> portfolio_value_request.
+- Если пользователь просит сжать, обобщить или резюмировать текущую информацию, выделить главное или сказать, на что обратить внимание -> contextual_summary_request. Не используй его для узких вопросов про доказательства, риски, метрики, личный вклад или решения.
+- Если открыт конкретный кейс, то "Коротко скажи", "Ёмко скажи" и "Расскажи короче" относятся к нему -> contextual_summary_request. Без открытого кейса эти фразы остаются ambiguous_question.
 - Если пользователь просит показать или рассказать про кейс, но не просит явно перейти на экран -> case_discovery.
 - Если пользователь спрашивает про мобильный опыт или мобильные кейсы без явного перехода -> mobile_overview.
 - Если пользователь спрашивает про сильные стороны, почему стоит звать на интервью или хороший ли Андрей дизайнер -> strengths_assessment.
@@ -726,6 +758,9 @@ Confidence:
 - "Что дает такой формат портфолио?" -> portfolio_value_request, high
 - "Зачем читать кейсы через ассистента?" -> portfolio_value_request, high
 - "Зачем мне смотреть кейсы через ассистента?" -> portfolio_value_request, high
+- "Сожми эту информацию и дай вывод" -> contextual_summary_request, high
+- "На что тут обратить внимание?" -> contextual_summary_request, high
+- при открытом кейсе: "Коротко скажи" -> contextual_summary_request, high
 - "Покажи опыт работы" -> experience_overview, high
 - "Покажи сильный кейс" -> case_discovery, high
 - "Расскажи про ChatPoint" -> case_discovery, high, caseId=chatpoint
@@ -788,7 +823,7 @@ export async function classifyMessageWithModel(
   session: AssistantSession,
 ): Promise<IntentClassification | null> {
   if (!isOpenAIEnabled()) {
-    return classifyMessageWithFallbackHeuristics(text);
+    return classifyMessageWithFallbackHeuristics(text, session);
   }
 
   const prompt = CLASSIFIER_PROMPT.replace(
@@ -856,6 +891,7 @@ export async function classifyMessageWithModel(
       case 'experience_overview':
       case 'portfolio_overview':
       case 'portfolio_value_request':
+      case 'contextual_summary_request':
       case 'mobile_overview':
       case 'strengths_assessment':
       case 'role_fit_assessment':
@@ -888,6 +924,6 @@ export async function classifyMessageWithModel(
       error: error instanceof Error ? error.message : String(error),
       durationMs: Date.now() - startTime,
     });
-    return classifyMessageWithFallbackHeuristics(text);
+    return classifyMessageWithFallbackHeuristics(text, session);
   }
 }

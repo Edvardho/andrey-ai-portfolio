@@ -6,13 +6,11 @@ import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity
 
 export function PortfolioAssistantMessageFrame({
   children,
-  showFactsBadge = false,
   showHeader = true,
   showLeadingBadge = false,
   chrome = 'bare',
 }: {
   children: ReactNode;
-  showFactsBadge?: boolean;
   showHeader?: boolean;
   showLeadingBadge?: boolean;
   chrome?: 'card' | 'bare';
@@ -33,15 +31,7 @@ export function PortfolioAssistantMessageFrame({
       >
         {showHeader ? (
           <>
-            <PortfolioAssistantIdentityHeader
-              badge={
-                showFactsBadge ? (
-                <span className="rounded-full border border-[#d9d1c6] bg-[#faf7f1] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[#6b6257]">
-                  Только подтвержденные факты
-                </span>
-                ) : undefined
-              }
-            />
+            <PortfolioAssistantIdentityHeader />
             <div className="mt-4">{children}</div>
           </>
         ) : (

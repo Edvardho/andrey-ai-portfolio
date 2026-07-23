@@ -52,7 +52,7 @@ export function PortfolioAssistantExperienceSummary({
   }
 
   return (
-    <PortfolioAssistantMessageFrame showFactsBadge={envelope.meta.responseSource === 'facts_constrained_synthesis'}>
+    <PortfolioAssistantMessageFrame>
       <div className="space-y-8">
         {envelope.contentBlocks.map((block, index) =>
           <motion.div

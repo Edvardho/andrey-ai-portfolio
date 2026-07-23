@@ -322,16 +322,26 @@ async function main() {
     {
       label: 'what to pay attention to in the current case',
       input: 'На что тут нужно обратить внимание?',
-      expectedIntent: 'strengths_assessment',
+      expectedIntent: 'contextual_summary_request',
       expectedScope: 'current_case_only',
-      expectedQuestionSubject: 'case_strength',
-      expectedAnswerType: 'hiring_argument',
+      expectedQuestionSubject: 'case_recruiter_summary',
+      expectedAnswerType: 'contextual_summary',
       expectedTargetCaseId: 'alfa-smart',
       session: alfaSession,
     },
     {
       label: 'proofs here',
       input: 'Где тут доказательства?',
+      expectedIntent: 'evidence_request',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_evidence',
+      expectedAnswerType: 'proof_map',
+      expectedTargetCaseId: 'alfa-smart',
+      session: alfaSession,
+    },
+    {
+      label: 'proofs with common typo',
+      input: 'Где докозательства?',
       expectedIntent: 'evidence_request',
       expectedScope: 'current_case_only',
       expectedQuestionSubject: 'case_evidence',
@@ -554,6 +564,20 @@ async function main() {
       session,
     });
 
+    for (const input of ['Коротко скажи', 'Ёмко скажи', 'Расскажи короче']) {
+      await assertScenario({
+        label: `${caseId}: bare compact current case summary`,
+        input,
+        expectedIntent: 'contextual_summary_request',
+        expectedScope: 'current_case_only',
+        expectedQuestionSubject: 'case_recruiter_summary',
+        expectedAnswerType: 'contextual_summary',
+        expectedResponseLength: 'compact',
+        expectedTargetCaseId: caseId,
+        session,
+      });
+    }
+
     await assertScenario({
       label: `${caseId}: compact current case summary with colloquial comparative wording`,
       input: 'Расскажи покороче об этом кейсе',
@@ -582,6 +606,18 @@ async function main() {
   await assertScenario({
     label: 'named case must override the currently opened case for a compact summary',
     input: 'Коротко расскажи о кейсе SIEBEL',
+    expectedIntent: 'case_discovery',
+    expectedScope: 'named_case',
+    expectedQuestionSubject: 'case_summary',
+    expectedAnswerType: 'case_summary',
+    expectedResponseLength: 'compact',
+    expectedTargetCaseId: 'siebel',
+    session: alfaSession,
+  });
+
+  await assertScenario({
+    label: 'named case must override the currently opened case for a bare compact tell request',
+    input: 'Коротко скажи о SIEBEL',
     expectedIntent: 'case_discovery',
     expectedScope: 'named_case',
     expectedQuestionSubject: 'case_summary',

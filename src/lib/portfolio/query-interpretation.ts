@@ -152,6 +152,23 @@ const SUMMARY_CUES: CueDefinition[] = [
   { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /покороче/i, /короче/i, /без воды/i] },
 ];
 
+const CONTEXTUAL_SUMMARY_CUES: CueDefinition[] = [
+  {
+    label: 'contextual_summary:aggregate',
+    patterns: [/сожми/i, /обобщи/i, /резюмир/i, /выжимк/i, /сводк/i, /(?:дай|какой).+итог/i],
+  },
+  {
+    label: 'contextual_summary:evaluation',
+    patterns: [
+      /что (?:здесь|тут).+(?:главное|важное)/i,
+      /на что (?:здесь|тут)?\s*(?:(?:нужно|стоит)\s*)?обратить внимание/i,
+      /что важно понять/i,
+      /что проверить(?: на интервью)?/i,
+      /какой вывод/i,
+    ],
+  },
+];
+
 const EXPERIENCE_CUES: CueDefinition[] = [
   { label: 'experience:work_history', patterns: [/опыт работы/i, /его опыт/i, /где он работал/i, /карьер/i, /бэкграунд/i] },
   { label: 'experience:domains', patterns: [/компани/i, /домены/i, /где успел поработать/i] },
@@ -180,7 +197,7 @@ const EVIDENCE_CUES: CueDefinition[] = [
   {
     label: 'evidence:proof',
     patterns: [
-      /доказательств/i,
+      /док[ао]зательств/i,
       /где это подтверждается/i,
       /где тут доказательства/i,
       /не верю словам/i,
@@ -457,6 +474,16 @@ export function isCompactCurrentCaseSummaryRequest(text: string): boolean {
   return hasCompactCue && hasTellCue && (hasCurrentCaseReference || hasSingularCaseReference);
 }
 
+export function isBareCompactCurrentCaseSummaryRequest(text: string): boolean {
+  const normalized = text
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return /^(?:коротко|емко) скажи[.!?…]*$|^расскажи (?:короче|покороче)[.!?…]*$/.test(normalized);
+}
+
 function hasNegativeCaseCue(text: string): boolean {
   return /неудачн(ый|ого|ом)?\s+кейс|слаб(ый|ого|ом)?\s+кейс|плох(ой|ого|ом)?\s+кейс|провальн(ый|ого|ом)?\s+кейс/i.test(
     text,
@@ -524,6 +551,8 @@ function getGlobalSynthesisTopic(intent: MessageIntent): SynthesisTopic | null {
       return 'portfolio_overview';
     case 'portfolio_value_request':
       return 'portfolio_value';
+    case 'contextual_summary_request':
+      return 'portfolio_overview';
     case 'mobile_overview':
       return 'mobile';
     case 'strengths_assessment':
@@ -549,6 +578,11 @@ function resolveQuestionSubject(
   text: string,
   isExplicitFastReview: boolean,
 ): QuestionSubject {
+  if (intent.type === 'contextual_summary_request') {
+    return scope === 'portfolio_wide'
+      ? 'portfolio_recruiter_summary'
+      : 'case_recruiter_summary';
+  }
   // `QuestionSubject` is the hiring evaluation task behind the wording:
   // proof, contribution, risk, interview decision, or candidate value.
   if (isExplicitFastReview) {
@@ -675,6 +709,12 @@ function getAnswerType(
   text: string,
   questionSubject: QuestionSubject,
 ): AnswerType | null {
+  if (
+    questionSubject === 'case_recruiter_summary'
+    || questionSubject === 'portfolio_recruiter_summary'
+  ) {
+    return 'contextual_summary';
+  }
   if (questionSubject === 'candidate_fast_review') {
     return 'candidate_fast_review';
   }
@@ -802,6 +842,8 @@ function getCaseAwareFacet(
       return 'risks';
     case 'behavioral_evidence_check':
       return 'outcomes';
+    case 'case_recruiter_summary':
+      return null;
     default:
       break;
   }
@@ -1118,6 +1160,20 @@ function resolveScope(
   globalPersonCueLabels: string[],
 ): { scope: QueryScope; matchedCues: string[] } {
   switch (intent.type) {
+    case 'contextual_summary_request':
+      if (targetCaseId && portfolioWideCueLabels.length === 0) {
+        if (session.selectedContext.kind === 'case' && targetCaseId === session.selectedContext.id) {
+          return { scope: 'current_case_only', matchedCues: [`current_case:${targetCaseId}`] };
+        }
+        return { scope: 'named_case', matchedCues: [`named_case:${targetCaseId}`] };
+      }
+      if (portfolioWideCueLabels.length > 0) {
+        return { scope: 'portfolio_wide', matchedCues: portfolioWideCueLabels };
+      }
+      if (session.selectedContext.kind === 'case') {
+        return { scope: 'current_case_only', matchedCues: ['default:current_case_context'] };
+      }
+      return { scope: 'portfolio_wide', matchedCues: ['default:portfolio_context'] };
     case 'portfolio_overview':
     case 'mobile_overview':
       return {
@@ -1221,16 +1277,33 @@ export function interpretQuery(
   const candidateIntroCueLabels = collectCueLabels(lowered, CANDIDATE_INTRO_CUES);
   const fastReviewCueLabels = collectCueLabels(lowered, FAST_REVIEW_CUES);
   const summaryCueLabels = collectCueLabels(lowered, SUMMARY_CUES);
+  const contextualSummaryCueLabels = collectCueLabels(lowered, CONTEXTUAL_SUMMARY_CUES);
   const caseOutcomeCueLabels = collectCueLabels(lowered, CASE_OUTCOME_CUES);
   const caseResearchCueLabels = collectCueLabels(lowered, CASE_RESEARCH_CUES);
   const caseConstraintCueLabels = collectCueLabels(lowered, CASE_CONSTRAINT_CUES);
   const behavioralFitCueLabels = collectCueLabels(lowered, BEHAVIORAL_FIT_CUES);
   const explicitNamedCaseId = findExplicitNamedCaseId(lowered);
+  const isBareCompactCurrentCaseSummary =
+    session.selectedContext.kind === 'case'
+    && isBareCompactCurrentCaseSummaryRequest(lowered);
   const hasExplicitCaseTarget = currentCaseCueLabels.length > 0 || explicitNamedCaseId !== null;
   const isExplicitFastReview = fastReviewCueLabels.length > 0 && !hasExplicitCaseTarget;
   const isExplicitPortfolioCompression =
     portfolioWideCueLabels.length > 0
     && /сожми|обзор|по каждому кейсу|какие.+кейсы|расскажи.+о кейсах/i.test(lowered);
+  const isContextualSummaryRequest =
+    !hasCaseScopedQuestionCue(lowered)
+    && (
+      isBareCompactCurrentCaseSummary
+      || contextualSummaryCueLabels.length > 0
+    || (
+      summaryCueLabels.length > 0
+      && /(?:резюме|вывод|главн|итог|сводк|выжимк)/i.test(lowered)
+    ));
+  const hasContextConflict =
+    isContextualSummaryRequest
+    && explicitNamedCaseId !== null
+    && portfolioWideCueLabels.length > 0;
   const lastReferencedCaseId = getLastReferencedCaseId(session);
 
   const recovered = classification.intent.type === 'ambiguous_question'
@@ -1261,7 +1334,9 @@ export function interpretQuery(
     && !hasExplicitCaseTarget;
 
   const effectiveIntent =
-    behavioralFitCueLabels.length > 0
+    hasContextConflict
+      ? { type: 'ambiguous_question' as const }
+      : behavioralFitCueLabels.length > 0
       ? { type: 'behavioral_fit_assessment' as const }
       : valueBeyondUiCueLabels.length > 0
         ? { type: 'strengths_assessment' as const }
@@ -1273,6 +1348,8 @@ export function interpretQuery(
       ? { type: 'case_discovery' as const }
       : caseStrengthInCurrentCase && classification.intent.type === 'ambiguous_question'
         ? { type: 'strengths_assessment' as const }
+        : isContextualSummaryRequest
+          ? { type: 'contextual_summary_request' as const }
         : currentCaseRecovered
           ? currentCaseRecovered
         : !explicitNamedCaseId && caseResearchCueLabels.length > 0 && /обычно|андр|процесс|гипотез|исслед/i.test(lowered)
@@ -1284,7 +1361,11 @@ export function interpretQuery(
             : shouldUseCandidateIntro
               ? { type: 'identity_intro' as const }
               : recovered?.intent ?? classification.intent;
-  const effectiveConfidence = isExplicitFastReview
+  const effectiveConfidence = hasContextConflict
+    ? 'low'
+    : isContextualSummaryRequest
+      ? 'high'
+      : isExplicitFastReview
     ? 'high'
     : behavioralFitCueLabels.length > 0
       ? 'high'
@@ -1299,6 +1380,12 @@ export function interpretQuery(
   let targetCaseId: string | null = null;
   if (explicitNamedCaseId) {
     targetCaseId = explicitNamedCaseId;
+  } else if (
+    effectiveIntent.type === 'contextual_summary_request'
+    && lastReferencedCaseId
+    && session.selectedContext.kind !== 'case'
+  ) {
+    targetCaseId = lastReferencedCaseId;
   } else if (effectiveIntent.type === 'case_discovery' && effectiveIntent.targetCaseId) {
     targetCaseId = effectiveIntent.targetCaseId;
   } else if (lastReferencedCaseId && contextCaseCueLabels.length > 0 && hasCaseScopedQuestionCue(lowered)) {
@@ -1325,6 +1412,17 @@ export function interpretQuery(
     ?? (scopeResolution.scope === 'current_case_only' && session.selectedContext.kind === 'case'
       ? session.selectedContext.id
       : null);
+
+  const summaryContextSource =
+    effectiveIntent.type !== 'contextual_summary_request'
+      ? null
+      : scopeResolution.scope === 'portfolio_wide'
+        ? 'portfolio'
+        : explicitNamedCaseId
+          ? 'named_case'
+          : session.selectedContext.kind === 'case'
+            ? 'selected_case'
+            : 'last_case_synthesis';
 
   const questionSubject = resolveQuestionSubject(
     effectiveIntent,
@@ -1363,9 +1461,15 @@ export function interpretQuery(
     topic,
     factFacet,
     targetCaseId: resolvedTargetCaseId,
+    summaryContextSource,
     confidence: effectiveConfidence,
     responseLength: summaryCueLabels.length > 0 ? 'compact' : 'default',
-    matchedCues: isExplicitFastReview
+    matchedCues: isContextualSummaryRequest
+      ? [
+          ...(isBareCompactCurrentCaseSummary ? ['contextual_summary:bare_current_case'] : contextualSummaryCueLabels),
+          ...scopeResolution.matchedCues,
+        ]
+      : isExplicitFastReview
       ? fastReviewCueLabels
       : isExplicitPortfolioCompression
         ? portfolioWideCueLabels

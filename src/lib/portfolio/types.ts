@@ -93,7 +93,8 @@ export type AnswerType =
   | 'hiring_argument'
   | 'failure_postmortem'
   | 'risk_assessment'
-  | 'calibrated_unknown';
+  | 'calibrated_unknown'
+  | 'contextual_summary';
 
 export type AnswerPlan = {
   answerType: AnswerType;
@@ -141,7 +142,16 @@ export type QuestionSubject =
   | 'design_system_work'
   | 'learning_adaptation'
   | 'case_summary'
-  | 'experience_summary';
+  | 'experience_summary'
+  | 'case_recruiter_summary'
+  | 'portfolio_recruiter_summary';
+
+export type SummaryContextSource =
+  | 'named_case'
+  | 'selected_case'
+  | 'last_case_synthesis'
+  | 'portfolio'
+  | null;
 
 export type SynthesisTopic =
   | 'identity'
@@ -204,6 +214,7 @@ export type QueryInterpretation = {
   topic: SynthesisTopic | null;
   factFacet: CaseFactFacet | null;
   targetCaseId: string | null;
+  summaryContextSource: SummaryContextSource;
   confidence: IntentConfidence;
   responseLength: ResponseLength;
   matchedCues: string[];
@@ -671,6 +682,7 @@ export type MessageIntent =
   | { type: 'experience_overview' }
   | { type: 'portfolio_overview' }
   | { type: 'portfolio_value_request' }
+  | { type: 'contextual_summary_request' }
   | { type: 'case_discovery'; targetCaseId?: string }
   | { type: 'mobile_overview' }
   | { type: 'strengths_assessment' }

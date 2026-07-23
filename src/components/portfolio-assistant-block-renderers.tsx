@@ -54,7 +54,7 @@ export function renderCanonicalSummaryBlock(
       );
     case 'section':
       return (
-        <section key={`${block.type}-${index}`} className="space-y-4">
+        <section key={`${block.type}-${index}`} className="max-w-[680px] space-y-4">
           <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f] lg:text-[34px]">{block.title}</h3>
           <div className={`space-y-4 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph) => (
@@ -184,7 +184,7 @@ export function renderConversationalBlock(
       );
     case 'section':
       return (
-        <section key={`${block.type}-${index}`} className="space-y-3">
+        <section key={`${block.type}-${index}`} className="max-w-[680px] space-y-3">
           <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3>
           <div className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph, paragraphIndex) => (
@@ -201,7 +201,7 @@ export function renderConversationalBlock(
       );
     case 'bullet_list':
       return (
-        <section key={`${block.type}-${index}`} className="space-y-3">
+        <section key={`${block.type}-${index}`} className="max-w-[680px] space-y-3">
           {block.title ? <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3> : null}
           <ul className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.items.map((item, itemIndex) => (
