@@ -320,6 +320,16 @@ async function main() {
       session: alfaSession,
     },
     {
+      label: 'what to pay attention to in the current case',
+      input: 'На что тут нужно обратить внимание?',
+      expectedIntent: 'strengths_assessment',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_strength',
+      expectedAnswerType: 'hiring_argument',
+      expectedTargetCaseId: 'alfa-smart',
+      session: alfaSession,
+    },
+    {
       label: 'proofs here',
       input: 'Где тут доказательства?',
       expectedIntent: 'evidence_request',

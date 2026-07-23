@@ -1097,6 +1097,11 @@ function recoverCurrentCaseIntentFromText(text: string): MessageIntent | null {
   if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
     return { type: 'strengths_assessment' };
   }
+  if (
+    /(?:на\s+что\s+(?:(?:тут|здесь|в\s+этом\s+(?:кейсе|проекте))\s+)?(?:нужно\s+)?обратить\s+внимание|что\s+(?:тут|здесь)\s+(?:самое\s+)?(?:важное|главное))/i.test(text)
+  ) {
+    return { type: 'strengths_assessment' };
+  }
   if (/об этом (?:кейсе|проекте)|в этом (?:кейсе|проекте)/i.test(text)) {
     return { type: 'case_discovery' };
   }
