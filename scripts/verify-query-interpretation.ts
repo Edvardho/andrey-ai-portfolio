@@ -320,6 +320,16 @@ async function main() {
       session: alfaSession,
     },
     {
+      label: 'what to pay attention to in the current case',
+      input: 'На что тут нужно обратить внимание?',
+      expectedIntent: 'strengths_assessment',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_strength',
+      expectedAnswerType: 'hiring_argument',
+      expectedTargetCaseId: 'alfa-smart',
+      session: alfaSession,
+    },
+    {
       label: 'proofs here',
       input: 'Где тут доказательства?',
       expectedIntent: 'evidence_request',
@@ -511,6 +521,42 @@ async function main() {
     await assertScenario({
       label: `${caseId}: compact current case summary without deictic cue and concise wording`,
       input: 'Емко расскажи о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary with short tell verb`,
+      input: 'Ёмко скажи о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary with comparative wording`,
+      input: 'Расскажи короче о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary with colloquial comparative wording`,
+      input: 'Расскажи покороче об этом кейсе',
       expectedIntent: 'case_discovery',
       expectedScope: 'current_case_only',
       expectedQuestionSubject: 'case_summary',

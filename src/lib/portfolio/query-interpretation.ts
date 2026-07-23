@@ -149,7 +149,7 @@ const FAST_REVIEW_CUES: CueDefinition[] = [
 ];
 
 const SUMMARY_CUES: CueDefinition[] = [
-  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /без воды/i] },
+  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /покороче/i, /короче/i, /без воды/i] },
 ];
 
 const EXPERIENCE_CUES: CueDefinition[] = [
@@ -444,7 +444,7 @@ export function isCompactCurrentCaseSummaryRequest(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
   const hasCompactCue = collectCueLabels(normalized, SUMMARY_CUES).length > 0;
-  const hasTellCue = /(?:^|[\s.,!?;:()«»"'/-])(?:расскажи|объясни|опиши|пройдись)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
+  const hasTellCue = /(?:^|[\s.,!?;:()«»"'/-])(?:расскажи|скажи|объясни|опиши|пройдись)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
   const hasCurrentCaseReference = [
     'об этом кейсе',
     'про этот кейс',
@@ -1095,6 +1095,11 @@ function recoverCurrentCaseIntentFromText(text: string): MessageIntent | null {
     return { type: 'evidence_request' };
   }
   if (/почему.+сильн|почему этот кейс|почему этот проект.+важен|что этот кейс.+доказыва/i.test(text)) {
+    return { type: 'strengths_assessment' };
+  }
+  if (
+    /(?:на\s+что\s+(?:(?:тут|здесь|в\s+этом\s+(?:кейсе|проекте))\s+)?(?:нужно\s+)?обратить\s+внимание|что\s+(?:тут|здесь)\s+(?:самое\s+)?(?:важное|главное))/i.test(text)
+  ) {
     return { type: 'strengths_assessment' };
   }
   if (/об этом (?:кейсе|проекте)|в этом (?:кейсе|проекте)/i.test(text)) {
