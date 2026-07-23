@@ -497,6 +497,30 @@ async function main() {
     });
 
     await assertScenario({
+      label: `${caseId}: compact current case summary without deictic cue`,
+      input: 'Коротко расскажи о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
+      label: `${caseId}: compact current case summary without deictic cue and concise wording`,
+      input: 'Емко расскажи о кейсе',
+      expectedIntent: 'case_discovery',
+      expectedScope: 'current_case_only',
+      expectedQuestionSubject: 'case_summary',
+      expectedAnswerType: 'case_summary',
+      expectedResponseLength: 'compact',
+      expectedTargetCaseId: caseId,
+      session,
+    });
+
+    await assertScenario({
       label: `${caseId}: compact current case research`,
       input: 'Емко: как Андрей исследовал проблему?',
       expectedIntent: 'decision_process',
@@ -508,6 +532,29 @@ async function main() {
       session,
     });
   }
+
+  await assertScenario({
+    label: 'named case must override the currently opened case for a compact summary',
+    input: 'Коротко расскажи о кейсе SIEBEL',
+    expectedIntent: 'case_discovery',
+    expectedScope: 'named_case',
+    expectedQuestionSubject: 'case_summary',
+    expectedAnswerType: 'case_summary',
+    expectedResponseLength: 'compact',
+    expectedTargetCaseId: 'siebel',
+    session: alfaSession,
+  });
+
+  await assertScenario({
+    label: 'plural case summary must remain portfolio-wide',
+    input: 'Кратко о кейсах',
+    expectedIntent: 'portfolio_overview',
+    expectedScope: 'portfolio_wide',
+    expectedQuestionSubject: 'candidate_portfolio_value',
+    expectedAnswerType: 'portfolio_compression',
+    expectedResponseLength: 'compact',
+    session: siebelSession,
+  });
 
   console.log('Query interpretation contract passed.');
 }

@@ -43,7 +43,7 @@ import {
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
 import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
 import { synthesizeCaseAwareAnswer, synthesizeGeneralAnswer } from '@/lib/portfolio/synthesis';
-import { interpretQuery } from '@/lib/portfolio/query-interpretation';
+import { interpretQuery, isCompactCurrentCaseSummaryRequest } from '@/lib/portfolio/query-interpretation';
 import type {
   AnswerType,
   AnswerMode,
@@ -422,12 +422,16 @@ async function resolveIntentClassification(
   text: string,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   const { intent, confidence } = interpretation;
-  const isDeicticCompactCaseSummary = isDeicticCompactCaseSummaryRequest(text);
+  const isDeicticCompactCaseSummary = isCompactCurrentCaseSummaryRequest(text);
+  const targetsDifferentNamedCase =
+    interpretation.scope === 'named_case'
+    && interpretation.targetCaseId !== null
+    && interpretation.targetCaseId !== session.selectedContext.id;
   const isCandidateFastReviewContext =
     session.hasSeenCandidateFastReview
     && session.selectedContext.kind === 'none';
 
-  if (isDeicticCompactCaseSummary) {
+  if (isDeicticCompactCaseSummary && !targetsDifferentNamedCase) {
     if (session.selectedContext.kind === 'case') {
       return resolveCaseAwareSynthesis(
         session,
@@ -535,32 +539,6 @@ async function resolveIntentClassification(
   }
 
   return resolveMessageIntent(session, intent);
-}
-
-function isDeicticCompactCaseSummaryRequest(text: string): boolean {
-  const normalized = text
-    .toLocaleLowerCase('ru-RU')
-    .replace(/ё/g, 'е')
-    .replace(/[!?.,…:;()[\]"'«»—–-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  if (!normalized) return false;
-
-  const words = new Set(normalized.split(' '));
-  const hasCompactCue =
-    ['коротко', 'кратко', 'емко', 'кротоко', 'сжато'].some((cue) => words.has(cue))
-    || normalized.includes('без воды');
-  const hasTellCue = ['расскажи', 'объясни', 'опиши', 'пройдись'].some((cue) => words.has(cue));
-  const hasDeicticCaseCue = [
-    'об этом кейсе',
-    'про этот кейс',
-    'об этом проекте',
-    'про этот проект',
-    'здесь',
-  ].some((cue) => normalized.includes(cue));
-
-  return hasCompactCue && hasTellCue && hasDeicticCaseCue;
 }
 
 export async function resolveBootstrap(session: AssistantSession): Promise<AssistantEnvelope> {

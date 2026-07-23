@@ -16,6 +16,7 @@ import {
   buildClientEnvelopeForAction,
   buildClientErrorRetryEnvelope,
 } from '@/lib/portfolio/client-seeds';
+import { getSyncActionForContext } from '@/lib/portfolio/context-sync';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -312,65 +313,6 @@ function getCanonicalActionForCase(caseId: string): UIAction {
   }
 
   return { type: 'open_case_summary', caseId };
-}
-
-function getSyncActionForContext(thread: ContextThread): UIAction | null {
-  const envelope = thread.lastEnvelope;
-
-  if (!envelope) {
-    if (thread.contextId === 'entry') {
-      return { type: 'open_entry' };
-    }
-
-    if (thread.contextId === 'experience') {
-      return { type: 'open_experience_summary' };
-    }
-
-    if (thread.contextId === 'mobile-experience') {
-      return { type: 'open_mobile_experience_overview' };
-    }
-
-    if (thread.contextId === 'additional-cases') {
-      return { type: 'open_additional_cases_overview' };
-    }
-
-    if (isCaseContextId(thread.contextId)) {
-      return getCanonicalActionForCase(thread.contextId.replace(/^case:/, ''));
-    }
-
-    return null;
-  }
-
-  if (envelope.selectedContext.kind === 'case') {
-    const caseId = envelope.selectedContext.id;
-
-    switch (envelope.viewType) {
-      case 'case_detail':
-        return { type: 'open_case_detail', caseId };
-      case 'case_route':
-        return { type: 'open_case_route', caseId };
-      case 'mobile_case_detail':
-        return { type: 'open_mobile_case_detail', caseId };
-      case 'mobile_case_summary':
-        return { type: 'open_mobile_case_summary', caseId };
-      default:
-        return getCanonicalActionForCase(caseId);
-    }
-  }
-
-  if (envelope.selectedContext.kind === 'experience') {
-    return envelope.viewType === 'experience_detail'
-      ? { type: 'open_experience_detail' }
-      : { type: 'open_experience_summary' };
-  }
-
-  if (envelope.selectedContext.kind === 'overview') {
-    return envelope.selectedContext.id === 'mobile-experience'
-      ? { type: 'open_mobile_experience_overview' }
-      : { type: 'open_additional_cases_overview' };
-  }
-
-  return { type: 'open_entry' };
 }
 
 function createContextThread(contextId: ContextId, envelope?: AssistantEnvelope): ContextThread {
@@ -1078,6 +1020,10 @@ export function PortfolioShell() {
     });
 
     if (!response.ok) {
+      const errorPayload = await response.json().catch(() => null) as { code?: string } | null;
+      if (errorPayload?.code === 'SESSION_STORE_UNAVAILABLE') {
+        throw new Error('Сессия ассистента временно недоступна. Повторите попытку.');
+      }
       throw new Error(`Chat request failed with ${response.status}`);
     }
 
@@ -1091,7 +1037,7 @@ export function PortfolioShell() {
 
     const thread = threadsRef.current[contextId];
     const syncAction = contextSyncActionsRef.current[contextId]
-      ?? (thread ? getSyncActionForContext(thread) : null);
+      ?? (thread ? getSyncActionForContext(contextId, thread.lastEnvelope) : null);
 
     if (!syncAction) {
       return sessionIdRef.current ?? undefined;
@@ -1408,7 +1354,9 @@ export function PortfolioShell() {
           await loadCaseById(caseId);
         } catch (caughtError) {
           if (requestId === caseLoadRequestRef.current) {
-            const action = targetThread ? getSyncActionForContext(targetThread) : getCanonicalActionForCase(caseId);
+            const action = targetThread
+              ? getSyncActionForContext(contextId, targetThread.lastEnvelope)
+              : getCanonicalActionForCase(caseId);
             const errorEnvelope = buildClientErrorRetryEnvelope(
               sessionIdRef.current,
               sessionMeta.used,

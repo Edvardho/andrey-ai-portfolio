@@ -437,6 +437,26 @@ function collectCueLabels(text: string, groups: CueDefinition[]): string[] {
   return labels;
 }
 
+export function isCompactCurrentCaseSummaryRequest(text: string): boolean {
+  const normalized = text
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const hasCompactCue = collectCueLabels(normalized, SUMMARY_CUES).length > 0;
+  const hasTellCue = /(?:^|[\s.,!?;:()«»"'/-])(?:расскажи|объясни|опиши|пройдись)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
+  const hasCurrentCaseReference = [
+    'об этом кейсе',
+    'про этот кейс',
+    'об этом проекте',
+    'про этот проект',
+    'здесь',
+  ].some((cue) => normalized.includes(cue));
+  const hasSingularCaseReference = /(?:^|[\s.,!?;:()«»"'/-])(?:о|про)\s+(?:этот\s+)?(?:кейсе|кейс|проекте|проект)(?=$|[\s.,!?;:()«»"'/-])/i.test(normalized);
+
+  return hasCompactCue && hasTellCue && (hasCurrentCaseReference || hasSingularCaseReference);
+}
+
 function hasNegativeCaseCue(text: string): boolean {
   return /неудачн(ый|ого|ом)?\s+кейс|слаб(ый|ого|ом)?\s+кейс|плох(ой|ого|ом)?\s+кейс|провальн(ый|ого|ом)?\s+кейс/i.test(
     text,
@@ -1047,6 +1067,9 @@ function recoverIntentFromText(
 }
 
 function recoverCurrentCaseIntentFromText(text: string): MessageIntent | null {
+  if (isCompactCurrentCaseSummaryRequest(text)) {
+    return { type: 'case_discovery' };
+  }
   if (/вклад|реально сделал|что именно сделал|какая была.+роль|в чем была.+роль|что здесь сделал он|что здесь его|а не команд/i.test(text)) {
     return { type: 'case_discovery' };
   }
