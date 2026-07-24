@@ -763,7 +763,10 @@ export function buildAmbiguousEnvelope(session: AssistantSession): AssistantEnve
     uiState: 'fallback',
     viewType: 'ambiguous_question',
     presentationVariant: 'refusal_reply',
-    selectedContext: { kind: 'none', id: null, label: null },
+    // A clarifying reply must not silently detach the server session from the
+    // case that is still visible in the UI. The next question may naturally
+    // refer to that case without naming it again.
+    selectedContext: session.selectedContext,
     safetyState: 'ambiguous_question',
     contentBlocks: [
       {
@@ -834,7 +837,9 @@ export function buildUnsupportedEnvelope(session: AssistantSession): AssistantEn
     uiState: 'fallback',
     viewType: 'unsupported_request',
     presentationVariant: 'refusal_reply',
-    selectedContext: { kind: 'none', id: null, label: null },
+    // Refusing an unsupported forecast or assumption is not navigation.
+    // Keep the current case as the authoritative follow-up context.
+    selectedContext: session.selectedContext,
     safetyState: 'unsupported_request',
     contentBlocks: [
       {
@@ -868,7 +873,10 @@ export function buildSafetyEnvelope(
     uiState: 'fallback',
     viewType: 'safety_refusal',
     presentationVariant: 'refusal_reply',
-    selectedContext: { kind: 'none', id: null, label: null },
+    // Safety boundaries answer the message, not change the user's place in
+    // the portfolio. Preserving this context prevents a later "Кратко скажи"
+    // from falling back to an entry-level clarification.
+    selectedContext: session.selectedContext,
     safetyState,
     contentBlocks: [{ type: 'lead', title, body }],
     chips,
