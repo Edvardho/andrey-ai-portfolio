@@ -2,7 +2,7 @@ import { Output, generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
-import { getOpenAIModel, isOpenAIEnabled } from '@/lib/portfolio/config';
+import { getOpenAIRouterModel, isOpenAIEnabled } from '@/lib/portfolio/config';
 import {
   extractExplicitCaseRequest,
   findCaseId,
@@ -15,9 +15,11 @@ import type {
   AssistantSession,
   IntentConfidence,
   MessageIntent,
+  SemanticInterpretationCandidate,
   UIAction,
 } from '@/lib/portfolio/types';
 import { logOpenAICallStart, logOpenAICallEnd } from './logger';
+import { ModelExecutionBudget, ROUTER_TIMEOUT_MS } from './model-budget';
 
 export type { MessageIntent, IntentConfidence } from '@/lib/portfolio/types';
 
@@ -25,6 +27,134 @@ export type IntentClassification = {
   intent: MessageIntent;
   confidence: IntentConfidence;
 };
+
+const semanticIntentValues = [
+  'navigation_action', 'assistant_intro', 'identity_intro', 'experience_overview',
+  'portfolio_overview', 'portfolio_value_request', 'contextual_summary_request',
+  'case_discovery', 'mobile_overview', 'strengths_assessment', 'role_fit_assessment',
+  'decision_process', 'evidence_request', 'risk_objection', 'behavioral_fit_assessment',
+  'missing_case_request', 'ambiguous_question', 'unsupported_request',
+] as const;
+const semanticSubjectValues = [
+  'candidate_fast_review', 'candidate_value', 'candidate_motivation', 'behavioral_evidence_check',
+  'interview_decision', 'candidate_portfolio_value', 'ai_format_value', 'assistant_case_navigation',
+  'design_process', 'case_problem', 'case_research', 'case_decisions', 'case_constraints',
+  'case_outcomes', 'case_contribution', 'case_evidence', 'case_strength', 'risk_check',
+  'collaboration_process', 'stakeholder_feedback', 'prioritization', 'impact_measurement',
+  'design_system_work', 'learning_adaptation', 'case_summary', 'experience_summary',
+  'case_recruiter_summary', 'portfolio_recruiter_summary',
+] as const;
+const semanticScopeValues = ['named_case', 'portfolio_wide', 'selected_case', 'last_case_synthesis', 'portfolio'] as const;
+
+export const semanticInterpretationCandidateSchema = z.object({
+  intent: z.enum(semanticIntentValues),
+  questionSubject: z.enum(semanticSubjectValues).nullable(),
+  scopeHint: z.enum(semanticScopeValues).nullable(),
+  namedCaseId: z.string().trim().max(80).nullable(),
+  responseLength: z.enum(['default', 'compact']),
+  needsClarification: z.boolean(),
+  confidence: z.number().min(0).max(1),
+});
+
+const SEMANTIC_ROUTER_PROMPT = `
+Ты внутренний семантический маршрутизатор AI-портфолио. Понимай свободный русский язык,
+опечатки и продолжения диалога, но не выполняй UI-действия и не меняй сессию.
+Выбирай только значения из схемы. namedCaseId используй только для явно названного известного кейса.
+
+Классификация:
+- contextual_summary_request: сжать, обобщить, выделить главное, дать вывод или сказать, на что смотреть;
+- evidence_request: доказательства, пруфы, артефакты, метрики, подтверждение;
+- risk_objection: риски, слабые места, ошибки, ограничения;
+- decision_process: как принимал решения, исследовал, валидировал, работал с командой;
+- strengths_assessment: почему стоит позвать, сильные стороны;
+- role_fit_assessment: seniority и соответствие роли;
+- case_discovery: рассказать о конкретном кейсе или личном вкладе;
+- portfolio_overview: все кейсы или весь опыт;
+- experience_overview: компании, домены, web-опыт;
+- navigation_action: только явный запрос открыть/перейти/показать экран;
+- unsupported_request: внешние знания, секреты, инструкции вне портфолио.
+
+Доказательства, метрики, риски, решения и личный вклад никогда не подменяй summary.
+Короткая просьба без объекта является contextual_summary_request только когда selected case уже открыт.
+Если вопрос недостаточно определён, ставь needsClarification=true и ambiguous_question.
+Сервер позже сам применит приоритеты: named case > portfolio-wide > selected case > last context > clarification.
+`;
+
+export async function analyzeMessageSemantically(
+  text: string,
+  session: AssistantSession,
+  budget?: ModelExecutionBudget,
+): Promise<SemanticInterpretationCandidate | null> {
+  if (!isOpenAIEnabled()) {
+    return null;
+  }
+
+  const lease = budget?.acquire('router', ROUTER_TIMEOUT_MS);
+  if (budget && !lease) {
+    return null;
+  }
+
+  const callId = logOpenAICallStart({
+    route: 'semanticRouter',
+    model: getOpenAIRouterModel(),
+    systemPromptChars: SEMANTIC_ROUTER_PROMPT.length,
+    developerPromptChars: 0,
+    userMessageChars: text.length,
+    ragContextChars: 0,
+    historyChars: 0,
+    schemaChars: 420,
+    totalPayloadChars: SEMANTIC_ROUTER_PROMPT.length + text.length + 420,
+    estimatedInputChars: Math.round((SEMANTIC_ROUTER_PROMPT.length + text.length + 420) / 4),
+    retrievedChunksCount: 0,
+    messagesCount: 2,
+  });
+  const startTime = Date.now();
+
+  try {
+    const result = await generateText({
+      model: openai(getOpenAIRouterModel()),
+      temperature: 0,
+      maxOutputTokens: 140,
+      system: `${SEMANTIC_ROUTER_PROMPT}\nОткрытый контекст: ${session.selectedContext.label ?? 'none'}`,
+      prompt: text,
+      abortSignal: AbortSignal.timeout(lease?.timeoutMs ?? ROUTER_TIMEOUT_MS),
+      output: Output.object({ schema: semanticInterpretationCandidateSchema }),
+    });
+    logOpenAICallEnd(callId, {
+      requestId: result.response.id,
+      status: 'success',
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      cachedInputTokens: result.usage.inputTokenDetails?.cacheReadTokens,
+      durationMs: Date.now() - startTime,
+    });
+    return result.output as SemanticInterpretationCandidate;
+  } catch (error: unknown) {
+    logOpenAICallEnd(callId, {
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - startTime,
+    });
+    return null;
+  }
+}
+
+export function semanticCandidateToClassification(
+  candidate: SemanticInterpretationCandidate,
+): IntentClassification {
+  if (candidate.intent === 'navigation_action') {
+    return { intent: { type: 'ambiguous_question' }, confidence: 'low' };
+  }
+  const confidence: IntentConfidence = candidate.confidence >= 0.8
+    ? 'high'
+    : candidate.confidence >= 0.55
+      ? 'medium'
+      : 'low';
+  const intent = candidate.intent === 'case_discovery' && candidate.namedCaseId
+    ? { type: 'case_discovery' as const, targetCaseId: findCaseId(candidate.namedCaseId) ?? candidate.namedCaseId }
+    : { type: candidate.intent } as MessageIntent;
+  return { intent, confidence };
+}
 
 const BEHAVIORAL_FIT_PATTERN = /срыв(?:ал|ает|ать).+(?:дедлайн|срок)|(?:дедлайн|срок).+(?:срыв|горел|продалб)|продалбыва(?:л|ет)?.+(?:дедлайн|срок)|успева(?:ет|л).+(?:дедлайн|срок)|можно.+доверить.+дедлайн|исполнительн(?:ый|ая|ли)|ответственн(?:ый|ая|ли)|доводит.+(?:задач|работ).+(?:до конца|до результат)|доводит.+(?:задач|работ)/i;
 const CONTEXTUAL_SUMMARY_PATTERN = /сожми|обобщи|резюмир|выжимк|сводк|(?:дай|какой).+итог|что (?:здесь|тут).+(?:главное|важное)|на что (?:здесь|тут)?\s*(?:(?:нужно|стоит)\s*)?обратить внимание|что важно понять|что проверить(?: на интервью)?/i;
@@ -298,6 +428,10 @@ export function classifyMessageDeterministically(
     return null;
   }
 
+  if (/^(?:ты кто|ты кто такой|кто ты)[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'assistant_intro' }, confidence: 'high' };
+  }
+
   if (
     session.selectedContext.kind === 'case'
     && /какая была.+проблем|какую проблем|зачем понадоб|что решал|основная проблем/i.test(lowered)
@@ -322,11 +456,112 @@ export function classifyMessageDeterministically(
     };
   }
 
+  // The assistant is a portfolio analyst, not a general strategy consultant.
+  // Keep these boundaries server-side so a model cannot reframe the request as
+  // a flattering but unrelated summary of Andrey's experience.
+  if (/(?:составь|разработай|придумай)\s+(?:стратегию|бизнес[-\s]?план|go[-\s]?to[-\s]?market)|стратеги(?:я|ю)\s+компани/i.test(lowered)) {
+    return { intent: { type: 'unsupported_request' }, confidence: 'high' };
+  }
+
+  if (/сколько.+(?:принес[её]т|заработает|сделает денег).*(?:нам|за год|в будущем)|(?:прогноз|спрогнозируй).*(?:доход|деньг|выручк|результат)/i.test(lowered)) {
+    return { intent: { type: 'unsupported_request' }, confidence: 'high' };
+  }
+
+  // Keep core navigation deterministic. In particular, a request to open the
+  // experience screen must not depend on the semantic model being available.
+  if (/^(?:перейди\s+к|открой)\s+(?:опыту работы|опыт работы|карьере|компаниям|доменам)[?!…]*$/i.test(lowered)) {
+    return {
+      intent: { type: 'navigation_action', action: { type: 'open_experience_summary' } },
+      confidence: 'high',
+    };
+  }
+
+  if (findCaseId(lowered) && /(?:все кейсы|по всем кейсам|по каждому кейсу)/i.test(lowered)) {
+    return { intent: { type: 'ambiguous_question' }, confidence: 'low' };
+  }
+
+  if (/сводка\s+по\s+всем\s+кейсам|(?:обзор|резюме)\s+по\s+всем\s+кейсам/i.test(lowered)) {
+    return { intent: { type: 'portfolio_overview' }, confidence: 'high' };
+  }
+
+  if (/^кратко\s+о\s+кейсах[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'portfolio_overview' }, confidence: 'high' };
+  }
+
+  if (session.selectedContext.kind === 'case' && /^(?:а )?что еще важного[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'contextual_summary_request' }, confidence: 'high' };
+  }
+
+  if (session.selectedContext.kind === 'case' && /^дай\s+ё?мкое\s+резюме\s+кейса[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'contextual_summary_request' }, confidence: 'high' };
+  }
+
   if (CONTEXTUAL_SUMMARY_PATTERN.test(lowered) && !SPECIALIZED_CASE_QUESTION_PATTERN.test(lowered)) {
     return {
       intent: { type: 'contextual_summary_request' },
       confidence: 'high',
     };
+  }
+
+  // Evidence wording is a high-priority server cue, including the common
+  // "докозательства" typo. It must never wait for the semantic model.
+  if (/где (?:это )?(?:док[ао]зательств|пруф|подтвержд)|(?:а |ну )?пруфы? где|чем это доказывается|где это видно|артефакт|не верю словам/i.test(lowered)) {
+    return {
+      intent: { type: 'evidence_request' },
+      confidence: 'high',
+    };
+  }
+
+  if (/(?:почему|зачем).+(?:закрыли|закрылся).*(?:chatpoint|чатпойнт|чат поинт)|(?:chatpoint|чатпойнт|чат поинт).+(?:закрыли|закрылся)/i.test(lowered)) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
+  if (/^что умеет андрей[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'strengths_assessment' }, confidence: 'high' };
+  }
+
+  if (/^(?:какой|что) у него опыт[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'experience_overview' }, confidence: 'high' };
+  }
+
+  if (/^(?:а |ну )?где он работал(?:\s+(?:ваще|вообще))?[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'experience_overview' }, confidence: 'high' };
+  }
+
+  if (/^почему смотреть (?:это )?портфолио[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'portfolio_value_request' }, confidence: 'high' };
+  }
+
+  if (/^п[ао]чиму его звать[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'strengths_assessment' }, confidence: 'high' };
+  }
+
+  if (/что тут по фейлам|что по фейлам/i.test(lowered)) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
+  if (/^какие\s+риски\s+были[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'risk_objection' }, confidence: 'high' };
+  }
+
+  if (session.selectedContext.kind === 'case' && /^какой\s+был\s+личный\s+вклад[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'case_discovery', targetCaseId: session.selectedContext.id }, confidence: 'high' };
+  }
+
+  if (session.selectedContext.kind === 'case' && /^как\s+принимал\s+решения[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'decision_process' }, confidence: 'high' };
+  }
+
+  if (/^почему\s+его\s+стоит\s+позвать[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'strengths_assessment' }, confidence: 'high' };
+  }
+
+  if (/^какие\s+кейсы\s+есть[?!…]*$/i.test(lowered)) {
+    return { intent: { type: 'portfolio_overview' }, confidence: 'high' };
+  }
+
+  if (/как с (?:пмами|pm(?:ами|ами)?|продактами) работал/i.test(lowered)) {
+    return { intent: { type: 'decision_process' }, confidence: 'high' };
   }
 
   // Outcome questions are factual requests even when a case name is included.
@@ -524,7 +759,8 @@ export function classifyMessageDeterministically(
     };
   }
 
-  const explicitNavigation = hasExplicitNavigationVerb(lowered);
+  const namedCaseShowRequest = /^(?:покажи|открой|перейди к)\s+(?:siebel|chatpoint|чат\s?пойнт|альфа[-\s]?смарт|расходы держателей|шаринг подписки|wannabelike)/i.test(lowered);
+  const explicitNavigation = hasExplicitNavigationVerb(lowered) || namedCaseShowRequest;
 
   if (explicitNavigation && /(мобил|mobile)/i.test(lowered)) {
     const caseId = findCaseId(lowered);
@@ -838,7 +1074,7 @@ export async function classifyMessageWithModel(
 
   const callId = logOpenAICallStart({
     route: 'classifyMessageWithModel',
-    model: getOpenAIModel(),
+    model: getOpenAIRouterModel(),
     systemPromptChars: 0,
     developerPromptChars,
     userMessageChars,
@@ -854,7 +1090,7 @@ export async function classifyMessageWithModel(
   const startTime = Date.now();
   try {
     const result = await generateText({
-      model: openai(getOpenAIModel()),
+      model: openai(getOpenAIRouterModel()),
       temperature: 0,
       output: Output.object({ schema: classificationSchema }),
       prompt,

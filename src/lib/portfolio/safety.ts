@@ -23,6 +23,7 @@ const INJECTION_PATTERNS = [
   /ignore.+instruction/i,
   /system prompt/i,
   /покажи.+промпт/i,
+  /(?:дай|скинь|покажи).+(?:свой|системн(?:ый|ого)?).+промпт/i,
   /внутренн(ие|ю).+инструк/i,
   /раскрой.+инструк/i,
   /developer message/i,

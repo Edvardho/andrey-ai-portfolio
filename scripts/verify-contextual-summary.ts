@@ -32,6 +32,8 @@ const CASE_SUMMARY_PROMPTS = [
   'Коротко скажи',
   'Ёмко скажи',
   'Расскажи короче',
+  'Емка скажи',
+  'Короче давай',
 ];
 
 async function classify(session: AssistantSession, input: string) {
@@ -145,7 +147,7 @@ async function main() {
   const conflictInterpretation = interpretQuery(alfaSession, 'Обобщи SIEBEL по всем кейсам', conflictClassification);
   assert.equal(conflictInterpretation.answerType, null, 'conflicting summary scope must ask for clarification');
 
-  for (const input of ['Коротко скажи', 'Ёмко скажи', 'Расскажи короче']) {
+  for (const input of ['Коротко скажи', 'Ёмко скажи', 'Расскажи короче', 'Емка скажи', 'Короче давай']) {
     const bareClassification = await classify(baseSession, input);
     const bareInterpretation = interpretQuery(baseSession, input, bareClassification);
     assert.equal(bareInterpretation.answerType, null, `${input}: bare compact request must remain ambiguous`);

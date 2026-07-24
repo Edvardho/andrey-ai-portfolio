@@ -1,8 +1,10 @@
 import { getCaseById } from '@/data/portfolio-content.server';
-import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getSemanticRouterMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import {
   classifyMessageDeterministically,
   classifyMessageWithModel,
+  analyzeMessageSemantically,
+  semanticCandidateToClassification,
   type MessageIntent,
 } from '@/lib/portfolio/intent';
 import {
@@ -47,6 +49,8 @@ import {
   synthesizeContextualSummary,
   synthesizeGeneralAnswer,
 } from '@/lib/portfolio/synthesis';
+import { logSemanticRouterAgreement } from '@/lib/portfolio/logger';
+import { ModelExecutionBudget } from '@/lib/portfolio/model-budget';
 import { interpretQuery, isCompactCurrentCaseSummaryRequest } from '@/lib/portfolio/query-interpretation';
 import type {
   AnswerType,
@@ -249,6 +253,7 @@ async function resolveCaseAwareSynthesis(
   queryScope: QueryInterpretation['scope'],
   questionSubject: QueryInterpretation['questionSubject'],
   responseLength: QueryInterpretation['responseLength'],
+  budget?: ModelExecutionBudget,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   let synthesis: SynthesisSnapshot;
   try {
@@ -261,6 +266,7 @@ async function resolveCaseAwareSynthesis(
       queryScope,
       questionSubject,
       responseLength,
+      budget,
     );
     if (!nextSynthesis) {
       return { session, envelope: buildCaseContextRequiredEnvelope(session) };
@@ -292,6 +298,7 @@ async function resolveGlobalSynthesis(
   session: AssistantSession,
   text: string,
   interpretation: QueryInterpretation,
+  budget?: ModelExecutionBudget,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   let synthesis: SynthesisSnapshot;
   try {
@@ -307,6 +314,7 @@ async function resolveGlobalSynthesis(
       interpretation.scope,
       interpretation.questionSubject,
       interpretation.responseLength,
+      budget,
     );
   } catch {
     return {
@@ -334,6 +342,7 @@ async function resolveContextualSummary(
   session: AssistantSession,
   text: string,
   interpretation: QueryInterpretation,
+  budget?: ModelExecutionBudget,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   const caseId = interpretation.scope === 'portfolio_wide'
     ? null
@@ -346,7 +355,7 @@ async function resolveContextualSummary(
       caseId,
       queryScope: interpretation.scope,
       responseLength: interpretation.responseLength,
-    });
+    }, budget);
   } catch {
     return { session, envelope: buildErrorRetryEnvelope(session) };
   }
@@ -464,6 +473,7 @@ async function resolveIntentClassification(
   session: AssistantSession,
   interpretation: QueryInterpretation,
   text: string,
+  budget?: ModelExecutionBudget,
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   const { intent, confidence } = interpretation;
   const isDeicticCompactCaseSummary = isCompactCurrentCaseSummaryRequest(text);
@@ -486,6 +496,7 @@ async function resolveIntentClassification(
         'current_case_only',
         'case_summary',
         'compact',
+        budget,
       );
     }
 
@@ -527,7 +538,7 @@ async function resolveIntentClassification(
   }
 
   if (interpretation.answerType === 'contextual_summary') {
-    return resolveContextualSummary(session, text, interpretation);
+    return resolveContextualSummary(session, text, interpretation, budget);
   }
 
   const isCompactCandidateReviewRepeat =
@@ -562,6 +573,7 @@ async function resolveIntentClassification(
       interpretation.scope,
       interpretation.questionSubject,
       interpretation.responseLength,
+      budget,
     );
   }
 
@@ -579,11 +591,12 @@ async function resolveIntentClassification(
       interpretation.scope,
       interpretation.questionSubject,
       interpretation.responseLength,
+      budget,
     );
   }
 
   if (interpretation.answerType && interpretation.topic) {
-    return resolveGlobalSynthesis(session, text, interpretation);
+    return resolveGlobalSynthesis(session, text, interpretation, budget);
   }
 
   return resolveMessageIntent(session, intent);
@@ -699,9 +712,30 @@ export async function resolveMessage(
   }
 
   const deterministic = classifyMessageDeterministically(text, nextSession);
+  const semanticMode = getSemanticRouterMode();
+  const budget = new ModelExecutionBudget();
+  // In shadow, preserve the existing answer path. We only compare the router
+  // where no legacy classifier call is required, keeping the request to ≤2 calls.
+  const semanticCandidate = semanticMode === 'active' && !deterministic
+    ? await analyzeMessageSemantically(text, nextSession, budget)
+    : semanticMode === 'shadow' && deterministic
+      ? await analyzeMessageSemantically(text, nextSession, budget)
+      : null;
   const modelClassification = deterministic
     ? null
-    : await classifyMessageWithModel(text, nextSession);
+    : semanticMode === 'active'
+      ? semanticCandidate
+        ? semanticCandidateToClassification(semanticCandidate)
+        : { intent: { type: 'ambiguous_question' as const }, confidence: 'low' as const }
+      : await classifyMessageWithModel(text, nextSession);
+
+  if (semanticMode === 'shadow' && semanticCandidate && deterministic) {
+    logSemanticRouterAgreement({
+      agreement: semanticCandidate.intent === deterministic.intent.type,
+      semanticIntent: semanticCandidate.intent,
+      deterministicIntent: deterministic.intent.type,
+    });
+  }
 
   const interpretation = interpretQuery(
     nextSession,
@@ -709,9 +743,10 @@ export async function resolveMessage(
     modelClassification
       ?? deterministic
       ?? { intent: { type: 'ambiguous_question' }, confidence: 'low' },
+    semanticMode === 'active' ? semanticCandidate : null,
   );
 
-  return resolveIntentClassification(nextSession, interpretation, text);
+  return resolveIntentClassification(nextSession, interpretation, text, budget);
 }
 
 function isGratitudeOnly(text: string): boolean {
@@ -729,6 +764,7 @@ function isGratitudeOnly(text: string): boolean {
   const words = normalized.split(' ');
   const hasGratitudeWord = words.some((word) => (
     word === 'спасибо'
+    || word === 'спасиб'
     || word === 'спс'
     || word === 'спасибки'
     || word === 'спасибочки'
@@ -742,6 +778,7 @@ function isGratitudeOnly(text: string): boolean {
 
   const allowedGratitudeWords = new Set([
     'спасибо',
+    'спасиб',
     'спс',
     'спасибки',
     'спасибочки',

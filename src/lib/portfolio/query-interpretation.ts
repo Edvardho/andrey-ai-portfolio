@@ -8,6 +8,7 @@ import type {
   QueryInterpretation,
   QueryScope,
   QuestionSubject,
+  SemanticInterpretationCandidate,
   SynthesisTopic,
 } from '@/lib/portfolio/types';
 
@@ -149,7 +150,7 @@ const FAST_REVIEW_CUES: CueDefinition[] = [
 ];
 
 const SUMMARY_CUES: CueDefinition[] = [
-  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /коротко/i, /покороче/i, /короче/i, /без воды/i] },
+  { label: 'summary:brief', patterns: [/кратко/i, /сжато/i, /ёмко/i, /емко/i, /емка/i, /коротко/i, /покороче/i, /короче/i, /без воды/i] },
 ];
 
 const CONTEXTUAL_SUMMARY_CUES: CueDefinition[] = [
@@ -481,7 +482,7 @@ export function isBareCompactCurrentCaseSummaryRequest(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return /^(?:коротко|емко) скажи[.!?…]*$|^расскажи (?:короче|покороче)[.!?…]*$/.test(normalized);
+  return /^(?:коротко|емко|емка) скажи[.!?…]*$|^короче давай[.!?…]*$|^расскажи (?:короче|покороче)[.!?…]*$/.test(normalized);
 }
 
 function hasNegativeCaseCue(text: string): boolean {
@@ -1267,6 +1268,7 @@ export function interpretQuery(
   session: AssistantSession,
   text: string,
   classification: ClassificationLike,
+  semanticCandidate?: SemanticInterpretationCandidate | null,
 ): QueryInterpretation {
   const lowered = text.trim().toLowerCase();
   const portfolioWideCueLabels = collectCueLabels(lowered, PORTFOLIO_WIDE_CUES);
@@ -1282,7 +1284,24 @@ export function interpretQuery(
   const caseResearchCueLabels = collectCueLabels(lowered, CASE_RESEARCH_CUES);
   const caseConstraintCueLabels = collectCueLabels(lowered, CASE_CONSTRAINT_CUES);
   const behavioralFitCueLabels = collectCueLabels(lowered, BEHAVIORAL_FIT_CUES);
-  const explicitNamedCaseId = findExplicitNamedCaseId(lowered);
+  const evidenceCueLabels = collectCueLabels(lowered, EVIDENCE_CUES);
+  const riskCueLabels = collectCueLabels(lowered, RISK_CUES);
+  const decisionCueLabels = collectCueLabels(lowered, CASE_DECISION_CUES);
+  const contributionCueLabels = /вклад|что он реально сделал|что именно сделал|какой был его вклад|что здесь сделал он|а не команда/i.test(lowered);
+  const hasSpecializedServerCue = Boolean(
+    evidenceCueLabels.length || riskCueLabels.length || caseOutcomeCueLabels.length || caseResearchCueLabels.length
+    || caseConstraintCueLabels.length || decisionCueLabels.length || contributionCueLabels,
+  );
+  const semanticUsable = Boolean(
+    semanticCandidate
+    && semanticCandidate.confidence >= 0.65
+    && !semanticCandidate.needsClarification
+    && !hasSpecializedServerCue,
+  );
+  const explicitNamedCaseId = findExplicitNamedCaseId(lowered)
+    ?? (semanticUsable && semanticCandidate?.scopeHint === 'named_case' && semanticCandidate.namedCaseId
+      ? findCaseId(semanticCandidate.namedCaseId)
+      : null);
   const isBareCompactCurrentCaseSummary =
     session.selectedContext.kind === 'case'
     && isBareCompactCurrentCaseSummaryRequest(lowered);
@@ -1296,14 +1315,17 @@ export function interpretQuery(
     && (
       isBareCompactCurrentCaseSummary
       || contextualSummaryCueLabels.length > 0
+      || (semanticUsable && semanticCandidate?.intent === 'contextual_summary_request')
     || (
       summaryCueLabels.length > 0
       && /(?:резюме|вывод|главн|итог|сводк|выжимк)/i.test(lowered)
     ));
+  // A named case and an explicit request for every case are mutually
+  // exclusive. Do not let later cue recovery silently choose one of them.
   const hasContextConflict =
-    isContextualSummaryRequest
-    && explicitNamedCaseId !== null
+    explicitNamedCaseId !== null
     && portfolioWideCueLabels.length > 0;
+  const isTerminalUnsupportedRequest = classification.intent.type === 'unsupported_request';
   const lastReferencedCaseId = getLastReferencedCaseId(session);
 
   const recovered = classification.intent.type === 'ambiguous_question'
@@ -1334,7 +1356,9 @@ export function interpretQuery(
     && !hasExplicitCaseTarget;
 
   const effectiveIntent =
-    hasContextConflict
+    isTerminalUnsupportedRequest
+      ? { type: 'unsupported_request' as const }
+      : hasContextConflict
       ? { type: 'ambiguous_question' as const }
       : behavioralFitCueLabels.length > 0
       ? { type: 'behavioral_fit_assessment' as const }
@@ -1360,7 +1384,9 @@ export function interpretQuery(
             ? { type: 'portfolio_overview' as const }
             : shouldUseCandidateIntro
               ? { type: 'identity_intro' as const }
-              : recovered?.intent ?? classification.intent;
+              : semanticCandidate?.needsClarification || (semanticCandidate && semanticCandidate.confidence < 0.65)
+                ? { type: 'ambiguous_question' as const }
+                : recovered?.intent ?? classification.intent;
   const effectiveConfidence = hasContextConflict
     ? 'low'
     : isContextualSummaryRequest
@@ -1385,14 +1411,16 @@ export function interpretQuery(
     && lastReferencedCaseId
     && session.selectedContext.kind !== 'case'
   ) {
-    targetCaseId = lastReferencedCaseId;
+    targetCaseId = semanticUsable && semanticCandidate?.scopeHint === 'portfolio'
+      ? null
+      : lastReferencedCaseId;
   } else if (effectiveIntent.type === 'case_discovery' && effectiveIntent.targetCaseId) {
     targetCaseId = effectiveIntent.targetCaseId;
   } else if (lastReferencedCaseId && contextCaseCueLabels.length > 0 && hasCaseScopedQuestionCue(lowered)) {
     targetCaseId = lastReferencedCaseId;
   } else if (
     session.selectedContext.kind === 'case'
-    && (currentCaseCueLabels.length > 0 || hasCaseScopedQuestionCue(lowered))
+    && (currentCaseCueLabels.length > 0 || hasCaseScopedQuestionCue(lowered) || (semanticUsable && semanticCandidate?.scopeHint === 'selected_case'))
   ) {
     targetCaseId = session.selectedContext.id;
   }
@@ -1424,12 +1452,17 @@ export function interpretQuery(
             ? 'selected_case'
             : 'last_case_synthesis';
 
-  const questionSubject = resolveQuestionSubject(
+  const resolvedQuestionSubject = resolveQuestionSubject(
     effectiveIntent,
     scopeResolution.scope,
     lowered,
     isExplicitFastReview,
   );
+  const questionSubject = semanticUsable
+    && semanticCandidate?.questionSubject
+    && effectiveIntent.type !== 'contextual_summary_request'
+    ? semanticCandidate.questionSubject
+    : resolvedQuestionSubject;
   const factFacet = getCaseAwareFacet(
     scopeResolution.scope,
     session,
@@ -1463,7 +1496,11 @@ export function interpretQuery(
     targetCaseId: resolvedTargetCaseId,
     summaryContextSource,
     confidence: effectiveConfidence,
-    responseLength: summaryCueLabels.length > 0 ? 'compact' : 'default',
+    responseLength: summaryCueLabels.length > 0
+      ? 'compact'
+      : semanticUsable && semanticCandidate?.responseLength === 'compact'
+        ? 'compact'
+        : 'default',
     matchedCues: isContextualSummaryRequest
       ? [
           ...(isBareCompactCurrentCaseSummary ? ['contextual_summary:bare_current_case'] : contextualSummaryCueLabels),
