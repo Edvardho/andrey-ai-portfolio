@@ -153,6 +153,30 @@ export type SummaryContextSource =
   | 'portfolio'
   | null;
 
+export type SemanticScopeHint =
+  | 'named_case'
+  | 'portfolio_wide'
+  | 'selected_case'
+  | 'last_case_synthesis'
+  | 'portfolio';
+
+export type SemanticInterpretationCandidate = {
+  intent: MessageIntent['type'];
+  questionSubject: QuestionSubject | null;
+  scopeHint: SemanticScopeHint | null;
+  namedCaseId: string | null;
+  responseLength: ResponseLength;
+  needsClarification: boolean;
+  confidence: number;
+};
+
+export type GroundedFact = {
+  factId: string;
+  caseId: string;
+  facet: CaseFactFacet;
+  text: string;
+};
+
 export type SynthesisTopic =
   | 'identity'
   | 'experience'

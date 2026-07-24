@@ -38,7 +38,7 @@ export interface PostCallMetrics {
 }
 
 type OpenAILogEntry = {
-  event: 'call_start' | 'call_end';
+  event: 'call_start' | 'call_end' | 'semantic_router_shadow' | 'grounded_fallback';
   route: string;
   model: string;
   [key: string]: unknown;
@@ -171,6 +171,36 @@ export function logOpenAICallEnd(callId: string, metrics: PostCallMetrics): void
   writeLog(logEntry);
 }
 
+export function logSemanticRouterAgreement(payload: {
+  agreement: boolean;
+  semanticIntent: string;
+  deterministicIntent: string;
+}): void {
+  const entry = {
+    event: 'semantic_router_shadow',
+    route: 'semanticRouterShadow',
+    model: 'n/a',
+    agreement: payload.agreement,
+    semanticIntent: payload.semanticIntent,
+    deterministicIntent: payload.deterministicIntent,
+  } as OpenAILogEntry;
+  writeLog(entry);
+}
+
+/** Technical-only telemetry: never accepts or records the user's message. */
+export function logGroundedFallback(payload: {
+  reason: 'timeout' | 'invalid_schema' | 'unknown_fact' | 'cross_case' | 'unsupported_metric' | 'answer_plan_violation' | 'empty_fact_scope' | 'grounded_block_without_fact';
+  mode: 'shadow' | 'v2';
+}): void {
+  writeLog({
+    event: 'grounded_fallback',
+    route: 'groundedSynthesis',
+    model: 'n/a',
+    reason: payload.reason,
+    mode: payload.mode,
+  });
+}
+
 function writeLog(entry: OpenAILogEntry) {
   const logString = JSON.stringify(entry);
 
@@ -181,7 +211,14 @@ function writeLog(entry: OpenAILogEntry) {
   }
 
   // В локальной разработке дублируем в консоль и пишем в jsonl файл
-  console.log(`[OPENAI_TELEMETRY] ${entry.event === 'call_start' ? '🚀 START' : '✅ END'} | ${entry.route} | ${entry.model}`);
+  const eventLabel = entry.event === 'call_start'
+    ? '🚀 START'
+    : entry.event === 'call_end'
+      ? entry.status === 'error' ? '❌ ERROR' : '✅ END'
+      : entry.event === 'grounded_fallback'
+        ? '↩️ FALLBACK'
+        : '🧭 SHADOW';
+  console.log(`[OPENAI_TELEMETRY] ${eventLabel} | ${entry.route} | ${entry.model}`);
   
   try {
     ensureLogDirExists();

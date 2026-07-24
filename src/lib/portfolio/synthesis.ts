@@ -6,7 +6,7 @@ import { getCaseFactPack, getCaseSynthesisConfig } from '@/data/portfolio-case-f
 import {
   getSynthesisTopicConfig,
 } from '@/data/portfolio-facts';
-import { getOpenAIModel, isOpenAIEnabled } from '@/lib/portfolio/config';
+import { getGroundedOutputMode, getOpenAISynthesisModel, isOpenAIEnabled } from '@/lib/portfolio/config';
 import type {
   AnswerPlan,
   AnswerType,
@@ -19,8 +19,11 @@ import type {
   ResponseLength,
   SynthesisSnapshot,
   SynthesisTopic,
+  GroundedFact,
 } from '@/lib/portfolio/types';
-import { LIMITS, logOpenAICallStart, logOpenAICallEnd } from './logger';
+import { LIMITS, logGroundedFallback, logOpenAICallStart, logOpenAICallEnd } from './logger';
+import { buildCaseGroundedFacts, makeGroundedFacts, validateGroundedDraft, type GroundedValidationReason } from './grounding';
+import { ModelExecutionBudget } from './model-budget';
 
 const synthesisSchema = z.object({
   answerStatus: z.enum(['grounded', 'insufficient_facts', 'needs_clarification', 'navigation_suggested']),
@@ -31,6 +34,21 @@ const synthesisSchema = z.object({
     body: z.string().min(24).max(240),
   })).max(3),
   bullets: z.array(z.string().min(8).max(140)).max(4),
+});
+
+const groundedSynthesisSchema = z.object({
+  answerStatus: z.enum(['grounded', 'insufficient_facts', 'needs_clarification', 'navigation_suggested']),
+  title: z.object({ text: z.string().min(6).max(90), supportingFactIds: z.array(z.string()).max(6) }),
+  intro: z.object({ text: z.string().min(24).max(220), supportingFactIds: z.array(z.string()).max(6) }),
+  sections: z.array(z.object({
+    title: z.string().min(4).max(56),
+    body: z.string().min(24).max(240),
+    supportingFactIds: z.array(z.string()).max(6),
+  })).max(3),
+  bullets: z.array(z.object({
+    text: z.string().min(8).max(140),
+    supportingFactIds: z.array(z.string()).max(6),
+  })).max(4),
 });
 
 const SYNTHESIS_PATTERNS: Array<{ topic: SynthesisTopic; patterns: RegExp[] }> = [
@@ -92,6 +110,7 @@ type SynthesisRequestConfig = {
   answerPlan: AnswerPlan;
   title: string;
   facts: string[];
+  groundedFacts?: GroundedFact[];
   fallbackTitle: string;
   fallbackIntro: string;
   fallbackFollowupParagraphs: string[];
@@ -795,6 +814,7 @@ async function synthesizeAnswerFromRequest(
   question: string,
   session: AssistantSession,
   request: SynthesisRequestConfig,
+  budget?: ModelExecutionBudget,
 ): Promise<SynthesisSnapshot> {
   const contextLabel = session.selectedContext.label ?? 'нет выбранного контекста';
   const facts = [...new Set(request.facts.map((fact) => fact.trim()).filter(Boolean))].slice(
@@ -805,6 +825,21 @@ async function synthesizeAnswerFromRequest(
   if (!isOpenAIEnabled()) {
     return buildFallbackSnapshot(request, question);
   }
+
+  const groundedMode = getGroundedOutputMode();
+  if (groundedMode === 'v2' || groundedMode === 'shadow') {
+    const groundedResult = await synthesizeGroundedAnswerFromRequest(question, session, request, budget);
+    if (groundedMode === 'v2') {
+      // v2 is fail-closed: a model failure must never fall through to the
+      // earlier unvalidated model path.
+      if (!groundedResult.snapshot) logGroundedFallback({ reason: groundedResult.reason ?? 'invalid_schema', mode: 'v2' });
+      return groundedResult.snapshot ?? buildFallbackSnapshot(request, question);
+    }
+    if (!groundedResult.snapshot) logGroundedFallback({ reason: groundedResult.reason ?? 'invalid_schema', mode: 'shadow' });
+  }
+
+  const lease = budget?.acquire('synthesis', budget.remainingMs);
+  if (budget && !lease) return buildFallbackSnapshot(request, question);
 
   const prompt = `
 Ты пишешь ответ для AI portfolio assistant на русском языке.
@@ -948,7 +983,7 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
     route: request.answerType === 'contextual_summary'
       ? 'synthesizeContextualSummary'
       : 'synthesizeGeneralAnswer',
-    model: getOpenAIModel(),
+    model: getOpenAISynthesisModel(),
     systemPromptChars: 0,
     developerPromptChars,
     userMessageChars,
@@ -964,10 +999,11 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
   const startTime = Date.now();
   try {
     const result = await generateText({
-      model: openai(getOpenAIModel()),
+      model: openai(getOpenAISynthesisModel()),
       temperature: 0.3,
       output: Output.object({ schema: synthesisSchema }),
       prompt,
+      abortSignal: lease ? AbortSignal.timeout(lease.timeoutMs) : undefined,
     });
 
     const { output, usage, response } = result;
@@ -998,6 +1034,95 @@ ${buildFewShotExamples(request.answerType, request.questionSubject)}
   }
 }
 
+async function synthesizeGroundedAnswerFromRequest(
+  question: string,
+  session: AssistantSession,
+  request: SynthesisRequestConfig,
+  budget?: ModelExecutionBudget,
+): Promise<{ snapshot: SynthesisSnapshot | null; reason?: GroundedValidationReason | 'timeout' | 'invalid_schema' }> {
+  const facts = (request.groundedFacts?.length
+    ? request.groundedFacts
+    : makeGroundedFacts(
+        request.queryScope === 'current_case_only' || request.queryScope === 'named_case'
+          ? request.answerPlan.targetCaseIds?.[0] ?? 'unknown-case'
+          : 'portfolio',
+        'overview',
+        request.facts,
+      )).slice(0, LIMITS.MAX_RETRIEVED_CHUNKS);
+  if (facts.length === 0) return { snapshot: null, reason: 'empty_fact_scope' };
+  const lease = budget?.acquire('synthesis', budget.remainingMs);
+  if (budget && !lease) return { snapshot: null, reason: 'timeout' };
+
+  const callId = logOpenAICallStart({
+    route: 'groundedSynthesis',
+    model: getOpenAISynthesisModel(),
+    systemPromptChars: 1600,
+    developerPromptChars: 0,
+    userMessageChars: question.length,
+    ragContextChars: facts.reduce((sum, fact) => sum + fact.text.length, 0),
+    historyChars: 0,
+    schemaChars: 800,
+    totalPayloadChars: question.length + facts.reduce((sum, fact) => sum + fact.text.length, 0) + 2400,
+    estimatedInputChars: Math.round((question.length + facts.reduce((sum, fact) => sum + fact.text.length, 0) + 2400) / 4),
+    retrievedChunksCount: facts.length,
+    messagesCount: 2,
+  });
+  const startTime = Date.now();
+
+  try {
+    const result = await generateText({
+      model: openai(getOpenAISynthesisModel()),
+      temperature: 0.2,
+      system: `Ты формируешь только проверяемый ответ для AI-портфолио. Не придумывай факты.
+Каждый grounded-блок обязан ссылаться на один или несколько supportingFactIds из разрешённого списка.
+Если фактов недостаточно, используй insufficient_facts без ссылок. Не смешивай кейсы.
+Ответ должен быть на русском, коротким и полезным нанимающему лиду.
+Контракт: ${request.answerPlan.requiredMoves.join(' | ')}. Тип: ${request.answerType}. Scope: ${request.queryScope}.`,
+      messages: [
+        { role: 'user', content: question },
+        { role: 'user', content: `Разрешённые факты:\n${facts.map((fact) => `[${fact.factId}] ${fact.text}`).join('\n')}` },
+      ],
+      abortSignal: AbortSignal.timeout(lease?.timeoutMs ?? 9_000),
+      output: Output.object({ schema: groundedSynthesisSchema }),
+    });
+    const output = result.output;
+    const validation = validateGroundedDraft(
+      output,
+      facts,
+      request.queryScope,
+      request.answerPlan.targetCaseIds?.[0],
+      request.answerPlan,
+      request.responseLength,
+    );
+    logOpenAICallEnd(callId, {
+      requestId: result.response.id,
+      status: 'success',
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      cachedInputTokens: result.usage.inputTokenDetails?.cacheReadTokens,
+      durationMs: Date.now() - startTime,
+    });
+    if (!validation.ok) {
+      return { snapshot: null, reason: validation.reason };
+    }
+
+    return { snapshot: finalizeSnapshot(request, question, {
+      answerStatus: output.answerStatus,
+      title: output.title.text,
+      intro: output.intro.text,
+      sections: output.sections,
+      bullets: output.bullets.map((bullet) => bullet.text),
+    }) };
+  } catch (error: unknown) {
+    logOpenAICallEnd(callId, {
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - startTime,
+    });
+    return { snapshot: null, reason: /timeout|timed out|abort/i.test(String(error)) ? 'timeout' : 'invalid_schema' };
+  }
+}
+
 export async function synthesizeGeneralAnswer(
   question: string,
   session: AssistantSession,
@@ -1006,6 +1131,7 @@ export async function synthesizeGeneralAnswer(
   queryScope: QueryScope,
   questionSubject: QuestionSubject,
   responseLength: ResponseLength = 'default',
+  budget?: ModelExecutionBudget,
 ): Promise<SynthesisSnapshot> {
   return synthesizeAnswerFromRequest(
     question,
@@ -1019,6 +1145,7 @@ export async function synthesizeGeneralAnswer(
       responseLength,
       session,
     ),
+    budget,
   );
 }
 
@@ -1070,6 +1197,7 @@ function buildCaseContextualSummaryRequest(
       ...pack.risks,
       ...pack.missing,
     ]),
+    groundedFacts: buildCaseGroundedFacts(caseId, pack),
     fallbackTitle: 'Резюме кейса для hiring lead',
     fallbackIntro: `Главный вывод: ${pack.recruiterSummary.intro}`,
     fallbackFollowupParagraphs: [],
@@ -1107,6 +1235,13 @@ function buildPortfolioContextualSummaryRequest(
     ),
     title: 'Резюме портфолио для hiring lead',
     facts: config.facts,
+    groundedFacts: [
+      ...PORTFOLIO_CONTEXTUAL_CASE_IDS.flatMap((caseId) => {
+        const pack = getCaseFactPack(caseId);
+        return pack ? buildCaseGroundedFacts(caseId, pack) : [];
+      }),
+      ...makeGroundedFacts('portfolio', 'overview', config.facts),
+    ],
     fallbackTitle: 'Резюме портфолио для hiring lead',
     fallbackIntro: 'Главный вывод: по портфолио видно не набор красивых экранов, а опыт работы со сложными продуктами — от исследования и сценариев до передачи в разработку или релиза.',
     fallbackFollowupParagraphs: [],
@@ -1133,6 +1268,7 @@ export async function synthesizeContextualSummary(
     queryScope: QueryScope;
     responseLength: ResponseLength;
   },
+  budget?: ModelExecutionBudget,
 ): Promise<SynthesisSnapshot | null> {
   const request = options.caseId
     ? buildCaseContextualSummaryRequest(options.caseId, options.queryScope, options.responseLength)
@@ -1147,7 +1283,7 @@ export async function synthesizeContextualSummary(
     previousUserQuestion: session.lastUserQuestion,
     previousAssistantAnswerPreview: session.lastAssistantAnswerPreview,
     previousQuestionSubject: session.lastQuestionSubject,
-  });
+  }, budget);
 }
 
 const CASE_FACET_TOPIC_MAP: Record<CaseFactFacet, SynthesisTopic> = {
@@ -1274,6 +1410,7 @@ export async function synthesizeCaseAwareAnswer(
   queryScope: QueryScope,
   questionSubject: QuestionSubject,
   responseLength: ResponseLength = 'default',
+  budget?: ModelExecutionBudget,
 ): Promise<SynthesisSnapshot | null> {
   const config = getCaseSynthesisConfig(caseId, facet);
   const pack = getCaseFactPack(caseId);
@@ -1342,6 +1479,7 @@ export async function synthesizeCaseAwareAnswer(
     answerPlan,
     title: config.fallbackTitle,
     facts: config.facts,
+    groundedFacts: pack ? buildCaseGroundedFacts(caseId, pack) : makeGroundedFacts(caseId, facet, config.facts),
     fallbackTitle: behavioralEvidenceOverride?.fallbackTitle ?? failureOverride?.fallbackTitle ?? config.fallbackTitle,
     fallbackIntro,
     fallbackFollowupParagraphs,
@@ -1352,5 +1490,5 @@ export async function synthesizeCaseAwareAnswer(
     previousUserQuestion: session.lastUserQuestion,
     previousAssistantAnswerPreview: session.lastAssistantAnswerPreview,
     previousQuestionSubject: session.lastQuestionSubject,
-  });
+  }, budget);
 }
