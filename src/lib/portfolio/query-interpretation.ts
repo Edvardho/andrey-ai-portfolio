@@ -482,7 +482,7 @@ export function isBareCompactCurrentCaseSummaryRequest(text: string): boolean {
     .replace(/\s+/g, ' ')
     .trim();
 
-  return /^(?:коротко|емко|емка) скажи[.!?…]*$|^короче давай[.!?…]*$|^расскажи (?:короче|покороче)[.!?…]*$/.test(normalized);
+  return /^(?:коротко|кратко|емко|емка) скажи[.!?…]*$|^короче давай[.!?…]*$|^расскажи (?:короче|покороче)[.!?…]*$/.test(normalized);
 }
 
 function hasNegativeCaseCue(text: string): boolean {
