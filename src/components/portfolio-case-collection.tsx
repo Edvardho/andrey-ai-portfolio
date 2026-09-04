@@ -7,7 +7,10 @@ import {
   CASE_COLLECTION_SECTION_WIDTH,
   getCaseCollectionCardWidth,
   getCaseCollectionContract,
+  getCaseCollectionImageHeight,
+  type CompactCollectionVariant,
 } from '@/lib/portfolio/case-layout-contract';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import type {
   ArtifactOpenTarget,
   CaseCollectionLayoutType,
@@ -37,6 +40,8 @@ export function PortfolioCaseCollection({
   caseId,
   onOpenArtifact,
   className,
+  layoutMode = 'desktop',
+  compactVariant = 'evidence',
 }: {
   items: StructuredSummaryDisclosureCard[];
   layoutType: CaseCollectionLayoutType;
@@ -45,6 +50,8 @@ export function PortfolioCaseCollection({
   caseId?: string;
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   className?: string;
+  layoutMode?: WorkspaceLayoutMode;
+  compactVariant?: CompactCollectionVariant;
 }) {
   const contract = getCaseCollectionContract({
     layoutType,
@@ -52,11 +59,14 @@ export function PortfolioCaseCollection({
     peekWidth,
   });
   const fixedWidthLayout = !contract.isScrollable;
+  const compact = layoutMode === 'compact';
+  const imageHeight = getCaseCollectionImageHeight(layoutType, layoutMode, compactVariant);
 
   const cardsRow = (
     <div
       className={clsx(
-        'flex items-start gap-5',
+        'flex items-start',
+        compact ? 'gap-3' : 'gap-5',
         fixedWidthLayout ? 'w-full' : 'w-max',
       )}
     >
@@ -65,13 +75,21 @@ export function PortfolioCaseCollection({
         const cardWidth = getCaseCollectionCardWidth({
           layoutType,
           requestedWidth: card.width,
+          layoutMode,
+          compactVariant,
         });
 
         const content = (
-          <div className="flex flex-col gap-3 text-left" style={{ width: `${cardWidth}px` }}>
+          <div
+            className={compact ? 'flex snap-start flex-col gap-3 text-left' : 'flex flex-col gap-3 text-left'}
+            style={{ width: `${cardWidth}px` }}
+          >
             <div
-              className="relative h-[224px] overflow-hidden rounded-[24px] border"
+              className={compact
+                ? 'relative overflow-hidden rounded-[15px] border'
+                : 'relative h-[224px] overflow-hidden rounded-[24px] border'}
               style={{
+                height: compact ? `${imageHeight}px` : undefined,
                 backgroundColor: CASE_COLLECTION_IMAGE_SURFACE_COLOR,
                 borderColor: card.preview.borderColor ?? '#E7EAF2',
               }}
@@ -79,9 +97,9 @@ export function PortfolioCaseCollection({
               <PortfolioFadeInImage
                 src={card.preview.src}
                 alt={card.title ?? 'Case preview'}
-                width={Math.max(cardWidth, 320)}
-                height={224}
-                sizes={`${Math.max(cardWidth, 320)}px`}
+                width={Math.max(cardWidth, compact ? cardWidth : 320)}
+                height={imageHeight}
+                sizes={`${cardWidth}px`}
                 className={card.preview.imageClassName}
                 overlayClassName="bg-white/18"
               />
@@ -90,9 +108,9 @@ export function PortfolioCaseCollection({
                   src={card.preview.overlaySrc}
                   alt=""
                   aria-hidden="true"
-                  width={Math.max(cardWidth, 320)}
-                  height={224}
-                  sizes={`${Math.max(cardWidth, 320)}px`}
+                  width={Math.max(cardWidth, compact ? cardWidth : 320)}
+                  height={imageHeight}
+                  sizes={`${cardWidth}px`}
                   className={
                     card.preview.overlayImageClassName ??
                     'absolute inset-0 h-full w-full max-w-none object-cover'
@@ -103,14 +121,18 @@ export function PortfolioCaseCollection({
             </div>
 
             {card.title || card.description ? (
-              <div className="space-y-1">
+              <div className={compact ? 'space-y-1' : 'space-y-1'}>
                 {card.title ? (
-                  <p className="text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]">
+                  <p className={compact
+                    ? 'text-[14px] font-normal leading-5 text-[#202129]'
+                    : 'text-[16px] font-normal leading-[22px] tracking-[0] text-[#202129]'}>
                     {card.title}
                   </p>
                 ) : null}
                 {card.description ? (
-                  <p className="text-[14px] leading-[20px] text-[#676767]">{card.description}</p>
+                  <p className={compact
+                    ? 'text-[12px] leading-[18px] text-[#676767]'
+                    : 'text-[14px] leading-[20px] text-[#676767]'}>{card.description}</p>
                 ) : null}
               </div>
             ) : null}
@@ -130,7 +152,9 @@ export function PortfolioCaseCollection({
             key={card.id}
             type="button"
             onClick={() => onOpenArtifact(artifactTarget)}
-            className="shrink-0 cursor-pointer rounded-[24px] focus-visible:outline-none"
+            className={compact
+              ? 'shrink-0 snap-start cursor-pointer rounded-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8EA2FF] focus-visible:ring-offset-2'
+              : 'shrink-0 cursor-pointer rounded-[24px] focus-visible:outline-none'}
           >
             {content}
           </button>
@@ -143,9 +167,14 @@ export function PortfolioCaseCollection({
     return (
       <div
         className={clsx('overflow-visible', className)}
-        style={{ width: '100%', maxWidth: `${CASE_COLLECTION_SECTION_WIDTH}px` }}
+        style={{
+          width: compact ? 'calc(100% + 16px)' : '100%',
+          maxWidth: compact ? 'none' : `${CASE_COLLECTION_SECTION_WIDTH}px`,
+        }}
       >
-        <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={compact
+          ? 'overflow-x-auto overscroll-x-contain scroll-smooth pr-4 [scroll-snap-type:x_proximity] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          : 'overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'}>
           {cardsRow}
         </div>
       </div>
@@ -155,14 +184,21 @@ export function PortfolioCaseCollection({
   return (
     <div
       className={clsx('overflow-visible', className)}
-      style={{ width: '100%', maxWidth: `${contract.sectionWidth}px` }}
+      style={{
+        width: compact ? 'calc(100% + 16px)' : '100%',
+        maxWidth: compact ? 'none' : `${contract.sectionWidth}px`,
+      }}
     >
       <div
-        className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={contract.viewportStyle}
+        className={compact
+          ? 'overflow-x-auto overscroll-x-contain scroll-smooth [scroll-snap-type:x_proximity] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          : 'portfolio-case-collection-scroll-viewport overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'}
       >
-        <div className="pr-4">
-          <div className="w-max" style={contract.rowWidth ? { width: `${contract.rowWidth}px` } : undefined}>
+        <div className="portfolio-case-collection-scroll-content inline-block w-max pr-4">
+          <div
+            className="w-max"
+            style={!compact && contract.rowWidth ? { minWidth: `${contract.rowWidth}px` } : undefined}
+          >
             {cardsRow}
           </div>
         </div>

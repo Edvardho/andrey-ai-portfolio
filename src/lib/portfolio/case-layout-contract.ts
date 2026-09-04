@@ -1,4 +1,5 @@
 import type { CaseCollectionLayoutType } from './types';
+import type { WorkspaceLayoutMode } from './workspace-layout';
 
 export const CASE_COLLECTION_SECTION_WIDTH = 798;
 export const CASE_COLLECTION_DEFAULT_PEEK_WIDTH = 158;
@@ -6,16 +7,17 @@ export const CASE_COLLECTION_DEFAULT_PEEK_WIDTH = 158;
 export const CASE_COLLECTION_IMAGE_SURFACE_COLOR = '#D1D7E3';
 // Single-preview disclosures use the same visual width across every case.
 export const CASE_COLLECTION_SINGLE_PREVIEW_CARD_WIDTH = 389;
+export const COMPACT_EVIDENCE_CARD_WIDTH = 280;
+export const COMPACT_EVIDENCE_IMAGE_HEIGHT = 160;
+export const COMPACT_SHOWCASE_CARD_WIDTH = 202;
+
+export type CompactCollectionVariant = 'evidence' | 'showcase';
 
 export type CaseCollectionContract = {
   sectionWidth: number;
   isScrollable: boolean;
   rowWidth?: number;
   peekWidth?: number;
-  viewportMaxWidth?: number;
-  viewportStyle?: {
-    width: string;
-  };
 };
 
 export function isScrollableCaseCollectionLayout(layoutType: CaseCollectionLayoutType) {
@@ -25,13 +27,37 @@ export function isScrollableCaseCollectionLayout(layoutType: CaseCollectionLayou
 export function getCaseCollectionCardWidth({
   layoutType,
   requestedWidth,
+  layoutMode = 'desktop',
+  compactVariant = 'evidence',
 }: {
   layoutType: CaseCollectionLayoutType;
   requestedWidth: number;
+  layoutMode?: WorkspaceLayoutMode;
+  compactVariant?: CompactCollectionVariant;
 }) {
+  if (layoutMode === 'compact') {
+    return compactVariant === 'showcase'
+      ? COMPACT_SHOWCASE_CARD_WIDTH
+      : COMPACT_EVIDENCE_CARD_WIDTH;
+  }
+
   return layoutType === 'single_preview'
     ? CASE_COLLECTION_SINGLE_PREVIEW_CARD_WIDTH
     : requestedWidth;
+}
+
+export function getCaseCollectionImageHeight(
+  _layoutType: CaseCollectionLayoutType,
+  layoutMode: WorkspaceLayoutMode = 'desktop',
+  compactVariant: CompactCollectionVariant = 'evidence',
+) {
+  if (layoutMode === 'compact') {
+    return compactVariant === 'showcase'
+      ? COMPACT_SHOWCASE_CARD_WIDTH
+      : COMPACT_EVIDENCE_IMAGE_HEIGHT;
+  }
+
+  return 224;
 }
 
 export function getCaseCollectionContract({
@@ -52,16 +78,10 @@ export function getCaseCollectionContract({
   }
 
   const resolvedPeekWidth = peekWidth ?? CASE_COLLECTION_DEFAULT_PEEK_WIDTH;
-  const viewportMaxWidth = CASE_COLLECTION_SECTION_WIDTH + resolvedPeekWidth;
-
   return {
     sectionWidth: CASE_COLLECTION_SECTION_WIDTH,
     isScrollable: true,
     rowWidth,
     peekWidth: resolvedPeekWidth,
-    viewportMaxWidth,
-    viewportStyle: {
-      width: `min(${viewportMaxWidth}px, calc(100% + ${resolvedPeekWidth}px))`,
-    },
   };
 }

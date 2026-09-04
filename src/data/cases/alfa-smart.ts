@@ -81,14 +81,14 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
     {
       id: 'alfa-structured-user-flow',
       label: 'Собирал User Flow, драфты макетов, чтобы быстро синхронизироваться с бизнесом',
-      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      body: 'В начале команда выбрала web-версию как более дешёвую для разработки. После четырёх итераций приоритет изменили: первой решили запускать mobile-версию.',
       layoutType: 'two_cards',
       cards: [
         {
           id: 'alfa-structured-user-flow-card-1',
           artifactId: 'alfa-user-flow',
-          title: 'User-Flow первого входа в продукт',
-          description: 'На основе анализа конкурентов и особенностей приложения вместе с продактами солгасовали примерный путь пользователя',
+          title: 'User Flow первого входа в продукт',
+          description: 'На основе анализа конкурентов и особенностей приложения вместе с продактами согласовали путь пользователя.',
           width: 389,
           preview: {
             src: '/cases/alfa-smart/disclosure-userflow-1.png',
@@ -115,7 +115,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
     {
       id: 'alfa-structured-testing',
       label: 'Готовил гипотезы и прототипы для юзабилити тестирования',
-      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      body: 'В начале команда выбрала web-версию как более дешёвую для разработки. После четырёх итераций приоритет изменили: первой решили запускать mobile-версию.',
       layoutType: 'two_cards',
       cards: [
         {
@@ -135,7 +135,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
           id: 'alfa-structured-testing-card-2',
           artifactId: 'alfa-test-prototypes',
           title: 'Прототипы для тестирования',
-          description: 'Чтобы приготовить прототип пришлось перевести все экраны в изображения, т.к. из-за компонентов прототип оказался очень тяжелым и не хотел открываться на телефоне',
+          description: 'Чтобы прототип стабильно открывался на телефоне, тяжёлые компонентные экраны подготовили как оптимизированные изображения.',
           width: 389,
           preview: {
             src: '/cases/alfa-smart/disclosure-testing-2.png',
@@ -149,7 +149,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
     {
       id: 'alfa-structured-delivery',
       label: 'Прошел дизайн-чек, передал макеты в разработку, провел дизайн-ревью',
-      body: 'В самом начале было принято решение делать web версию продукта т.к. он был дешевле с точки зрения разработки. После 4 итераций было принято решение идти сначала в мобильную версию приложения',
+      body: 'В начале команда выбрала web-версию как более дешёвую для разработки. После четырёх итераций приоритет изменили: первой решили запускать mobile-версию.',
       layoutType: 'three_cards_scroll',
       rowWidth: 1207,
       peekWidth: 158,
@@ -171,7 +171,7 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
           id: 'alfa-structured-delivery-card-2',
           artifactId: 'alfa-dev-handoff',
           title: 'Передача макетов разработчикам',
-          description: 'Макеты были структурированы по пути пользователя т.к. такой подход помогал команде самостоятельно пройти путь пользователя и не запутаться в корнер кейсах',
+          description: 'Макеты структурировали по пути пользователя, чтобы команда могла пройти сценарий целиком и не потерять пограничные состояния.',
           width: 370,
           preview: {
             src: '/cases/alfa-smart/disclosure-delivery-2.png',
@@ -255,11 +255,11 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
   ],
   resultsTitle: 'Результаты',
   resultsBody:
-    'Решение запустили на iOS, Android и web. Важны не просто цифры, а то, что кейс показывает переход от сложного продуктового сценария к рабочему релизу с понятным влиянием на активацию и monetization.',
+    'Решение запустили на iOS, Android и web. Кейс показывает переход от сложного продуктового сценария к рабочему релизу с измеримым влиянием на активацию и монетизацию.',
   resultMetrics: [
-    { value: '32 111', label: 'активных подписчиков' },
+    { value: '32 111', label: 'подписок за первый месяц' },
     { value: '30%', label: 'владельцы с участниками' },
-    { value: '1,1 млн ₽', label: 'доход' },
+    { value: '1,1 млн ₽', label: 'выручки' },
   ],
   footerAction: {
     label: 'Написать Андрею',
@@ -269,6 +269,15 @@ const alfaStructuredSummary: StructuredCaseSummaryData = {
 
 export const alfaSmartCase: CaseContent = {
   id: 'alfa-smart',
+  atAGlance: {
+    title: 'Семейная подписка Альфа-Смарт',
+    compactTitle: 'Семейная подписка\nАльфа-Смарт',
+    problem: 'Упростить сложный сценарий подписки и подключения близких, а затем довести его до массового запуска.',
+    role: 'Product Designer',
+    period: 'Май 2023 — Июнь 2024',
+    outcome: '32 111 подписок за первый месяц · 1,1 млн ₽ выручки',
+    outcomeTone: 'positive',
+  },
   shortTitle: 'Альфа-Смарт',
   title: 'Альфа-Смарт — семейная подписка на банковские продукты',
   railSubtitle: 'Флагманский кейс',
@@ -278,11 +287,11 @@ export const alfaSmartCase: CaseContent = {
   summaryTitle: 'Короткий ответ',
   detailTitle: 'Развернутый ответ',
   routeTitle: 'Почему этот кейс стоит открыть первым',
-  resultChips: ['32 111 подписчиков', '30% владельцев с участниками', '1,1 млн ₽ дохода'],
+  resultChips: ['32 111 подписок за первый месяц', '30% владельцев с участниками', '1,1 млн ₽ выручки'],
   metrics: [
-    { value: '32 111', label: 'подписчиков' },
+    { value: '32 111', label: 'подписок за первый месяц' },
     { value: '30%', label: 'владельцы с участниками' },
-    { value: '1,1 млн ₽', label: 'доход' },
+    { value: '1,1 млн ₽', label: 'выручки' },
   ],
   role: 'Product Designer',
   roleDescription: 'UX/UI, User Flow, прототипы, тестирование, дизайн-чек, передача в разработку',
@@ -309,9 +318,9 @@ export const alfaSmartCase: CaseContent = {
       { id: 'alfa-members', title: 'Управление участниками', description: 'Закрывает post-purchase сценарий без хаоса.' },
     ]) },
     { type: 'metrics', title: 'Результат', items: [
-      { value: '32 111', label: 'подписчиков' },
+      { value: '32 111', label: 'подписок за первый месяц' },
       { value: '30%', label: 'владельцы с участниками' },
-      { value: '1,1 млн ₽', label: 'доход' },
+      { value: '1,1 млн ₽', label: 'выручки' },
     ] },
   ],
   detailBlocks: [
@@ -367,7 +376,7 @@ export const alfaSmartCase: CaseContent = {
     { id: 'alfa-prototype', title: 'Прототип для тестов', caption: 'Основа для проверки ключевых гипотез.', imageUrl: '/cases/alfa-smart/disclosure-testing-2.png', sourceLabel: 'Figma' },
     { id: 'alfa-ui', title: 'UI flows', caption: 'Итоговые сценарии, дошедшие до реализации.', imageUrl: '/cases/alfa-smart/showcase-landing.png', sourceLabel: 'Figma' },
     { id: 'alfa-requirements-map', title: 'Структура продукта в Miro', caption: 'Роли, сценарии и конфликтные точки до отрисовки экранов.', imageUrl: alfaRequirementsMapImage },
-    { id: 'alfa-user-flow', title: 'User-Flow первого входа в продукт', caption: 'Согласованный путь пользователя на входе в семейный сценарий.', imageUrl: '/cases/alfa-smart/disclosure-userflow-1.png' },
+    { id: 'alfa-user-flow', title: 'User Flow первого входа в продукт', caption: 'Согласованный путь пользователя на входе в семейный сценарий.', imageUrl: '/cases/alfa-smart/disclosure-userflow-1.png' },
     { id: 'alfa-first-designs', title: 'Первые варианты дизайна подписки', caption: 'Ранние драфты подписки до перехода в mobile-first решение.', imageUrl: '/cases/alfa-smart/disclosure-userflow-2.png' },
     { id: 'alfa-test-hypotheses', title: 'Гипотезы для тестирования', caption: 'Список гипотез для UX-лаборатории перед тестами.', imageUrl: '/cases/alfa-smart/disclosure-testing-1.png' },
     { id: 'alfa-test-prototypes', title: 'Прототипы для тестирования', caption: 'Тяжелые компоненты переведены в изображения ради мобильного теста.', imageUrl: '/cases/alfa-smart/disclosure-testing-2.png' },
@@ -392,9 +401,9 @@ export const alfaSmartCase: CaseContent = {
     tags: ['Финтех', 'Платежи', 'Личные финансы', 'Подписка'],
     metricsTitle: 'Ключевые метрики',
     metrics: [
-      { value: '32 111', label: 'подписчиков' },
+      { value: '32 111', label: 'подписок за первый месяц' },
       { value: '30%', label: 'владельцы с участниками' },
-      { value: '1,1 млн', label: '₽ доход' },
+      { value: '1,1 млн ₽', label: 'выручки' },
       { value: '15 июля', label: 'доступно массовым клиентам' },
     ],
     role: 'Product Designer',

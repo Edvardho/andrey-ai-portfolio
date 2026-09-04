@@ -10,9 +10,12 @@
     "typecheck": "next typegen && tsc --noEmit -p tsconfig.typecheck.json",
     "assets:optimize": "node --import tsx scripts/optimize-case-assets.ts",
     "assets:optimize:all": "node --import tsx scripts/optimize-case-assets.ts --all-existing",
+    "cv:generate": "node --import tsx scripts/generate-cv-pdf.ts",
     "smoke": "tsx scripts/smoke-test.ts",
     "smoke:deployment": "node --import tsx scripts/deployment-smoke.ts",
     "verify:case-layout": "tsx scripts/case-layout-contract.ts",
+    "verify:compact-workspace": "node --import tsx scripts/compact-workspace-contract.ts",
+    "verify:release-quality": "node --import tsx scripts/release-quality-contract.ts",
     "verify:structured-summary": "tsx scripts/structured-summary-contract.ts",
     "verify:structured-experience": "tsx scripts/structured-experience-contract.ts",
     "verify:intent-policy": "tsx scripts/verify-intent-policy.ts",
@@ -47,7 +50,7 @@
     "eval:intents:objections:core": "tsx scripts/eval-intents.ts objections-core",
     "eval:semantic-live": "node --import tsx scripts/eval-semantic-live.ts",
     "verify:vocabulary": "tsx scripts/verify-vocabulary.ts",
-    "verify": "npm run typecheck && npm run smoke && npm run verify:case-layout && npm run verify:structured-summary && npm run verify:structured-experience && npm run verify:vocabulary"
+    "verify": "npm run typecheck && npm run smoke && npm run verify:case-layout && npm run verify:compact-workspace && npm run verify:release-quality && npm run verify:structured-summary && npm run verify:structured-experience && npm run verify:vocabulary"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.65",

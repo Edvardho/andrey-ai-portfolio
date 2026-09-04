@@ -4,6 +4,7 @@ import type {
   PromptChip,
   SynthesisAnswerStatus,
 } from '@/lib/portfolio/types';
+import { portfolioProfile } from '@/data/portfolio-profile';
 
 type CaseSynthesisConfig = {
   caseId: string;
@@ -27,7 +28,7 @@ const caseFactPacks: Record<string, CaseFactPack> = {
       intro:
         'Альфа-Смарт — семейная подписка Альфа-Банка. Андрей был единственным Product Designer на кейсе: разобрал требования, собрал user flow, подготовил гипотезы и довел решение до запуска на iOS, Android и web.',
       followup:
-        'Это самый сильный кейс, потому что здесь видно и продуктовую логику, и релиз, и понятный результат: 32 111 активных подписчиков, 30% владельцев добавили участников, 1,1 млн ₽ дохода.',
+        `Это самый сильный кейс, потому что здесь видно и продуктовую логику, и релиз, и понятный результат: ${portfolioProfile.highlightMetrics.alfaSubscriptions}, 30% владельцев добавили участников, ${portfolioProfile.highlightMetrics.alfaRevenue}.`,
     },
     whatThisProves: [
       'Андрей умеет разбирать сложный продуктовый сценарий до экранов, а потом доводить решение до релиза.',
@@ -92,7 +93,7 @@ const caseFactPacks: Record<string, CaseFactPack> = {
     outcomes: [
       'Решение дошло до запуска на iOS, Android и web.',
       'Продуктовая цель до запуска была связана с удержанием текущих клиентов.',
-      'Результаты кейса: 32 111 активных подписчиков, 30% владельцев добавили участников, 1,1 млн ₽ дохода.',
+      `Результаты кейса: ${portfolioProfile.highlightMetrics.alfaSubscriptions}, 30% владельцев добавили участников, ${portfolioProfile.highlightMetrics.alfaRevenue}.`,
       'Кейс показывает переход от сложного продуктового сценария к рабочему релизу с понятным влиянием на активацию и монетизацию.',
     ],
     evidence: [

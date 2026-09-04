@@ -298,7 +298,7 @@ export function PortfolioChatWorkspace({
               />
             </motion.div>
             <p className="relative z-[1] text-center text-[14px] font-normal leading-[1.45] text-[#909090]">
-              Ассистент может шутить, огрызаться и допускать ошибки, а вот Андрей – нет
+              Ответы сформированы ИИ и могут содержать неточности
             </p>
           </motion.div>
         </motion.div>

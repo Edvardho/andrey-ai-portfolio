@@ -2,6 +2,8 @@
 
 import clsx from 'clsx';
 
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
+
 import { PORTFOLIO_CONTEXT_PANEL_BASE_CLASS } from './portfolio-context-panel';
 
 function SkeletonBlock({
@@ -12,7 +14,45 @@ function SkeletonBlock({
   return <div className={`animate-pulse rounded-[18px] bg-[#EEF1F8] ${className}`} aria-hidden="true" />;
 }
 
-export function PortfolioCaseWorkspaceSkeleton() {
+export function PortfolioCaseWorkspaceSkeleton({
+  layoutMode = 'desktop',
+}: {
+  layoutMode?: WorkspaceLayoutMode;
+}) {
+  if (layoutMode === 'compact') {
+    return (
+      <div className="h-full min-h-0 overflow-hidden">
+        <div className="mx-auto w-full max-w-[720px] space-y-6 px-4 pt-5 sm:px-6 md:px-12">
+          <div className="ml-auto w-[280px] rounded-[20px] bg-white px-4 py-4 shadow-[0_8px_30px_rgba(32,33,41,0.06)]">
+            <div className="space-y-2.5">
+              <SkeletonBlock className="h-4 w-full rounded-[8px]" />
+              <SkeletonBlock className="h-4 w-[88%] rounded-[8px]" />
+              <SkeletonBlock className="h-4 w-[64%] rounded-[8px]" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <SkeletonBlock className="size-12 shrink-0 rounded-[16px]" />
+            <div className="space-y-2">
+              <SkeletonBlock className="h-4 w-[112px] rounded-[8px]" />
+              <SkeletonBlock className="h-3 w-[156px] rounded-[8px]" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <SkeletonBlock className="h-7 w-[76%] rounded-[10px]" />
+            <SkeletonBlock className="aspect-[7/4] w-[280px] rounded-[20px]" />
+            <div className="space-y-2.5">
+              <SkeletonBlock className="h-4 w-full rounded-[8px]" />
+              <SkeletonBlock className="h-4 w-[92%] rounded-[8px]" />
+              <SkeletonBlock className="h-4 w-[68%] rounded-[8px]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex-1 overflow-y-auto pt-6">

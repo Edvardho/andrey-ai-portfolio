@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 
 import { PortfolioAssistantIdentityHeader } from './portfolio-assistant-identity-header';
 
@@ -9,11 +10,13 @@ export function PortfolioAssistantMessageFrame({
   showHeader = true,
   showLeadingBadge = false,
   chrome = 'bare',
+  layoutMode = 'desktop',
 }: {
   children: ReactNode;
   showHeader?: boolean;
   showLeadingBadge?: boolean;
   chrome?: 'card' | 'bare';
+  layoutMode?: WorkspaceLayoutMode;
 }) {
   return (
     <div className="flex gap-[18px]">
@@ -31,7 +34,7 @@ export function PortfolioAssistantMessageFrame({
       >
         {showHeader ? (
           <>
-            <PortfolioAssistantIdentityHeader />
+            <PortfolioAssistantIdentityHeader layoutMode={layoutMode} />
             <div className="mt-4">{children}</div>
           </>
         ) : (

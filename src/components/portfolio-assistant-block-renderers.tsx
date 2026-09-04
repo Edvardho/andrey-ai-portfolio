@@ -10,6 +10,7 @@ import type {
   PromptChip,
   UIAction,
 } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import {
   getListItemRevealTiming,
   getParagraphRevealStartDelayMs,
@@ -159,17 +160,23 @@ export function renderConversationalBlock(
   props: SharedRenderProps,
   options?: {
     renderMode?: AssistantRenderMode;
+    layoutMode?: WorkspaceLayoutMode;
   },
 ): ReactNode {
   const progressive = options?.renderMode === 'progressive_text';
+  const compact = options?.layoutMode === 'compact';
   const textRenderMode = progressive ? 'progressive_text' : 'instant';
 
   switch (block.type) {
     case 'lead':
       return (
-        <section key={`${block.type}-${index}`} className="space-y-4">
-          <h3 className="text-[24px] font-semibold leading-[1.25] text-[#11110f]">{block.title}</h3>
-          <div className={`space-y-4 ${ASSISTANT_BODY_TEXT_CLASS}`}>
+        <section key={`${block.type}-${index}`} className={compact ? 'space-y-2' : 'space-y-4'}>
+          <h3 className={compact
+            ? 'text-[15px] font-semibold leading-[19px] text-[#11110f]'
+            : 'text-[24px] font-semibold leading-[1.25] text-[#11110f]'}>{block.title}</h3>
+          <div className={compact
+            ? 'space-y-2 text-[14px] leading-5 text-[#202129]'
+            : `space-y-4 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph, paragraphIndex) => (
               <p key={paragraph}>
                 <PortfolioProgressiveText
@@ -184,9 +191,13 @@ export function renderConversationalBlock(
       );
     case 'section':
       return (
-        <section key={`${block.type}-${index}`} className="max-w-[680px] space-y-3">
-          <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3>
-          <div className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
+        <section key={`${block.type}-${index}`} className={compact ? 'space-y-2' : 'max-w-[680px] space-y-3'}>
+          <h3 className={compact
+            ? 'text-[15px] font-semibold leading-[19px] text-[#11110f]'
+            : 'text-[22px] font-semibold leading-[1.3] text-[#11110f]'}>{block.title}</h3>
+          <div className={compact
+            ? 'space-y-2 text-[14px] leading-5 text-[#202129]'
+            : `space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.body.map((paragraph, paragraphIndex) => (
               <p key={paragraph}>
                 <PortfolioProgressiveText
@@ -201,9 +212,13 @@ export function renderConversationalBlock(
       );
     case 'bullet_list':
       return (
-        <section key={`${block.type}-${index}`} className="max-w-[680px] space-y-3">
-          {block.title ? <h3 className="text-[22px] font-semibold leading-[1.3] text-[#11110f]">{block.title}</h3> : null}
-          <ul className={`space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
+        <section key={`${block.type}-${index}`} className={compact ? 'space-y-2' : 'max-w-[680px] space-y-3'}>
+          {block.title ? <h3 className={compact
+            ? 'text-[15px] font-semibold leading-[19px] text-[#11110f]'
+            : 'text-[22px] font-semibold leading-[1.3] text-[#11110f]'}>{block.title}</h3> : null}
+          <ul className={compact
+            ? 'space-y-2 text-[14px] leading-5 text-[#202129]'
+            : `space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}>
             {block.items.map((item, itemIndex) => (
               <motion.li
                 key={item}

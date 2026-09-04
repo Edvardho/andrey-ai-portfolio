@@ -169,7 +169,7 @@ const sharingStructuredSummary: StructuredCaseSummaryData = {
     'Этот кейс показывает, что Андрей умеет не только улучшать отдельный экран, а переписывать саму механику активации. Пользовательский путь стал короче, понятнее и гибче.',
   resultMetrics: [
     { value: '2 шага', label: 'вместо 8 шагов и валидаций' },
-    { value: 'Сокращение расходов', label: 'ссылка вместо sms' },
+    { value: 'Сокращение расходов', label: 'ссылка вместо SMS' },
   ],
   footerAction: {
     label: 'Написать Андрею',
@@ -179,6 +179,15 @@ const sharingStructuredSummary: StructuredCaseSummaryData = {
 
 export const subscriptionSharingCase: CaseContent = {
   id: 'subscription-sharing',
+  atAGlance: {
+    title: 'Шаринг семейной подписки',
+    compactTitle: 'Шаринг семейной\nподписки',
+    problem: 'Заменить медленный сценарий с проверкой номера и платным SMS на понятное приглашение по ссылке.',
+    role: 'Product Designer',
+    period: 'Май 2023 — Июнь 2024',
+    outcome: '2 шага вместо 8 · ссылка вместо SMS',
+    outcomeTone: 'positive',
+  },
   shortTitle: 'Шаринг подписки',
   title: 'Доработка шаринга подписки',
   railSubtitle: 'Mobile case',

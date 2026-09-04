@@ -271,6 +271,16 @@ export type Metric = {
   label: string;
 };
 
+export type CaseAtAGlance = {
+  title: string;
+  compactTitle?: string;
+  problem: string;
+  role: string;
+  period: string;
+  outcome: string;
+  outcomeTone: 'positive' | 'caution';
+};
+
 export type PromptChip =
   | {
       id: string;
@@ -464,7 +474,7 @@ export type StructuredCandidateFastReviewData = {
 };
 
 export type ContactOption = {
-  id: 'telegram' | 'linkedin';
+  id: 'telegram' | 'linkedin' | 'email';
   label: string;
   helper: string;
   href: string;
@@ -563,6 +573,7 @@ export type SelectedContext =
 
 export type CaseContent = {
   id: string;
+  atAGlance: CaseAtAGlance;
   shortTitle: string;
   title: string;
   railSubtitle: string;

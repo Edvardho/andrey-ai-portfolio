@@ -9,6 +9,7 @@ import type {
   PromptChip,
   UIAction,
 } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import { portfolioResponseAnimationConfig } from '@/lib/portfolio/response-animation-config';
 import { getProgressiveReplyBlockTiming } from '@/lib/portfolio/response-animation-policy';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
@@ -24,6 +25,7 @@ type Props = {
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   renderMode?: AssistantRenderMode;
   showChips?: boolean;
+  layoutMode?: WorkspaceLayoutMode;
 };
 
 export function PortfolioAssistantSectionedReply({
@@ -35,14 +37,15 @@ export function PortfolioAssistantSectionedReply({
   onOpenArtifact,
   renderMode = 'instant',
   showChips = true,
+  layoutMode = 'desktop',
 }: Props) {
   const activeCaseId = envelope.selectedContext.kind === 'case' ? envelope.selectedContext.id : null;
   const progressive = renderMode === 'progressive_text';
 
   return (
-    <PortfolioAssistantMessageFrame>
+    <PortfolioAssistantMessageFrame layoutMode={layoutMode}>
       <div
-        className="space-y-6"
+        className={layoutMode === 'compact' ? 'space-y-5' : 'space-y-6'}
         aria-live={progressive ? portfolioResponseAnimationConfig.global.accessibility.ariaLive : undefined}
       >
         {envelope.contentBlocks.map((block, index) =>
@@ -67,7 +70,7 @@ export function PortfolioAssistantSectionedReply({
                 onOpenArtifact,
                 showChips,
               },
-              { renderMode },
+              { renderMode, layoutMode },
             )}
           </motion.div>,
         )}

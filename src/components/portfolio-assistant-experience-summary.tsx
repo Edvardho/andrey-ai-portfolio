@@ -11,6 +11,7 @@ import type {
   PromptChip,
   UIAction,
 } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import { PortfolioAssistantMessageFrame } from './portfolio-assistant-message-frame';
 import { PortfolioPromptChip } from './portfolio-prompt-chip';
 import { PortfolioStructuredExperienceSummary } from './portfolio-structured-experience-summary';
@@ -25,6 +26,8 @@ type Props = {
   onOpenArtifact: (target: ArtifactOpenTarget) => void;
   renderMode?: AssistantRenderMode;
   showChips?: boolean;
+  layoutMode?: WorkspaceLayoutMode;
+  showAssistantIdentity?: boolean;
 };
 
 export function PortfolioAssistantExperienceSummary({
@@ -36,6 +39,8 @@ export function PortfolioAssistantExperienceSummary({
   onOpenArtifact,
   renderMode = 'instant',
   showChips = true,
+  layoutMode = 'desktop',
+  showAssistantIdentity = true,
 }: Props) {
   const reveal = renderMode === 'reveal';
 
@@ -47,6 +52,8 @@ export function PortfolioAssistantExperienceSummary({
         onCta={onCta}
         renderMode={renderMode}
         showChips={showChips}
+        layoutMode={layoutMode}
+        showAssistantIdentity={showAssistantIdentity}
       />
     );
   }

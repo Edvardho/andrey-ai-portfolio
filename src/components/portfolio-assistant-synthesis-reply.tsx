@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 
 import type { AssistantEnvelope, AssistantRenderMode, PromptChip, UIAction } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import { portfolioResponseAnimationConfig } from '@/lib/portfolio/response-animation-config';
 import {
   getParagraphRevealStartDelayMs,
@@ -23,6 +24,7 @@ export function PortfolioAssistantSynthesisReply({
   onRetryError,
   renderMode = 'instant',
   showChips = true,
+  layoutMode = 'desktop',
 }: {
   envelope: AssistantEnvelope;
   onChipClick: (chip: PromptChip) => void;
@@ -31,7 +33,9 @@ export function PortfolioAssistantSynthesisReply({
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
   showChips?: boolean;
+  layoutMode?: WorkspaceLayoutMode;
 }) {
+  const compact = layoutMode === 'compact';
   const progressive = renderMode === 'progressive_text';
   const textRenderMode = progressive ? 'progressive_text' : 'instant';
   const leadBlocks = envelope.contentBlocks.filter((block) => block.type === 'lead');
@@ -48,16 +52,21 @@ export function PortfolioAssistantSynthesisReply({
 
   return (
     <article
-      className="flex w-full max-w-[798px] flex-col items-start gap-2"
+      className={compact
+        ? 'flex w-full flex-col items-start gap-2'
+        : 'flex w-full max-w-[798px] flex-col items-start gap-2'}
       aria-live={progressive ? portfolioResponseAnimationConfig.global.accessibility.ariaLive : undefined}
     >
       <PortfolioAssistantIdentityHeader
         badge={null}
+        layoutMode={layoutMode}
       />
 
       {leadParagraphs.length ? (
         <motion.div
-          className={`w-full max-w-[680px] space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}
+          className={compact
+            ? 'w-full space-y-3 text-[14px] font-normal leading-5 text-[#202129]'
+            : `w-full max-w-[680px] space-y-3 ${ASSISTANT_BODY_TEXT_CLASS}`}
           initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(0).translateY } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{
@@ -78,7 +87,7 @@ export function PortfolioAssistantSynthesisReply({
       ) : null}
 
       {sectionBlocks.length ? (
-        <div className="flex w-full max-w-[680px] flex-col gap-2">
+        <div className={compact ? 'flex w-full flex-col gap-4' : 'flex w-full max-w-[680px] flex-col gap-2'}>
           {sectionBlocks.map((block, sectionIndex) => (
             <motion.section
               key={`${block.title}-${sectionIndex}`}
@@ -90,14 +99,18 @@ export function PortfolioAssistantSynthesisReply({
                 delay: progressive ? getProgressiveReplyBlockTiming(sectionTimingOffset + sectionIndex).delayMs / 1000 : 0,
               }}
             >
-              <h3 className="text-[20px] font-bold leading-7 tracking-[-0.015em] text-[#14161A]">
+              <h3 className={compact
+                ? 'text-[15px] font-semibold leading-[19px] text-[#14161A]'
+                : 'text-[20px] font-bold leading-7 tracking-[-0.015em] text-[#14161A]'}>
                 <PortfolioProgressiveText
                   text={block.title}
                   renderMode={textRenderMode}
                   startDelayMs={getProgressiveReplyBlockTiming(sectionTimingOffset + sectionIndex).delayMs}
                 />
               </h3>
-              <div className={`space-y-2 ${ASSISTANT_BODY_TEXT_CLASS}`}>
+              <div className={compact
+                ? 'space-y-2 text-[14px] leading-5 text-[#202129]'
+                : `space-y-2 ${ASSISTANT_BODY_TEXT_CLASS}`}>
                 {block.body.map((paragraph, paragraphIndex) => (
                   <p key={paragraph}>
                     <PortfolioProgressiveText
@@ -118,7 +131,9 @@ export function PortfolioAssistantSynthesisReply({
 
       {bullets.length ? (
         <motion.ul
-          className={`flex w-full max-w-[680px] flex-col gap-2 pl-6 ${ASSISTANT_BODY_TEXT_CLASS}`}
+          className={compact
+            ? 'flex w-full flex-col gap-2 pl-4 text-[14px] leading-5 text-[#202129]'
+            : `flex w-full max-w-[680px] flex-col gap-2 pl-6 ${ASSISTANT_BODY_TEXT_CLASS}`}
           initial={progressive ? { opacity: 0, y: getProgressiveReplyBlockTiming(bulletTimingIndex).translateY } : false}
           animate={{ opacity: 1, y: 0 }}
           transition={{

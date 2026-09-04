@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
@@ -36,10 +35,10 @@ import {
   shouldRestoreThreadScrollOnSwitch,
   type ThreadScrollState,
 } from '@/lib/portfolio/response-scroll-policy';
-import { portfolioFocusRing, portfolioPrimaryAction } from './portfolio-interaction-styles';
 
-import { PortfolioEntryView } from './portfolio-entry-view';
+import { PortfolioLandingView } from './portfolio-landing-view';
 import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
+import { PortfolioCompactWorkspace } from './portfolio-compact-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
 import type { PortfolioThreadViewHandle, ReplyFocusRequest } from './portfolio-thread-view';
@@ -49,6 +48,7 @@ import {
   usePortfolioStageRouting,
   usePortfolioTextareaAutosize,
   useSyncedRef,
+  useWorkspaceLayoutMode,
 } from './portfolio-shell-hooks';
 
 type ThreadItem =
@@ -643,6 +643,7 @@ function hydratePersistedThreads(threads: ThreadStore): ThreadStore {
 }
 
 export function PortfolioShell() {
+  const workspaceLayoutMode = useWorkspaceLayoutMode();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [activeContextId, setActiveContextId] = useState<ContextId>('entry');
   const [threadsByContextId, setThreadsByContextId] = useState<ThreadStore>({});
@@ -1473,6 +1474,9 @@ export function PortfolioShell() {
                 setContextUiStateByContextId(persistedContextUiState);
                 setActiveContextId(persistedActiveContext);
                 setWorkspaceMode(persistedWorkspaceMode);
+                if (persistedWorkspaceMode === 'chat') {
+                  setInput('');
+                }
                 setSessionMeta(persisted.sessionMeta ?? DEFAULT_SESSION_META);
                 setServerContextId(null);
                 setHasHydrated(true);
@@ -1677,117 +1681,116 @@ export function PortfolioShell() {
 
   return (
     <>
-      <div className="portfolio-desktop-blocker min-h-screen items-center justify-center bg-[#F7F8FC] px-6 py-10">
-        <div className="flex w-full max-w-[464px] flex-col items-center gap-8 rounded-[32px] border border-[#F0F2F8] bg-white px-[44px] py-8 text-center shadow-[0_6px_8px_rgba(0,0,0,0.06)]">
-          <div className="relative size-28 shrink-0 overflow-hidden rounded-[20px]" aria-hidden="true">
-            <Image
-              src="/ui/desktop-only-icon-preview.png"
-              alt=""
-              width={112}
-              height={112}
-              sizes="112px"
-              draggable={false}
-              className="absolute inset-0 size-full select-none object-cover"
-            />
+      {showLandingStage ? (
+        <PortfolioLandingView
+          railItems={railItems}
+          onRailClick={handleRailClick}
+          onContactClick={() => handleCta({ type: 'open_contact_modal', source: 'landing' })}
+        />
+      ) : null}
+
+      {showChatStage ? (
+        workspaceLayoutMode === null ? (
+          <div className="fixed inset-0 flex h-[100dvh] items-center justify-center bg-white" aria-label="Загрузка портфолио">
+            <div className="size-12 animate-pulse rounded-2xl bg-[#EEF1F8]" aria-hidden="true" />
           </div>
-          <div className="flex flex-col items-center gap-3">
-            <div className="text-[22px] font-bold leading-[1.2] tracking-[-0.02em] text-[#1F2129]">
-              Доступна только Destop версия
+        ) : workspaceLayoutMode === 'compact' ? (
+          <PortfolioCompactWorkspace
+            railItems={railItems}
+            selectedRailId={selectedRailId}
+            messagesRemaining={messagesRemaining}
+            onRailClick={handleRailClick}
+            onHomeClick={handleHomeClick}
+            currentThread={currentThread}
+            loading={loadingContextId === activeContextId}
+            error={error}
+            canRetryError={Boolean(lastFailedRequest)}
+            onRetryError={retryLastFailedRequest}
+            onClearError={clearChatError}
+            stickToBottomSignal={stickToBottomSignal}
+            scrollToTopSignal={scrollToTopSignal}
+            restoreThreadScrollSignal={restoreThreadScrollSignal}
+            restoreThreadScrollTop={restoreThreadScrollTop}
+            expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
+            onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
+            onChipClick={handleChipClick}
+            onCta={handleCta}
+            onOpenArtifact={handleOpenArtifact}
+            onMarkAnimatedItems={markThreadItemsAnimated}
+            onThreadScrollStateChange={handleThreadScrollStateChange}
+            input={input}
+            onChangeInput={setInput}
+            onSubmit={handleSubmit}
+            textareaRef={textareaRef}
+            threadViewRef={threadViewRef}
+            caseBootstrapping={bootstrappingContextId === activeContextId}
+            replyFocusRequest={replyFocusRequest}
+            onReplyFocusCancelled={clearReplyFocusForRequest}
+            onReplyFocusHandled={handleReplyFocusHandled}
+          />
+        ) : (
+          <div className="portfolio-desktop-stage h-screen overflow-hidden bg-white">
+            <div className="flex h-full w-full justify-center overflow-hidden bg-white">
+              <div className="portfolio-desktop-frame flex h-full flex-col overflow-hidden bg-white">
+                <PortfolioDesktopHeader
+                  onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
+                  onHomeClick={handleHomeClick}
+                  ctaSource="header"
+                  showDivider
+                  constrainToLandingFrame={false}
+                />
+
+                <div className="relative min-h-0 flex-1 overflow-hidden">
+                  <LayoutGroup id="portfolio-workspace">
+                    <AnimatePresence initial={false} mode="sync">
+                      <PortfolioChatWorkspace
+                        key="chat"
+                        railItems={railItems}
+                        selectedRailId={selectedRailId}
+                        showAssistantReturn={showAssistantReturn}
+                        assistantReturnSelected={activeContextId === 'entry'}
+                        assistantReturnLabel={assistantReturnLabel}
+                        railTitle={railTitle}
+                        messagesRemaining={messagesRemaining}
+                        onRailClick={handleRailClick}
+                        onAssistantReturnClick={handleAssistantReturnClick}
+                        currentThread={currentThread}
+                        loading={loadingContextId === activeContextId}
+                        error={error}
+                        canRetryError={Boolean(lastFailedRequest)}
+                        onRetryError={retryLastFailedRequest}
+                        onClearError={clearChatError}
+                        stickToBottomSignal={stickToBottomSignal}
+                        scrollToTopSignal={scrollToTopSignal}
+                        restoreThreadScrollSignal={restoreThreadScrollSignal}
+                        restoreThreadScrollTop={restoreThreadScrollTop}
+                        expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
+                        onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
+                        onChipClick={handleChipClick}
+                        onCta={handleCta}
+                        onOpenArtifact={handleOpenArtifact}
+                        onMarkAnimatedItems={markThreadItemsAnimated}
+                        onThreadScrollStateChange={handleThreadScrollStateChange}
+                        replyFocusRequest={replyFocusRequest}
+                        onReplyFocusCancelled={clearReplyFocusForRequest}
+                        onReplyFocusHandled={handleReplyFocusHandled}
+                        input={input}
+                        onChangeInput={setInput}
+                        onSubmit={handleSubmit}
+                        textareaRef={textareaRef}
+                        threadViewRef={threadViewRef}
+                        contextPanelPayload={currentContextPanelPayload}
+                        startTransitionSource={transitionSource}
+                        caseBootstrapping={bootstrappingContextId === activeContextId}
+                      />
+                    </AnimatePresence>
+                  </LayoutGroup>
+                </div>
+              </div>
             </div>
-            <p className="max-w-[376px] text-[18px] font-normal leading-6 text-[#202129]">
-              Мобильная версия в этот релиз сознательно не входит. Вы можете связаться с Андреем
-            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => handleCta({ type: 'open_contact_modal', source: 'desktop-blocker' })}
-            className={[
-              'inline-flex cursor-pointer items-center justify-center rounded-full border px-6 py-3 text-[15px] font-medium leading-5 transition-colors duration-150',
-              portfolioPrimaryAction,
-              portfolioFocusRing,
-            ].join(' ')}
-          >
-            Написать Андрею
-          </button>
-        </div>
-      </div>
-
-      <div className="portfolio-desktop-stage h-screen overflow-hidden bg-white">
-        <div className="flex h-full w-full justify-center overflow-hidden bg-white">
-          <div className="portfolio-desktop-frame flex h-full flex-col overflow-hidden bg-white">
-            <PortfolioDesktopHeader
-              onContactClick={(source) => handleCta({ type: 'open_contact_modal', source })}
-              onHomeClick={handleHomeClick}
-              ctaSource={workspaceMode === 'landing' ? 'entry' : 'header'}
-              showDivider={showChatStage}
-              constrainToLandingFrame={showLandingStage && !showChatStage}
-            />
-
-            <div className="relative min-h-0 flex-1 overflow-hidden">
-              <LayoutGroup id="portfolio-workspace">
-                <AnimatePresence initial={false} mode="sync">
-                  {showLandingStage ? (
-                    <PortfolioEntryView
-                      key="landing"
-                      railItems={railItems}
-                      onRailClick={handleRailClick}
-                      input={input}
-                      onChangeInput={setInput}
-                      onSubmit={handleSubmit}
-                      loading={Boolean(loadingContextId) || sessionMeta.remaining <= 0}
-                      textareaRef={textareaRef}
-                    />
-                  ) : null}
-
-                  {showChatStage ? (
-                    <PortfolioChatWorkspace
-                      key="chat"
-                      railItems={railItems}
-                      selectedRailId={selectedRailId}
-                      showAssistantReturn={showAssistantReturn}
-                      assistantReturnSelected={activeContextId === 'entry'}
-                      assistantReturnLabel={assistantReturnLabel}
-                      railTitle={railTitle}
-                      messagesRemaining={messagesRemaining}
-                      onRailClick={handleRailClick}
-                      onAssistantReturnClick={handleAssistantReturnClick}
-                      currentThread={currentThread}
-                      loading={loadingContextId === activeContextId}
-                      error={error}
-                      canRetryError={Boolean(lastFailedRequest)}
-                      onRetryError={retryLastFailedRequest}
-                      onClearError={clearChatError}
-                      stickToBottomSignal={stickToBottomSignal}
-                      scrollToTopSignal={scrollToTopSignal}
-                      restoreThreadScrollSignal={restoreThreadScrollSignal}
-                      restoreThreadScrollTop={restoreThreadScrollTop}
-                      expandedDisclosureIds={currentContextUiState.expandedDisclosureIds}
-                      onToggleDisclosure={(disclosureId) => toggleDisclosure(activeContextId, disclosureId)}
-                      onChipClick={handleChipClick}
-                      onCta={handleCta}
-                      onOpenArtifact={handleOpenArtifact}
-                      onMarkAnimatedItems={markThreadItemsAnimated}
-                      onThreadScrollStateChange={handleThreadScrollStateChange}
-                      replyFocusRequest={replyFocusRequest}
-                      onReplyFocusCancelled={clearReplyFocusForRequest}
-                      onReplyFocusHandled={handleReplyFocusHandled}
-                      input={input}
-                      onChangeInput={setInput}
-                      onSubmit={handleSubmit}
-                      textareaRef={textareaRef}
-                      threadViewRef={threadViewRef}
-                      contextPanelPayload={currentContextPanelPayload}
-                      startTransitionSource={transitionSource}
-                      caseBootstrapping={bootstrappingContextId === activeContextId}
-                    />
-                  ) : null}
-                </AnimatePresence>
-
-              </LayoutGroup>
-            </div>
-          </div>
-        </div>
-      </div>
+        )
+      ) : null}
 
       {modalPayload ? (
         <PortfolioModalOverlay

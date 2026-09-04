@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 
 import type { ArtifactOpenTarget, AssistantEnvelope, PromptChip, UIAction } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
+import { shouldShowAssistantIdentity } from '@/lib/portfolio/assistant-presentation';
 import {
   estimateAssistantAnimationMs,
   getAssistantRenderMode,
@@ -195,6 +197,7 @@ type PortfolioThreadViewProps = {
   replyFocusRequest: ReplyFocusRequest | null;
   onReplyFocusCancelled: (id: number) => void;
   onReplyFocusHandled: (id: number) => void;
+  layoutMode?: WorkspaceLayoutMode;
 };
 
 export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, PortfolioThreadViewProps>(function PortfolioThreadView({
@@ -222,8 +225,10 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   replyFocusRequest,
   onReplyFocusCancelled,
   onReplyFocusHandled,
+  layoutMode = 'desktop',
 }, ref) {
   const animateThreadStart = Boolean(startTransitionSource);
+  const compact = layoutMode === 'compact';
   const threadViewportRef = useRef<HTMLDivElement | null>(null);
   const threadContentRef = useRef<HTMLDivElement | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
@@ -850,7 +855,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   });
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div
         ref={threadViewportRef}
         onScroll={handleScroll}
@@ -858,24 +863,32 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         onTouchMove={handleManualScrollIntent}
         onKeyDown={handleKeyDown}
         tabIndex={-1}
-        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]"
+        className={compact
+          ? 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-5 [overflow-anchor:none]'
+          : 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto pt-6 [overflow-anchor:none]'}
       >
-        <div ref={threadContentRef} className="space-y-7 px-6 pb-6">
+        <div
+          ref={threadContentRef}
+          className={compact
+            ? 'mx-auto w-full max-w-[720px] space-y-6 px-4 pb-6'
+            : 'space-y-7 px-6 pb-6'}
+        >
           {!items.length && !loading && !error ? (
             <div className="w-full max-w-[798px] rounded-[24px] border border-[#EBEDF2] bg-[#FCFDFF] px-5 py-4 text-[15px] leading-6 text-[#5E606A]">
               Задайте вопрос ассистенту или выберите кейс слева.
             </div>
           ) : null}
 
-          {items.map((item) =>
+          {items.map((item, index) =>
             item.kind === 'user' ? (
-              <motion.div key={item.id} data-thread-item-id={item.id} {...getItemMotion(item)}>
-                <PortfolioUserBubble text={item.text} />
+              <motion.div key={item.id} data-thread-item-id={item.id} data-thread-item-kind="user" {...getItemMotion(item)}>
+                <PortfolioUserBubble text={item.text} layoutMode={layoutMode} />
               </motion.div>
             ) : (
               <motion.div
                 key={item.id}
                 data-thread-item-id={item.id}
+                data-thread-item-kind="assistant"
                 {...getItemMotion(item)}
               >
                 <PortfolioAssistantEnvelopeView
@@ -889,6 +902,13 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
                   onRetryError={onRetryError}
                   renderMode={getAssistantRenderMode(item, hasPlayedInitialReveal)}
                   showChips={item.id === latestAssistantItemId}
+                  layoutMode={layoutMode}
+                  showAssistantIdentity={shouldShowAssistantIdentity({
+                    itemIndex: index,
+                    hasPrecedingUser: items.slice(0, index).some((threadItem) => threadItem.kind === 'user'),
+                    presentationVariant: item.envelope.presentationVariant,
+                    selectedContextKind: item.envelope.selectedContext.kind,
+                  })}
                 />
               </motion.div>
             ),
