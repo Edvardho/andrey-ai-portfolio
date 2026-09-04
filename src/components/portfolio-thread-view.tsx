@@ -236,6 +236,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
   const hasMountedRef = useRef(false);
   const handledStickToBottomSignalRef = useRef(0);
   const handledScrollToTopSignalRef = useRef(0);
+  const scrollToTopContextIdRef = useRef<ContextId | null>(null);
   const handledRestoreThreadScrollSignalRef = useRef(0);
   const suppressAutoScrollUntilRef = useRef(0);
   const manualScrollLockUntilRef = useRef(0);
@@ -595,6 +596,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
       return;
     }
     handledScrollToTopSignalRef.current = scrollToTopSignal;
+    scrollToTopContextIdRef.current = contextId;
 
     shouldStickToBottomRef.current = false;
     suppressAutoScrollUntilRef.current = globalThis.performance.now() + getScrollToTopSuppressionMs();
@@ -616,12 +618,24 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
         reason: 'initial_thread_top',
         top: 0,
       });
+
+      if (scrollToTopContextIdRef.current === contextId) {
+        scrollToTopContextIdRef.current = null;
+      }
     });
-  }, [applyProgrammaticScroll, liveScrollStateRef, scrollToTopSignal, setNextScrollState]);
+  }, [applyProgrammaticScroll, contextId, liveScrollStateRef, scrollToTopSignal, setNextScrollState]);
 
   useLayoutEffect(() => {
     const viewport = threadViewportRef.current;
     if (!viewport) {
+      return;
+    }
+
+    // A new case must always begin with its lead visible. The explicit
+    // reset is emitted during the case transition, while this effect restores
+    // the old thread position after a context switch. Do not let a saved
+    // position win over that direct-entry request.
+    if (scrollToTopContextIdRef.current === contextId) {
       return;
     }
 
@@ -858,6 +872,7 @@ export const PortfolioThreadView = forwardRef<PortfolioThreadViewHandle, Portfol
     <div className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <div
         ref={threadViewportRef}
+        data-thread-viewport={contextId}
         onScroll={handleScroll}
         onWheel={handleManualScrollIntent}
         onTouchMove={handleManualScrollIntent}

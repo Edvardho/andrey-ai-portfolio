@@ -223,6 +223,30 @@ async function assertEditorialCaseEntry(page: Page, expectedUserBubbleCount = 0)
   );
 }
 
+async function assertCaseEntryStartsAtTop(page: Page, caseId: string) {
+  const viewport = page.locator(`[data-thread-viewport="case:${caseId}"]`);
+  const leadTitle = page.locator(`#${caseId}-at-a-glance-title`);
+  await leadTitle.waitFor({ state: 'visible', timeout: 8_000 });
+
+  const measurement = await viewport.evaluate((element) => {
+    const viewportRect = element.getBoundingClientRect();
+    const lead = element.querySelector<HTMLElement>('[id$="-at-a-glance-title"]');
+    const leadRect = lead?.getBoundingClientRect();
+
+    return {
+      scrollTop: element.scrollTop,
+      leadTop: leadRect?.top ?? null,
+      viewportTop: viewportRect.top,
+    };
+  });
+
+  assert.ok(measurement.scrollTop <= 1, `Direct case entry must reset to the top; received ${measurement.scrollTop}px`);
+  assert.ok(
+    measurement.leadTop !== null && measurement.leadTop >= measurement.viewportTop,
+    'CaseAtAGlance must be visible on direct case entry',
+  );
+}
+
 async function assertDesktopArtifactRailsEndAtVisibleEdge(page: Page) {
   const rails = page.locator('.portfolio-case-collection-scroll-viewport');
   await rails.first().waitFor({ state: 'visible', timeout: 8_000 });
@@ -420,6 +444,7 @@ async function main() {
 
     await getEntryAlfaCard(page).click();
     await assertEditorialCaseEntry(page);
+    await assertCaseEntryStartsAtTop(page, 'alfa-smart');
     await delay(720);
     await assertDesktopArtifactRailsEndAtVisibleEdge(page);
     await assertHealthy(page, state, 'landing case click');
