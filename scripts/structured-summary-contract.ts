@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { portfolioContent } from '@/data/portfolio-content.server';
@@ -102,7 +102,7 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     disclosures: [
       {
         id: 'chatpoint-structured-onboarding',
-        label: 'Упросил флоу подключение канала Messages for Business',
+        label: 'Упростил подключение канала Messages for Business',
         layoutType: 'single_preview',
       },
       {
@@ -129,7 +129,7 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     resultMetricValues: ['Research', 'Value', 'Выводы'],
     requiredText: [
       'ChatPoint — B2B-платформа для общения бизнеса с клиентами',
-      'сложные B2B-флоу',
+      'сложные B2B-сценарии',
       'разработка без проверки ценности',
     ],
     disallowedText: [
@@ -189,7 +189,7 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     expectedPreviewClasses: [
       {
         itemId: 'siebel-structured-showcase-old-interface',
-        imageClassName: 'absolute left-0 top-0 h-full w-[171.88%] max-w-none',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-contain',
       },
     ],
   },
@@ -237,15 +237,15 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     expectedPreviewClasses: [
       {
         itemId: 'expenses-structured-expenses-screen-card',
-        imageClassName: 'absolute h-[83.34%] left-[3.2%] max-w-none top-[8.33%] w-[93.61%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'expenses-structured-filter-details-card',
-        imageClassName: 'absolute h-[107.16%] left-[13.67%] max-w-none top-[-2%] w-[72.66%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'expenses-structured-showcase-flow',
-        imageClassName: 'absolute h-[209.85%] left-[-1.83%] max-w-none top-[-2.81%] w-[300.44%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     ],
   },
@@ -291,15 +291,15 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     expectedPreviewClasses: [
       {
         itemId: 'sharing-structured-showcase-old-path',
-        imageClassName: 'absolute h-[160.88%] left-0 max-w-none top-[-30.44%] w-[291.04%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'sharing-structured-showcase-link',
-        imageClassName: 'absolute h-[175.21%] left-[11.81%] max-w-none top-[10.38%] w-[76.37%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'sharing-structured-showcase-new-path',
-        imageClassName: 'absolute h-[123.7%] left-0 max-w-none top-0 w-[205.8%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     ],
   },
@@ -325,7 +325,7 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
       {
         id: 'wannabelike-structured-ui-concept',
         label: 'Подготовил UI-концепт приложения',
-        bodyIncludes: 'На основе созданных User-Flow',
+        bodyIncludes: 'На основе User Flow',
         layoutType: 'three_cards_scroll',
         cardCount: 3,
         rowWidth: 1207,
@@ -352,19 +352,19 @@ const CASE_CONTRACTS: ExpectedCaseContract[] = [
     expectedPreviewClasses: [
       {
         itemId: 'wannabelike-structured-research-card',
-        imageClassName: 'absolute h-full left-0 max-w-none top-0 w-[100.19%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'wannabelike-structured-metaphor-card',
-        imageClassName: 'absolute inset-0 size-full object-cover',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'wannabelike-structured-first-entry-card',
-        imageClassName: 'absolute h-[125.3%] left-[-8.23%] max-w-none top-[-12.65%] w-[116.46%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
       {
         itemId: 'wannabelike-structured-showcase-ui-concept',
-        imageClassName: 'absolute h-full left-[-6.01%] max-w-none top-0 w-[136.47%]',
+        imageClassName: 'absolute inset-0 size-full max-w-none object-cover',
       },
     ],
   },
@@ -454,6 +454,35 @@ function assertExpectedPreviewClasses(summary: StructuredCaseSummaryData, contra
   }
 }
 
+function assertCompactCollapsedDisclosureLayout() {
+  const source = readFileSync(
+    join(process.cwd(), 'src/components/portfolio-structured-case-summary.tsx'),
+    'utf8',
+  );
+
+  assert.ok(
+    source.includes('<div className="flex flex-col gap-1">'),
+    'Collapsed compact disclosures must use Figma\'s 4px list gap instead of stacked margins',
+  );
+  assert.ok(
+    source.includes("? 'flex min-h-8 w-full cursor-pointer items-center gap-6 overflow-hidden text-left"),
+    'Collapsed compact disclosure rows must retain the Figma 32px baseline and 24px content-to-chevron gap',
+  );
+  assert.ok(
+    source.includes("? 'min-w-0 flex-1 text-[13px] leading-[18px] text-[#494A56]'"),
+    'Collapsed compact disclosure labels must not add vertical padding outside the Figma text line-height',
+  );
+  assert.ok(
+    source.includes("? 'flex size-8 shrink-0 items-center justify-center rounded-full bg-white'"),
+    'Collapsed compact disclosure chevrons must use the Figma 32px visual container',
+  );
+  assert.equal(
+    source.includes("? 'flex min-h-11 w-full cursor-pointer items-center text-left"),
+    false,
+    'Collapsed compact disclosure rows must not be inflated to 44px',
+  );
+}
+
 function assertCaseContract(contract: ExpectedCaseContract) {
   const caseContent = getCase(contract.id);
   const summary = getSummary(caseContent);
@@ -513,6 +542,8 @@ function assertCaseContract(contract: ExpectedCaseContract) {
 }
 
 function main() {
+  assertCompactCollapsedDisclosureLayout();
+
   for (const contract of CASE_CONTRACTS) {
     assertCaseContract(contract);
   }

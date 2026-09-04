@@ -49,7 +49,7 @@ const wannabelikeStructuredSummary: StructuredCaseSummaryData = {
           id: 'wannabelike-structured-research-card',
           artifactId: 'wannabelike-research-synthesis',
           title: 'Research synthesis',
-          description: 'Инсайты были переведены в продуктовые фчич, а не остались данными после исследования',
+          description: 'Инсайты были переведены в продуктовые функции, а не остались набором наблюдений после исследования.',
           width: 389,
           preview: {
             src: '/cases/ux-ui-wannabelike/research-synthesis.png',
@@ -82,7 +82,7 @@ const wannabelikeStructuredSummary: StructuredCaseSummaryData = {
         {
           id: 'wannabelike-structured-user-flow-card',
           artifactId: 'wannabelike-user-flow',
-          title: 'Проработал User-Flow пользователя',
+          title: 'Проработал User Flow пользователя',
           description: 'Основываясь на всей информации, Андрей подготовил Job Stories и на их основе создал путь, по которому двигался пользователь',
           width: 389,
           preview: {
@@ -110,7 +110,7 @@ const wannabelikeStructuredSummary: StructuredCaseSummaryData = {
     {
       id: 'wannabelike-structured-ui-concept',
       label: 'Подготовил UI-концепт приложения',
-      body: 'На основе созданных User-Flow Андрей собрал экраны мобильного приложения.',
+      body: 'На основе User Flow Андрей собрал экраны мобильного приложения.',
       layoutType: 'three_cards_scroll',
       rowWidth: 1207,
       peekWidth: 158,
@@ -227,6 +227,15 @@ const wannabelikeStructuredSummary: StructuredCaseSummaryData = {
 
 export const uxUiWannabelikeCase: CaseContent = {
   id: 'ux-ui-wannabelike',
+  atAGlance: {
+    title: 'UX/UI-концепт WannabeLike',
+    compactTitle: 'UX/UI-концепт\nWannabeLike',
+    problem: 'Пройти полный продуктовый цикл от интервью и структуры до пользовательских сценариев и UI-концепта.',
+    role: 'Product Designer',
+    period: '2024',
+    outcome: '8 интервью · структура продукта · 6 ключевых сценариев',
+    outcomeTone: 'positive',
+  },
   shortTitle: 'UX/UI WannabeLike',
   title: 'UX/UI WannabeLike',
   railSubtitle: 'Systemic mobile UX/UI',
@@ -255,9 +264,9 @@ export const uxUiWannabelikeCase: CaseContent = {
     { id: 'superapp-ia', title: 'Структура приложения', caption: 'Information architecture.', imageUrl: '/cases/ux-ui-wannabelike/app-structure.png' },
     { id: 'superapp-flow', title: 'User flow', caption: 'Ключевые сценарии.', imageUrl: '/cases/ux-ui-wannabelike/user-flow.png' },
     { id: 'superapp-ui', title: 'Работа над UI', caption: 'UI-концепт.', imageUrl: '/cases/ux-ui-wannabelike/showcase-ui-concept.png' },
-    { id: 'wannabelike-research-synthesis', title: 'Research synthesis', caption: 'Инсайты были переведены в продуктовые фчич, а не остались данными после исследования.', imageUrl: '/cases/ux-ui-wannabelike/research-synthesis.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-research-synthesis', title: 'Research synthesis', caption: 'Инсайты были переведены в продуктовые функции, а не остались набором наблюдений после исследования.', imageUrl: '/cases/ux-ui-wannabelike/research-synthesis.png', sourceLabel: 'Figma' },
     { id: 'wannabelike-app-structure', title: 'Структура приложения', caption: 'Информационная архитектура задает рамку для всех дальнейших UX-решений.', imageUrl: '/cases/ux-ui-wannabelike/app-structure.png', sourceLabel: 'Figma' },
-    { id: 'wannabelike-user-flow', title: 'Проработал User-Flow пользователя', caption: 'Job Stories и пользовательский путь на основе собранной информации.', imageUrl: '/cases/ux-ui-wannabelike/user-flow.png', sourceLabel: 'Figma' },
+    { id: 'wannabelike-user-flow', title: 'Проработал User Flow пользователя', caption: 'Job Stories и пользовательский путь на основе собранной информации.', imageUrl: '/cases/ux-ui-wannabelike/user-flow.png', sourceLabel: 'Figma' },
     { id: 'wannabelike-visual-metaphor', title: 'Поиск визуальной метафоры', caption: 'Метафора была найдена после третьего раунда согласования референсов.', imageUrl: '/cases/ux-ui-wannabelike/visual-metaphor.png', sourceLabel: 'Figma' },
     { id: 'wannabelike-first-entry', title: 'Первый вход в приложение', caption: 'Первый сценарий входа в мобильное приложение.', imageUrl: '/cases/ux-ui-wannabelike/first-entry.png', sourceLabel: 'Figma' },
     { id: 'wannabelike-payment-scenario', title: 'Сценарий оплаты услуги', caption: 'Экранный сценарий оплаты услуги внутри UI-концепта.', imageUrl: '/cases/ux-ui-wannabelike/payment-scenario.png', sourceLabel: 'Figma' },

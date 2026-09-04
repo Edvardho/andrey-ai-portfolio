@@ -3,6 +3,7 @@
 import clsx from 'clsx';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
+import { portfolioProfile } from '@/data/portfolio-profile';
 import { portfolioSelectedSurface, portfolioSoftSurfaceBorder } from './portfolio-interaction-styles';
 
 type RailThumbConfig = {
@@ -57,8 +58,8 @@ const railThumbMap: Record<string, RailThumbConfig> = {
     },
   },
   experience: {
-    src: '/cases/experience/intro-preview.png',
-    imageClassName: 'absolute left-0 top-0 h-[150.24%] w-full max-w-none',
+    src: portfolioProfile.portrait.src,
+    imageClassName: 'absolute inset-0 h-full w-full object-cover object-[50%_18%]',
     frameClassName: 'border-[#EBEDF2]',
     fillClassName: 'bg-[#D1D7E3]',
   },

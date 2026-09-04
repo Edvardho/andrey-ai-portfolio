@@ -7,6 +7,7 @@ import type {
   PromptChip,
   UIAction,
 } from '@/lib/portfolio/types';
+import type { WorkspaceLayoutMode } from '@/lib/portfolio/workspace-layout';
 import { PortfolioAssistantCaseSummary } from './portfolio-assistant-case-summary';
 import { PortfolioAssistantCandidateFastReview } from './portfolio-assistant-candidate-fast-review';
 import { PortfolioAssistantExperienceSummary } from './portfolio-assistant-experience-summary';
@@ -25,6 +26,8 @@ export function PortfolioAssistantEnvelopeView({
   onRetryError,
   renderMode = 'instant',
   showChips = true,
+  layoutMode = 'desktop',
+  showAssistantIdentity = true,
 }: {
   envelope: AssistantEnvelope;
   expandedDisclosureIds: string[];
@@ -36,6 +39,8 @@ export function PortfolioAssistantEnvelopeView({
   onRetryError?: () => void;
   renderMode?: AssistantRenderMode;
   showChips?: boolean;
+  layoutMode?: WorkspaceLayoutMode;
+  showAssistantIdentity?: boolean;
 }) {
   if (envelope.presentationVariant === 'loading_row') {
     return <PortfolioAssistantLoadingRow />;
@@ -70,6 +75,7 @@ export function PortfolioAssistantEnvelopeView({
         onRetryError={onRetryError}
         renderMode={renderMode}
         showChips={showChips}
+        layoutMode={layoutMode}
       />
     );
   }
@@ -86,6 +92,8 @@ export function PortfolioAssistantEnvelopeView({
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
           showChips={showChips}
+          layoutMode={layoutMode}
+          showAssistantIdentity={showAssistantIdentity}
         />
       );
     case 'experience_summary':
@@ -99,6 +107,8 @@ export function PortfolioAssistantEnvelopeView({
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
           showChips={showChips}
+          layoutMode={layoutMode}
+          showAssistantIdentity={showAssistantIdentity}
         />
       );
     case 'sectioned_reply':
@@ -112,6 +122,7 @@ export function PortfolioAssistantEnvelopeView({
           onOpenArtifact={onOpenArtifact}
           renderMode={renderMode}
           showChips={showChips}
+          layoutMode={layoutMode}
         />
       );
     case 'refusal_reply':
@@ -125,6 +136,7 @@ export function PortfolioAssistantEnvelopeView({
           onRetryError={onRetryError}
           renderMode={renderMode}
           showChips={showChips}
+          layoutMode={layoutMode}
         />
       );
   }

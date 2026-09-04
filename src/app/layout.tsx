@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist_Mono, Onest } from 'next/font/google';
 
 import './globals.css';
@@ -14,9 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'AI Portfolio Assistant — Андрей Макаревич',
+  title: 'Андрей Макаревич — Product Designer',
   description:
-    'Desktop-only MVP портфолио с stateful AI assistant: кейсы, опыт работы, доказательства и прямой выход на контакт.',
+    'Портфолио продуктового дизайнера Андрея Макаревича: финтех, кибербезопасность, enterprise и сложные B2B/B2C-продукты.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

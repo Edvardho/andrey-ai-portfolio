@@ -1,6 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import {
+  getWorkspaceLayoutMode,
+  type WorkspaceLayoutMode,
+} from '@/lib/portfolio/workspace-layout';
 
 type WorkspaceMode = 'landing' | 'chat';
 
@@ -28,6 +32,24 @@ export function useSyncedRef<T>(value: T) {
   }, [value]);
 
   return ref;
+}
+
+export function useWorkspaceLayoutMode() {
+  const [layoutMode, setLayoutMode] = useState<WorkspaceLayoutMode | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = globalThis.matchMedia('(min-width: 1280px)');
+    const updateMode = () => {
+      setLayoutMode(getWorkspaceLayoutMode(globalThis.innerWidth));
+    };
+
+    updateMode();
+    mediaQuery.addEventListener('change', updateMode);
+
+    return () => mediaQuery.removeEventListener('change', updateMode);
+  }, []);
+
+  return layoutMode;
 }
 
 export function useDebouncedPortfolioPersistence<ContextId extends string, ThreadStore, ContextUiStateStore>({

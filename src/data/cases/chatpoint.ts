@@ -4,7 +4,7 @@ import type { CaseContent, DisclosureRow, StructuredCaseSummaryData } from '@/li
 const chatpointDisclosures: DisclosureRow[] = [
   {
     id: 'chatpoint-onboarding',
-    title: 'Упросил флоу подключение канала Messages for Business',
+    title: 'Упростил подключение канала Messages for Business',
     summary: 'Убрал необходимость читать длинный документ и ждать отдельного менеджера.',
     details: [
       'Пользователь не должен читать длинный документ или ждать отдельного менеджера.',
@@ -60,14 +60,14 @@ const chatpointStructuredSummary: StructuredCaseSummaryData = {
     },
     {
       title: 'Роль Андрея',
-      body: 'Product Designer: проектировал сложные B2B-флоу: окно оператора, настройку маршрутизации, подключения каналов, activation-сценарии. Андрей проводил коридорные тесты и спорил за ценность решение, а не отвечал только за интерфейс.',
+      body: 'Product Designer: проектировал сложные B2B-сценарии — окно оператора, маршрутизацию, подключение каналов и активацию. Андрей проводил коридорные тесты и отвечал не только за интерфейс, но и за ценность решения.',
     },
   ],
   disclosureTitle: 'Что делал Андрей',
   disclosures: [
     {
       id: 'chatpoint-structured-onboarding',
-      label: 'Упросил флоу подключение канала Messages for Business',
+      label: 'Упростил подключение канала Messages for Business',
       body: 'Пользователь не должен читать длинный документ или ждать отдельного менеджера. Андрей проходил все сценарии подключения каналов связи и после этого собрал сценарий, который вел человека по сложному подключению шаг за шагом и снимал ощущение, что он остался один на один с интеграцией.',
       layoutType: 'single_preview',
       cards: [
@@ -275,6 +275,15 @@ const chatpointStructuredSummary: StructuredCaseSummaryData = {
 
 export const chatpointCase: CaseContent = {
   id: 'chatpoint',
+  atAGlance: {
+    title: 'B2B-платформа ChatPoint',
+    compactTitle: 'B2B-платформа\nChatPoint',
+    problem: 'Собрать мессенджеры и сложные настройки маршрутизации в одном интерфейсе для бизнеса.',
+    role: 'Product Designer',
+    period: 'Апрель 2021 — Май 2023',
+    outcome: 'MVP не запустили: продуктовый риск обнаружили слишком поздно',
+    outcomeTone: 'caution',
+  },
   shortTitle: 'ChatPoint',
   title: 'ChatPoint — B2B платформа для коммуникации, которая не взлетела',
   railSubtitle: 'Честный разбор',

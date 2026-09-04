@@ -34,32 +34,24 @@ function assertScrollableContract({
   assert.equal(contract.isScrollable, true, `${label}: contract must be scrollable`);
   assert.equal(contract.rowWidth, rowWidth, `${label}: row width must be preserved from data`);
   assert.equal(contract.peekWidth, peekWidth, `${label}: peek width must be preserved from data`);
-  assert.equal(
-    contract.viewportMaxWidth,
-    CASE_COLLECTION_SECTION_WIDTH + peekWidth,
-    `${label}: viewport max width must be section + peek`,
-  );
-  assert.equal(
-    contract.viewportStyle?.width,
-    `min(${CASE_COLLECTION_SECTION_WIDTH + peekWidth}px, calc(100% + ${peekWidth}px))`,
-    `${label}: viewport style must expand only local viewport`,
-  );
+  assert.equal('viewportMaxWidth' in contract, false, `${label}: scroll viewport must not exceed its real column`);
+  assert.equal('viewportStyle' in contract, false, `${label}: scroll viewport width must be owned by its parent column`);
 }
 
 function main() {
   const fixedSingle = getCaseCollectionContract({ layoutType: 'single_preview' });
   assert.equal(fixedSingle.sectionWidth, CASE_COLLECTION_SECTION_WIDTH);
   assert.equal(fixedSingle.isScrollable, false);
-  assert.equal(fixedSingle.viewportStyle, undefined);
+  assert.equal('viewportStyle' in fixedSingle, false);
 
   const fixedTwo = getCaseCollectionContract({ layoutType: 'two_cards', rowWidth: 798 });
   assert.equal(fixedTwo.sectionWidth, CASE_COLLECTION_SECTION_WIDTH);
   assert.equal(fixedTwo.isScrollable, false);
-  assert.equal(fixedTwo.viewportStyle, undefined);
+  assert.equal('viewportStyle' in fixedTwo, false);
 
   const defaultScroll = getCaseCollectionContract({ layoutType: 'three_cards_scroll', rowWidth: 1009.333 });
   assert.equal(defaultScroll.peekWidth, CASE_COLLECTION_DEFAULT_PEEK_WIDTH);
-  assert.equal(defaultScroll.viewportMaxWidth, CASE_COLLECTION_SECTION_WIDTH + CASE_COLLECTION_DEFAULT_PEEK_WIDTH);
+  assert.equal('viewportMaxWidth' in defaultScroll, false);
 
   const alfaSummary = portfolioContent.cases['alfa-smart'].structuredSummary;
   assert.ok(alfaSummary, 'Alfa-Smart structured summary is required');
@@ -169,6 +161,44 @@ function main() {
     threadViewSource.includes('PortfolioCaseCollection'),
     false,
     'ThreadView must not render CaseCollection directly',
+  );
+
+  const collectionSource = readFileSync(
+    '/Users/amakarevich/Desktop/My_Startap/.worktrees/ai-portfolio/src/components/portfolio-case-collection.tsx',
+    'utf8',
+  );
+  assert.ok(
+    collectionSource.includes('inline-block w-max pr-4'),
+    'Scrollable case collections must reserve a real trailing 16px scroll spacer',
+  );
+  assert.equal(
+    collectionSource.includes('contract.viewportStyle'),
+    false,
+    'Scrollable case collections must not escape the width of their actual parent column',
+  );
+  assert.ok(
+    collectionSource.includes('{ minWidth: `${contract.rowWidth}px` }'),
+    'The declared row width must be a minimum, so artifact cards can never overflow past the scroll range',
+  );
+  assert.equal(
+    collectionSource.includes('{ width: `${contract.rowWidth}px` }'),
+    false,
+    'A fixed row width can clip the last artifact from the horizontal scroll range',
+  );
+
+  const globalStyles = readFileSync(
+    '/Users/amakarevich/Desktop/My_Startap/.worktrees/ai-portfolio/src/app/globals.css',
+    'utf8',
+  );
+  assert.equal(
+    globalStyles.includes('width: calc(100% + 24px) !important'),
+    false,
+    'Desktop styles must not re-expand the artifact scroll viewport outside the chat column',
+  );
+  assert.equal(
+    globalStyles.includes('.portfolio-case-collection-scroll-content {\n    padding-right: 0;'),
+    false,
+    'Desktop styles must keep the trailing scroll spacer intact',
   );
 
   console.log('Case layout contract passed.');

@@ -33,7 +33,7 @@ const expensesDisclosures: DisclosureRow[] = [
 const expensesStructuredSummary: StructuredCaseSummaryData = {
   intro: {
     title: 'Кейс про расходы для держателей карт',
-    body: 'Задача выглядела как локальная мобильная доработка: Нужно было дать дополнительным держателям карт доступ к информации о расходах. Но на самом функционал истории операций принадлежал другой команде и чтобы реализовать доработку пришлось долго договариаваться.',
+    body: 'Задача выглядела как локальная mobile-доработка: нужно было дать дополнительным держателям карт доступ к расходам. Но история операций принадлежала другой команде, поэтому для запуска потребовалось согласовать новую логику и зоны ответственности.',
     preview: {
       src: '/cases/expenses-card-holders/intro-preview.png',
       backgroundColor: '#D1D7E3',
@@ -199,6 +199,15 @@ const expensesStructuredSummary: StructuredCaseSummaryData = {
 
 export const expensesCardHoldersCase: CaseContent = {
   id: 'expenses-card-holders',
+  atAGlance: {
+    title: 'Расходы дополнительных держателей',
+    compactTitle: 'Расходы дополнительных\nдержателей',
+    problem: 'Дать дополнительным держателям доступ к расходам, не ломая логику истории операций другой команды.',
+    role: 'Product Designer',
+    period: 'Май 2023 — Июнь 2024',
+    outcome: 'Синхронизировал 2 команды и довёл mobile-сценарий до запуска',
+    outcomeTone: 'positive',
+  },
   shortTitle: 'Расходы держателей',
   title: 'Просмотр расходов для держателей карт',
   railSubtitle: 'Mobile case',

@@ -7,25 +7,26 @@ import type {
   MobileOverviewContent,
   StructuredExperienceSummaryData,
 } from '@/lib/portfolio/types';
+import { portfolioProfile } from './portfolio-profile';
 
 const experienceStructuredSummary: StructuredExperienceSummaryData = {
   intro: {
-    title: 'Андрей — product designer с 6 годами опыта в B2B и B2C',
+    title: `Андрей — product designer с ${portfolioProfile.experienceYears} годами опыта в B2B и B2C`,
     body:
       'Работал в МТС, Альфа-Банке и Positive Technologies. Проектировал интерфейсы для финтеха, кибербезопасности и внутренних систем, где важно быстро разобраться в сложной логике, упростить сценарий и довести решение до запуска.',
     preview: {
-      src: '/cases/experience/intro-preview.png',
+      src: portfolioProfile.portrait.src,
       backgroundColor: '#D1D7E3',
       borderColor: '#EBEDF2',
       bordered: true,
       radiusClassName: 'rounded-[16px]',
-      imageClassName: 'absolute left-0 top-0 h-[150.24%] w-full max-w-none',
+      imageClassName: 'absolute inset-0 h-full w-full object-cover object-[50%_18%]',
     },
   },
   currentWork: {
     title: 'Где сейчас работает:',
     body:
-      'Андрей работает в Positive Technologies и помогает создавать продукты: начиная от платформы для Кибер-игр хакеров, Багхантинга и заканчивая интерфейсами жюри, которые проверяют сданные отчеты хакеров.',
+      'Андрей работает в Positive Technologies и проектирует продукты для киберполигона и багбаунти: от рабочих сценариев исследователей до интерфейсов жюри, проверяющего отчёты.',
   },
   workHistory: {
     title: 'Где работал Андрей',
@@ -33,34 +34,34 @@ const experienceStructuredSummary: StructuredExperienceSummaryData = {
       {
         id: 'positive-technologies',
         company: 'Positive Technologies',
-        period: 'Июнь 2024 — сейчас',
+        period: portfolioProfile.workHistory[0].period,
         description: 'Проектирует интерфейс для Киберполигона и Багхантинга',
         resultLabel: 'Результат работы',
         resultTags: [
-          'Сократил время сдачи отчетов хакерами',
-          'Сократил время анализа отчета жюри',
+          'Упростил сценарий сдачи отчётов исследователями',
+          'Ускорил анализ отчётов для жюри',
         ],
       },
       {
         id: 'alfa-bank',
         company: 'Альфа-Банк',
-        period: 'Май 2023 — Июнь 2024',
+        period: portfolioProfile.workHistory[1].period,
         description: 'Проектировал подписку на банковские продукты – Альфа-Смарт',
         resultLabel: 'Результат работы',
         resultTags: [
-          '32 111 подписок за 1 месяц после запуска продукта',
-          '1,1 млн ₽ выручка за 1 месяц',
+          portfolioProfile.highlightMetrics.alfaSubscriptions,
+          portfolioProfile.highlightMetrics.alfaRevenue,
         ],
       },
       {
         id: 'mts-digital',
-        company: 'MTS Digital',
-        period: 'Апрель 2021 — Май 2023',
+        company: portfolioProfile.workHistory[2].company,
+        period: portfolioProfile.workHistory[2].period,
         description: 'Проектировал платформу для коммуникации бизнеса с клиентами',
         resultLabel: 'Результат работы',
         resultTags: [
-          'Сократилось время диалога с 900 до 580 сек.',
-          'Выросла обработка диалогов с 1000 до 2000',
+          portfolioProfile.highlightMetrics.mtsDialogTime,
+          portfolioProfile.highlightMetrics.mtsDialogVolume,
         ],
       },
     ],
@@ -71,16 +72,16 @@ const experienceStructuredSummary: StructuredExperienceSummaryData = {
       'Андрей будет полезен командам, которым нужно превратить сложный B2B/B2C-продукт в понятный интерфейс и довести решение до релиза.',
     metrics: [
       {
-        value: '6 лет опыта',
+        value: portfolioProfile.experienceLabel,
         label: 'В сложных B2B продуктах и B2C сценариях',
       },
       {
-        value: 'Не оператор Figma',
-        label: 'При решении задачи следует продуктовому подходу',
+        value: 'Продуктовый подход',
+        label: 'Исследования, сценарии, проверка гипотез и доведение до релиза',
       },
       {
-        value: 'AI tooling',
-        label: 'Использует в работе AI инструменты для ускорения своей работы',
+        value: 'AI в работе',
+        label: 'Ускоряет анализ, прототипирование и проверку решений с помощью AI-инструментов',
       },
     ],
   },
@@ -123,7 +124,7 @@ const experienceStructuredSummary: StructuredExperienceSummaryData = {
 export const experience: ExperienceContent = {
   structuredSummary: experienceStructuredSummary,
   summaryBlocks: [
-    { type: 'lead', title: 'Коротко про опыт', body: ['У Андрея 5+ лет опыта на стыке B2B и B2C: MTS Digital, Альфа-Банк и Positive Technologies. Общий знаменатель — research → решение → релиз, а не просто “рисование экранов”.'] },
+    { type: 'lead', title: 'Коротко про опыт', body: [`У Андрея ${portfolioProfile.experienceLabel} на стыке B2B и B2C: MTS Digital, Альфа-Банк и Positive Technologies. Общий знаменатель — исследование, решение и релиз.`] },
     { type: 'gallery', title: 'Компании', items: makeGallery([
       { id: 'experience-mts', title: 'MTS Digital', description: 'Enterprise, support ops, B2B SaaS.' },
       { id: 'experience-alfa', title: 'Альфа-Банк', description: 'Финтех, mobile/web, подписка и семейные сценарии.' },
@@ -151,7 +152,7 @@ export const experience: ExperienceContent = {
   },
   contextPanel: {
     title: 'Опыт работы',
-    subtitle: 'B2B + B2C · 5+ лет',
+    subtitle: `B2B + B2C · ${portfolioProfile.experienceLabel}`,
     tags: ['MTS Digital', 'Альфа-Банк', 'Positive Technologies', 'Research → release'],
     note: 'Сильная часть траектории — ширина доменов без потери продуктовой дисциплины.',
     cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'experience' } },
@@ -244,7 +245,7 @@ export const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Кто такой Андрей',
         body: [
-          'Андрей — продуктовый дизайнер с 5+ годами опыта. Он работал в MTS Digital, Альфа-Банке и Positive Technologies, проектировал B2B и B2C продукты.',
+          `Андрей — продуктовый дизайнер: ${portfolioProfile.experienceLabel} в MTS Digital, Альфа-Банке и Positive Technologies, B2B- и B2C-продукты.`,
           'Главный смысл портфолио: Андрей не только рисует интерфейсы, а разбирает задачу, проектирует сценарии, проверяет решения и доводит их до запуска.',
         ],
       },
@@ -257,7 +258,7 @@ export const hiringGuides: HiringGuidesContent = {
     ],
     contextPanel: {
       title: 'Кандидат',
-      subtitle: 'Product Designer · 5+ лет',
+      subtitle: `Product Designer · ${portfolioProfile.experienceLabel}`,
       tags: ['B2B + B2C', 'Research → release', 'Fintech + Enterprise'],
       note: 'Удобный раздел, чтобы быстро составить первое представление о кандидате.',
       cta: { label: 'Связаться с Андреем', action: { type: 'open_contact_modal', source: 'identity' } },
@@ -272,7 +273,7 @@ export const hiringGuides: HiringGuidesContent = {
         type: 'lead',
         title: 'Где Андрей получил ключевой опыт',
         body: [
-          'Андрей работал 5+ лет продуктовым дизайнером в MTS Digital, Альфа-Банке и Positive Technologies. Основной опыт — B2B и B2C продукты, сложные сценарии, исследования, UX/UI и передача решений в разработку.',
+          `У Андрея ${portfolioProfile.experienceLabel} продуктовой работы в MTS Digital, Альфа-Банке и Positive Technologies. Основной опыт — B2B- и B2C-продукты, сложные сценарии, исследования, UX/UI и передача решений в разработку.`,
           'Если нужен короткий вывод: это дизайнер не только про экраны, а про разбор задачи, сценарии, ограничения и доведение решения до релиза.',
         ],
       },

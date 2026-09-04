@@ -29,11 +29,11 @@ assertAssetExists(summary.intro.preview.src);
 assert.equal(summary.intro.preview.backgroundColor, '#D1D7E3');
 assert.equal(summary.intro.preview.bordered, true);
 assert.equal(summary.intro.preview.radiusClassName, 'rounded-[16px]');
-assert.equal(summary.intro.preview.imageClassName, 'absolute left-0 top-0 h-[150.24%] w-full max-w-none');
+assert.equal(summary.intro.preview.imageClassName, 'absolute inset-0 h-full w-full object-cover object-[50%_18%]');
 
 assert.equal(summary.currentWork.title, 'Где сейчас работает:');
 assertIncludes(summary.currentWork.body, 'Positive Technologies', 'current work body');
-assertIncludes(summary.currentWork.body, 'интерфейсами жюри', 'current work body');
+assertIncludes(summary.currentWork.body, 'интерфейсов жюри', 'current work body');
 
 assert.equal(summary.workHistory.title, 'Где работал Андрей');
 assert.deepEqual(
@@ -51,16 +51,16 @@ for (const item of summary.workHistory.items) {
   assert.ok(item.resultTags.length >= 2, `${item.company} should have result tags`);
 }
 
-assertIncludes(serialized, 'Сократил время сдачи отчетов хакерами', 'work result tags');
-assertIncludes(serialized, '32 111 подписок за 1 месяц после запуска продукта', 'work result tags');
-assertIncludes(serialized, 'Сократилось время диалога с 900 до 580 сек.', 'work result tags');
-assertIncludes(serialized, 'Выросла обработка диалогов с 1000 до 2000', 'work result tags');
+assertIncludes(serialized, 'Упростил сценарий сдачи отчётов исследователями', 'work result tags');
+assertIncludes(serialized, '32 111 подписок за первый месяц', 'work result tags');
+assertIncludes(serialized, '900→580 секунд на диалог', 'work result tags');
+assertIncludes(serialized, '1000→2000 диалогов в обработке', 'work result tags');
 
 assert.equal(summary.importantTakeaway.title, 'Что важно понять');
 assertIncludes(summary.importantTakeaway.body, 'превратить сложный B2B/B2C-продукт', 'important takeaway');
 assert.deepEqual(
   summary.importantTakeaway.metrics.map((metric) => metric.value),
-  ['6 лет опыта', 'Не оператор Figma', 'AI tooling'],
+  ['6 лет опыта', 'Продуктовый подход', 'AI в работе'],
 );
 
 assert.equal(summary.casePromptSection.title, 'Про какой кейс рассказать подробнее?');

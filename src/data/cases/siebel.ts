@@ -252,6 +252,15 @@ const siebelStructuredSummary: StructuredCaseSummaryData = {
 
 export const siebelCase: CaseContent = {
   id: 'siebel',
+  atAGlance: {
+    title: 'Операторский интерфейс SIEBEL',
+    compactTitle: 'Операторский интерфейс\nSIEBEL',
+    problem: 'Сократить время обработки обращений, убрав переключения между окнами и поиск данных во внешних системах.',
+    role: 'Product Designer',
+    period: 'Апрель 2021 — Май 2023',
+    outcome: '900→580 секунд на диалог · в 2 раза больше диалогов',
+    outcomeTone: 'positive',
+  },
   shortTitle: 'SIEBEL',
   title: 'SIEBEL — редизайн операторского интерфейса через исследование',
   railSubtitle: 'Enterprise workflow',

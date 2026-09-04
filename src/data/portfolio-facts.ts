@@ -1,4 +1,5 @@
 import { getCaseFactPack } from '@/data/portfolio-case-facts';
+import { portfolioProfile } from '@/data/portfolio-profile';
 import type { CaseFactPack, PromptChip, QuestionSubject, SynthesisTopic } from '@/lib/portfolio/types';
 
 type SynthesisTopicConfig = {
@@ -13,7 +14,7 @@ type SynthesisTopicConfig = {
 };
 
 const sharedFacts = [
-  'У Андрея 5+ лет опыта на стыке B2B и B2C.',
+  `У Андрея ${portfolioProfile.experienceLabel} на стыке B2B и B2C.`,
   'Его траектория включает MTS Digital, Альфа-Банк и Positive Technologies.',
   'В его портфолио есть кейсы в финтехе, B2B-платформах, операторских системах, мобильных сценариях и кибербезопасности.',
   'В большинстве проектов Андрей проходил путь от исследования и структуры сценария до передачи решения в разработку или релиза.',
@@ -79,7 +80,7 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
     },
     fallbackTitle: 'Кто такой Андрей',
     fallbackParagraphs: [
-      'Андрей — продуктовый дизайнер с 5+ годами опыта на стыке B2B и B2C. Он работал в MTS Digital, Альфа-Банке и Positive Technologies и занимался не только интерфейсами, но и исследованием, сценариями и запуском решений.',
+      'Андрей — продуктовый дизайнер с 6 годами опыта на стыке B2B и B2C. Он работал в MTS Digital, Альфа-Банке и Positive Technologies и занимался не только интерфейсами, но и исследованием, сценариями и запуском решений.',
       'Если коротко, его сильная сторона не в декоративном UI, а в умении разобраться в задаче, собрать рабочий сценарий и довести решение до релиза.',
     ],
     fallbackBullets: [],
@@ -109,7 +110,7 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
     },
     fallbackTitle: 'Какой у него опыт работы',
     fallbackParagraphs: [
-      'Андрей работал 5+ лет продуктовым дизайнером в MTS Digital, Альфа-Банке и Positive Technologies. Это опыт в B2B и B2C продуктах со сложными сценариями: банковские сервисы, операторские workflow и мобильные пользовательские пути.',
+      'У Андрея 6 лет опыта продуктовой работы в MTS Digital, Альфа-Банке и Positive Technologies. Это опыт в B2B- и B2C-продуктах со сложными сценариями: банковские сервисы, операторские процессы и mobile-пути.',
       'По этому опыту видно, что он умеет не только собирать интерфейс, но и разбираться в логике продукта, ограничениях и том, как решение дойдет до релиза.',
     ],
     fallbackBullets: [],
@@ -321,7 +322,7 @@ const topicConfigs: Record<SynthesisTopic, SynthesisTopicConfig> = {
       ]),
       impact_measurement: unique([
         ...sharedFacts,
-        'В Альфа-Смарте результаты подтверждены метриками: 32 111 активных подписчиков, 30% владельцев добавили участников, 1,1 млн ₽ дохода.',
+        `В Альфа-Смарте результаты подтверждены метриками: ${portfolioProfile.highlightMetrics.alfaSubscriptions}, 30% владельцев добавили участников, ${portfolioProfile.highlightMetrics.alfaRevenue}.`,
         'В SIEBEL среднее время обработки обращения сократилось с 900 до 580 секунд, а количество обрабатываемых диалогов выросло примерно вдвое.',
         'В supporting mobile-кейсах не везде есть post-launch метрики, и это нельзя додумывать.',
       ]),

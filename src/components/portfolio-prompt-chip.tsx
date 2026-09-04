@@ -21,8 +21,8 @@ export function PortfolioPromptChip({
         'inline-flex shrink-0 cursor-pointer items-center rounded-[999px] border transition-colors duration-150',
         portfolioFocusRing,
         size === 'compact'
-          ? 'gap-3 px-[18px] py-[7px] text-[15px] leading-[22px]'
-          : 'h-9 px-[18px] py-[11px] text-[16px] leading-[22px]',
+          ? 'min-h-11 gap-3 px-[18px] py-[7px] text-[15px] leading-[22px] max-md:text-[14px] max-md:leading-5'
+          : 'min-h-11 px-[18px] py-[9px] text-[16px] leading-[22px] max-md:text-[14px] max-md:leading-5',
         emphasis
           ? clsx('border-[#DEDFE5] bg-white text-[#5A5E68]', portfolioChipSurface)
           : clsx('border-[#ECECF1] bg-[rgba(255,255,255,0.92)] text-[#5A5E68]', portfolioChipSurface),
