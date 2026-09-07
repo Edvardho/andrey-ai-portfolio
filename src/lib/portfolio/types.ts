@@ -54,7 +54,7 @@ export type SafetyState =
 export type AnswerMode = 'summary' | 'detail';
 export type ResponseLength = 'default' | 'compact';
 
-export type ResponseSource = 'authored' | 'facts_constrained_synthesis';
+export type ResponseSource = 'authored' | 'facts_constrained_synthesis' | 'full_context_dossier';
 export type SessionStoreMode = 'supabase' | 'memory' | 'degraded_memory';
 
 export type AssistantReplyState =
@@ -758,6 +758,9 @@ export type AssistantEnvelope = {
     queryScope?: QueryScope | null;
     questionSubject?: QuestionSubject | null;
     aiMode?: AIMode;
+    answerEngine?: 'legacy' | 'full_context';
+    answerStatus?: 'supported' | 'partial' | 'unknown' | 'clarification' | 'out_of_scope';
+    dossierVersion?: string;
   };
 };
 
@@ -774,12 +777,17 @@ export type AssistantSession = {
   lastQuestionSubject: QuestionSubject | null;
   hasSeenCandidateFastReview: boolean;
   recentHistory: string[];
+  /** Technical IDs only. Full-context questions and answers stay in the browser. */
+  fullContextRequestLedger?: Array<{ requestId: string; attempts: number; messageCounted: boolean }>;
   createdAt: string;
   updatedAt: string;
 };
 
 export type ChatRequestBody = {
   sessionId?: string;
+  requestId?: string;
+  contextId?: string;
+  history?: Array<{ role: 'user' | 'assistant'; text: string }>;
   input:
     | {
         type: 'message';

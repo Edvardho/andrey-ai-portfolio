@@ -76,6 +76,8 @@ type ContextThread = {
 
 type ThreadStore = Record<string, ContextThread>;
 
+type BrowserConversationItem = { role: 'user' | 'assistant'; text: string };
+
 type ContextUiState = {
   expandedDisclosureIds: string[];
 };
@@ -162,6 +164,37 @@ function getContextIdFromEnvelope(envelope: AssistantEnvelope): ContextId {
   }
 
   return 'entry';
+}
+
+function getAssistantHistoryText(envelope: AssistantEnvelope): string {
+  return envelope.contentBlocks.flatMap((block) => {
+    if (block.type === 'lead' || block.type === 'section' || block.type === 'evidence_case') return block.body;
+    if (block.type === 'bullet_list') return block.items;
+    return [];
+  }).join('\n').trim();
+}
+
+/** Only a question followed by a real reply is history. Canonical page content and retry rows are excluded. */
+function getVisibleConversationHistory(thread: ContextThread | undefined): BrowserConversationItem[] {
+  if (!thread) return [];
+  const pairs: BrowserConversationItem[][] = [];
+  for (let index = 0; index + 1 < thread.items.length; index += 1) {
+    const user = thread.items[index];
+    const assistant = thread.items[index + 1];
+    if (user.kind !== 'user' || assistant.kind !== 'assistant') continue;
+    if (assistant.envelope.meta.assistantReplyState === 'error_retry') continue;
+    const answer = getAssistantHistoryText(assistant.envelope);
+    if (!answer) continue;
+    pairs.push([{ role: 'user', text: user.text }, { role: 'assistant', text: answer }]);
+    index += 1;
+  }
+  return pairs.slice(-6).flat();
+}
+
+function createChatRequestId() {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `request-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 async function ensureEnvelopeCaseLoaded(envelope: AssistantEnvelope) {
@@ -1276,8 +1309,17 @@ export function PortfolioShell() {
 
       // A local case can be opened before its background server sync finishes.
       // Read the session ID after syncing so the message keeps that case context.
+      const messagePayload = body.input.type === 'message'
+        ? {
+          ...body,
+          requestId: body.requestId ?? createChatRequestId(),
+          contextId,
+          // The just-appended user item has no response yet, so the helper omits it.
+          history: getVisibleConversationHistory(threadsRef.current[contextId]),
+        }
+        : body;
       const envelope = await fetchChatEnvelope({
-        ...body,
+        ...messagePayload,
         sessionId: requestSessionId,
       });
       await ensureEnvelopeCaseLoaded(envelope);

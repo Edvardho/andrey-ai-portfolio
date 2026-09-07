@@ -9,7 +9,9 @@ import {
   getRailItems,
   portfolioContent,
 } from '@/data/portfolio-content.server';
-import { getAIMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getAIAnswerEngine, getAIMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { DOSSIER_VERSION } from '@/lib/portfolio/full-context-dossier';
+import type { FullContextDraft } from '@/lib/portfolio/full-context-contract';
 import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {
   AnswerType,
@@ -172,7 +174,58 @@ function createEnvelope({
       queryScope,
       questionSubject,
       aiMode: getAIMode(),
+      answerEngine: getAIAnswerEngine(),
     },
+  };
+}
+
+export function buildFullContextEnvelope(
+  session: AssistantSession,
+  draft: FullContextDraft,
+): AssistantEnvelope {
+  const contentBlocks: ContentBlock[] = draft.blocks.map((block, index) => ({
+    type: index === 0 ? 'lead' : 'section',
+    title: index === 0 ? '' : block.kind === 'limitation' ? 'Граница данных' : block.kind === 'inference' ? 'Вывод' : '',
+    body: [block.text],
+  }));
+  const chips: PromptChip[] = [
+    ...draft.relatedCaseIds.slice(0, 3).map((caseId) => ({
+      id: `evidence-case-${caseId}`,
+      label: `Открыть ${getCaseById(caseId)?.shortTitle ?? 'кейс'}`,
+      action: { type: 'open_case_summary' as const, caseId },
+    })),
+    ...draft.artifactIds.flatMap((artifactId) => {
+      const caseContent = draft.relatedCaseIds.map(getCaseById).find((item) => item?.artifacts.some((artifact) => artifact.id === artifactId));
+      const artifact = caseContent?.artifacts.find((item) => item.id === artifactId);
+      return caseContent && artifact ? [{
+        id: `evidence-artifact-${artifactId}`,
+        label: `Открыть: ${artifact.title}`,
+        action: { type: 'open_image_modal' as const, caseId: caseContent.id, artifactId },
+      }] : [];
+    }),
+    ...(draft.offerContact ? [{
+      id: 'evidence-contact',
+      label: 'Написать Андрею',
+      action: { type: 'open_contact_modal' as const, source: 'full_context' },
+    }] : []),
+  ].slice(0, 3);
+  const envelope = createEnvelope({
+    session,
+    viewType: 'general_synthesis',
+    presentationVariant: contentBlocks.length > 1 ? 'sectioned_reply' : 'plain_text_reply',
+    contentBlocks,
+    chips,
+    nextActions: getPromptChipActions(chips),
+    responseSource: 'full_context_dossier',
+    assistantReplyState: draft.status === 'clarification'
+      ? 'clarifying_question'
+      : draft.status === 'unknown' || draft.status === 'out_of_scope'
+        ? 'insufficient_facts'
+        : 'grounded_answer',
+  });
+  return {
+    ...envelope,
+    meta: { ...envelope.meta, answerStatus: draft.status, dossierVersion: DOSSIER_VERSION },
   };
 }
 

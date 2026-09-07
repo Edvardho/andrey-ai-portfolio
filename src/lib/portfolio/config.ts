@@ -1,12 +1,21 @@
 export const MAX_USER_MESSAGES_PER_SESSION = 20;
 
 export type AIMode = 'fallback' | 'live';
+export type AIAnswerEngine = 'legacy' | 'full_context';
 
 export type SemanticRouterMode = 'off' | 'shadow' | 'active';
 export type GroundedOutputMode = 'legacy' | 'shadow' | 'v2';
 
 export function getAIMode(): AIMode {
   return process.env.AI_MODE?.trim() === 'live' ? 'live' : 'fallback';
+}
+
+export function getAIAnswerEngine(): AIAnswerEngine {
+  return process.env.AI_ANSWER_ENGINE?.trim() === 'full_context' ? 'full_context' : 'legacy';
+}
+
+export function getFullContextModel(): string {
+  return process.env.AI_FULL_CONTEXT_MODEL?.trim() || 'gpt-5.4-mini';
 }
 
 export function getOpenAIKey(): string | undefined {
