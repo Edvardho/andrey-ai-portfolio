@@ -52,6 +52,10 @@ AI mode:
 - `AI_MODE=fallback` disables OpenAI calls even when a key is present. Use it for local UI, layout, routing, skeleton, and chip testing.
 - `AI_MODE=live` enables OpenAI calls when `OPENAI_API_KEY` is present. Use it only when testing real assistant answer quality or in production.
 
+### Full-context Preview
+
+`AI_ANSWER_ENGINE=legacy` remains the default. To test the new assistant in a protected Vercel Preview, set `AI_MODE=live`, `AI_ANSWER_ENGINE=full_context`, `AI_FULL_CONTEXT_MODEL=gpt-5.4-mini`, Supabase credentials, and a private `RATE_LIMIT_HMAC_SECRET`; apply `supabase/migrations/20260906_full_context_ai_rate_limits.sql` first. Do not enable this engine in Production before the evaluation and hiring-lead checks in `docs/specs/rfcs/0003-full-context-portfolio-assistant.md`. Roll back by setting `AI_ANSWER_ENGINE=legacy`.
+
 Required for live model classification and synthesis:
 
 - `AI_MODE=live`

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { resolveChatRequest } from '@/lib/portfolio/engine';
+import { isKnownCase, resolveChatRequest } from '@/lib/portfolio/engine';
+import { getAIAnswerEngine, isOpenAIEnabled } from '@/lib/portfolio/config';
+import { FullContextUnavailableError } from '@/lib/portfolio/full-context-answer';
+import { acquireFullContextLease, FullContextRateLimitError, getTrustedClientIp } from '@/lib/portfolio/full-context-rate-limit';
 import { getOrCreateSession, SessionStoreUnavailableError } from '@/lib/portfolio/session-store';
 import type { ChatRequestBody, UIAction } from '@/lib/portfolio/types';
 
@@ -26,7 +29,13 @@ const actionSchema: z.ZodType<UIAction> = z.discriminatedUnion('type', [
 ]);
 
 const requestSchema: z.ZodType<ChatRequestBody> = z.object({
-  sessionId: z.string().trim().min(1).optional(),
+  sessionId: z.string().trim().min(1).max(128).optional(),
+  requestId: z.string().trim().min(1).max(128).optional(),
+  contextId: z.string().trim().min(1).max(128).refine((contextId) => (
+    contextId === 'entry' || contextId === 'experience' || contextId === 'mobile-experience' || contextId === 'additional-cases'
+      || (contextId.startsWith('case:') && isKnownCase(contextId.slice(5)))
+  ), 'Unknown context').optional(),
+  history: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().trim().min(1).max(6000) })).max(12).optional(),
   input: z.discriminatedUnion('type', [
     z.object({
       type: z.literal('message'),
@@ -41,12 +50,27 @@ const requestSchema: z.ZodType<ChatRequestBody> = z.object({
 
 export async function POST(request: Request) {
   try {
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (Number.isFinite(contentLength) && contentLength > 128 * 1024) {
+      return NextResponse.json({ error: 'Request payload is too large' }, { status: 413 });
+    }
     const json = await request.json();
     const body = requestSchema.parse(json);
+    if (body.input.type === 'message' && (body.input.text.trim().length < 1 || body.input.text.trim().length > 6000)) {
+      return NextResponse.json({ error: 'Message must be 1 to 6000 characters' }, { status: 400 });
+    }
+    if ((body.history ?? []).reduce((sum, item) => sum + item.text.length, 0) > 24_000) {
+      return NextResponse.json({ error: 'History is too large' }, { status: 400 });
+    }
     const session = await getOrCreateSession(body.sessionId);
-    const { envelope } = await resolveChatRequest(session, body);
-
-    return NextResponse.json(envelope);
+    const isFullContextMessage = getAIAnswerEngine() === 'full_context' && isOpenAIEnabled() && body.input.type === 'message';
+    const lease = isFullContextMessage ? await acquireFullContextLease(session.id, getTrustedClientIp(request)) : null;
+    try {
+      const { envelope } = await resolveChatRequest(session, body);
+      return NextResponse.json(envelope);
+    } finally {
+      await lease?.release();
+    }
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -72,6 +96,14 @@ export async function POST(request: Request) {
         },
         { status: 503 },
       );
+    }
+
+    if (error instanceof FullContextUnavailableError || error instanceof FullContextRateLimitError) {
+      return NextResponse.json({
+        error: 'Assistant answer is temporarily unavailable. Please retry.',
+        code: error.code,
+        retryable: true,
+      }, { status: error instanceof FullContextRateLimitError && error.reason === 'limited' ? 429 : 503 });
     }
 
     console.error('AI portfolio chat route failed:', error);

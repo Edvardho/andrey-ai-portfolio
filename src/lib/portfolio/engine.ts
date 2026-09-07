@@ -1,5 +1,5 @@
 import { getCaseById } from '@/data/portfolio-content.server';
-import { getSemanticRouterMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { getAIAnswerEngine, getSemanticRouterMode, isOpenAIEnabled, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
 import {
   classifyMessageDeterministically,
   classifyMessageWithModel,
@@ -27,6 +27,7 @@ import {
   buildExperienceEnvelope,
   buildExperienceRouteEnvelope,
   buildGeneralSynthesisEnvelope,
+  buildFullContextEnvelope,
   buildGratitudeEnvelope,
   buildIdentityIntroEnvelope,
   buildImageModalEnvelope,
@@ -51,6 +52,8 @@ import {
 } from '@/lib/portfolio/synthesis';
 import { logSemanticRouterAgreement } from '@/lib/portfolio/logger';
 import { ModelExecutionBudget } from '@/lib/portfolio/model-budget';
+import { generateFullContextDraft, FullContextUnavailableError } from '@/lib/portfolio/full-context-answer';
+import { truncateVisibleHistory, type VisibleHistoryItem } from '@/lib/portfolio/full-context-contract';
 import { interpretQuery, isCompactCurrentCaseSummaryRequest } from '@/lib/portfolio/query-interpretation';
 import type {
   AnswerType,
@@ -674,7 +677,9 @@ export async function resolveAction(
 export async function resolveMessage(
   session: AssistantSession,
   text: string,
+  fullContext?: { requestId?: string; history?: VisibleHistoryItem[] },
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
+  const fullContextEnabled = getAIAnswerEngine() === 'full_context' && isOpenAIEnabled();
   const safety = detectSafetyState(text);
   if (safety) {
     const nextSession = await persistSession(session, {
@@ -689,22 +694,54 @@ export async function resolveMessage(
 
   if (isGratitudeOnly(text)) {
     const nextSession = await persistSession(session, {
-      lastUserQuestion: text,
-      lastAssistantAnswerPreview: 'Пожалуйста. Если захотите, могу помочь разобрать любой кейс подробнее.',
+      ...(fullContextEnabled ? {
+        lastUserQuestion: null,
+        lastAssistantAnswerPreview: null,
+        lastSynthesis: null,
+      } : {
+        lastUserQuestion: text,
+        lastAssistantAnswerPreview: 'Пожалуйста. Если захотите, могу помочь разобрать любой кейс подробнее.',
+      }),
       recentHistory: appendHistory(session, 'gratitude'),
     });
 
     return { session: nextSession, envelope: buildGratitudeEnvelope(nextSession) };
   }
 
-  const incrementedCount = session.userMessageCount + 1;
+  const useFullContext = fullContextEnabled;
+  const requestId = fullContext?.requestId?.trim();
+  const priorLedger = session.fullContextRequestLedger ?? [];
+  const priorRequest = useFullContext && requestId ? priorLedger.find((entry) => entry.requestId === requestId) : null;
+  if (priorRequest && priorRequest.attempts >= 2) throw new FullContextUnavailableError('retry_limit');
+  const shouldCountMessage = !useFullContext || !priorRequest?.messageCounted;
+  const incrementedCount = session.userMessageCount + (shouldCountMessage ? 1 : 0);
+  const nextLedger = useFullContext && requestId
+    ? [...priorLedger.filter((entry) => entry.requestId !== requestId), {
+      requestId,
+      attempts: (priorRequest?.attempts ?? 0) + 1,
+      messageCounted: true,
+    }].slice(-30)
+    : priorLedger;
   const nextSession = await persistSession(session, {
     userMessageCount: incrementedCount,
-    recentHistory: appendHistory(session, `msg:${text.slice(0, 120)}`),
+    recentHistory: useFullContext
+      ? appendHistory({ ...session, recentHistory: session.recentHistory.filter((entry) => !entry.startsWith('msg:')) }, 'full_context_request')
+      : appendHistory(session, `msg:${text.slice(0, 120)}`),
+    ...(useFullContext ? {
+      lastUserQuestion: null,
+      lastAssistantAnswerPreview: null,
+      lastSynthesis: null,
+      fullContextRequestLedger: nextLedger,
+    } : {}),
   });
 
   if (incrementedCount > MAX_USER_MESSAGES_PER_SESSION) {
     return { session: nextSession, envelope: buildLimitEnvelope(nextSession) };
+  }
+
+  if (useFullContext) {
+    const result = await generateFullContextDraft(nextSession, text, truncateVisibleHistory(fullContext?.history ?? []));
+    return { session: nextSession, envelope: buildFullContextEnvelope(nextSession, result.draft) };
   }
 
   if (isAssistantTrustChallenge(text)) {
@@ -816,7 +853,7 @@ export async function resolveChatRequest(
     return { session, envelope: buildAmbiguousEnvelope(session) };
   }
 
-  return resolveMessage(session, text);
+  return resolveMessage(session, text, { requestId: body.requestId, history: body.history });
 }
 
 export function isKnownCase(caseId: string): boolean {

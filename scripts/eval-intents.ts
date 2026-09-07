@@ -12,7 +12,9 @@ if (fs.existsSync(envPath)) {
       if (idx !== -1) {
         const key = trimmed.substring(0, idx).trim();
         const val = trimmed.substring(idx + 1).trim();
-        process.env[key] = val;
+        // An explicit shell value wins: offline eval must never become a paid call
+        // merely because a developer has a live key in .env.local.
+        process.env[key] ??= val;
       }
     }
   }
