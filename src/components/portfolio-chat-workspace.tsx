@@ -136,6 +136,12 @@ export function PortfolioChatWorkspace({
     showContextPanel,
     currentThread.hasPlayedInitialReveal,
   );
+  const hasGeneratedAssistantReply = currentThread.items.some((item, index, items) => (
+    item.kind === 'assistant'
+    && index > 0
+    && items[index - 1]?.kind === 'user'
+    && item.envelope.meta.assistantReplyState !== 'error_retry'
+  ));
 
   useEffect(() => {
     if (!isContextDrawerOpen) {
@@ -297,9 +303,11 @@ export function PortfolioChatWorkspace({
                 placeholder="Спросите про Андрея: опыт, проекты, процессы, продуктовые решения..."
               />
             </motion.div>
-            <p className="relative z-[1] text-center text-[14px] font-normal leading-[1.45] text-[#909090]">
-              Ответы сформированы ИИ и могут содержать неточности
-            </p>
+            {hasGeneratedAssistantReply ? (
+              <p className="relative z-[1] text-center text-[14px] font-normal leading-[1.45] text-[#909090]">
+                Ответы ассистента основаны на материалах портфолио и могут содержать неточности
+              </p>
+            ) : null}
           </motion.div>
         </motion.div>
 

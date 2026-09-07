@@ -22,13 +22,13 @@ export const contactOptions: ContactContent = {
     {
       id: 'telegram',
       label: 'Написать в Telegram',
-      helper: 'Ответит в течение 1 минуты',
+      helper: 'Предпочтительный способ связи',
       href: portfolioProfile.contact.telegram,
     },
     {
       id: 'linkedin',
       label: 'Написать в LinkedIn',
-      helper: 'Ответит в течение дня, лучше написать в Telegram',
+      helper: 'Также можно написать в Telegram',
       href: portfolioProfile.contact.linkedin,
     },
     {
