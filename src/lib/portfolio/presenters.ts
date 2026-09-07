@@ -366,6 +366,37 @@ export function buildGratitudeEnvelope(session: AssistantSession): AssistantEnve
   });
 }
 
+export function buildGreetingEnvelope(session: AssistantSession): AssistantEnvelope {
+  const chips: PromptChip[] = [
+    { id: 'greeting-why-interview', label: 'Почему его стоит звать?', message: 'Почему Андрея стоит позвать на интервью?' },
+    { id: 'greeting-evidence', label: 'Где доказательства?', message: 'Где доказательства опыта Андрея?' },
+    { id: 'greeting-contribution', label: 'Что он сделал сам?', message: 'Что Андрей сделал сам, а не команда?' },
+    { id: 'greeting-risks', label: 'Где слабое место?', message: 'Какие ограничения или слабые места видны по портфолио?' },
+  ];
+
+  return createEnvelope({
+    session,
+    viewType: 'assistant_intro',
+    presentationVariant: 'plain_text_reply',
+    selectedContext: { kind: 'none', id: null, label: null },
+    contentBlocks: [
+      {
+        type: 'lead',
+        title: '',
+        body: ['Привет! Я помогу быстро проверить опыт Андрея по кейсам: личный вклад, результаты, доказательства и ограничения.'],
+      },
+    ],
+    chips,
+    contextPanel: {
+      ...portfolioContent.entry.contextPanel,
+      hidden: true,
+    },
+    nextActions: getPromptChipActions(chips),
+    responseSource: 'authored',
+    assistantReplyState: 'authored_reply',
+  });
+}
+
 export function buildCaseContextRequiredEnvelope(session: AssistantSession): AssistantEnvelope {
   return createEnvelope({
     session,

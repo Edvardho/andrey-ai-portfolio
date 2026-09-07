@@ -28,6 +28,7 @@ import {
   buildExperienceRouteEnvelope,
   buildGeneralSynthesisEnvelope,
   buildFullContextEnvelope,
+  buildGreetingEnvelope,
   buildGratitudeEnvelope,
   buildIdentityIntroEnvelope,
   buildImageModalEnvelope,
@@ -708,6 +709,16 @@ export async function resolveMessage(
     return { session: nextSession, envelope: buildGratitudeEnvelope(nextSession) };
   }
 
+  if (isGreetingOnly(text)) {
+    const nextSession = await persistSession(session, {
+      // A greeting is a UI courtesy, not a user question. In particular, do
+      // not replace the last legacy question or retain greeting text server-side.
+      recentHistory: appendHistory(session, 'greeting'),
+    });
+
+    return { session: nextSession, envelope: buildGreetingEnvelope(nextSession) };
+  }
+
   const useFullContext = fullContextEnabled;
   const requestId = fullContext?.requestId?.trim();
   const priorLedger = session.fullContextRequestLedger ?? [];
@@ -838,6 +849,28 @@ function isGratitudeOnly(text: string): boolean {
   ]);
 
   return words.every((word) => allowedGratitudeWords.has(word));
+}
+
+function isGreetingOnly(text: string): boolean {
+  const normalized = text
+    .toLocaleLowerCase('ru-RU')
+    .replace(/[!?.,…:;()[\]"'«»—–-]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return new Set([
+    'привет',
+    'приветик',
+    'здравствуй',
+    'здравствуйте',
+    'добрый день',
+    'доброе утро',
+    'добрый вечер',
+    'hello',
+    'hi',
+    'hey',
+  ]).has(normalized);
 }
 
 export async function resolveChatRequest(
