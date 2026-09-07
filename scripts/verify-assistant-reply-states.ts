@@ -140,6 +140,37 @@ async function main() {
     );
   }
 
+  const greetingPhrases = ['Привет!', 'Здравствуйте', 'Добрый день', 'Hello'];
+  for (const phrase of greetingPhrases) {
+    const beforeGreetingCount = firstFastReview.session.userMessageCount;
+    const greeting = await resolveMessage(firstFastReview.session, phrase);
+    assert.equal(greeting.session.userMessageCount, beforeGreetingCount, `${phrase}: greeting does not spend a message`);
+    assert.equal(greeting.envelope.viewType, 'assistant_intro', `${phrase}: greeting has a dedicated assistant introduction`);
+    assert.equal(greeting.envelope.chips.length, 4, `${phrase}: greeting offers relevant next questions`);
+    const greetingLead = greeting.envelope.contentBlocks.find((block) => block.type === 'lead');
+    assert(
+      greetingLead?.type === 'lead'
+        && greetingLead.title === ''
+        && greetingLead.body.join(' ') === 'Привет! Я помогу быстро проверить опыт Андрея по кейсам: личный вклад, результаты, доказательства и ограничения.',
+      `${phrase}: greeting stays concise and useful`,
+    );
+  }
+
+  const greetingWithQuestion = await resolveMessage(
+    firstFastReview.session,
+    'Привет, что Андрей сделал сам в Альфа-Смарте?',
+  );
+  assert.equal(
+    greetingWithQuestion.session.userMessageCount,
+    firstFastReview.session.userMessageCount + 1,
+    'greeting with a real question still spends a message',
+  );
+  assert.notEqual(
+    greetingWithQuestion.envelope.viewType,
+    'assistant_intro',
+    'greeting with a real question must not use the greeting shortcut',
+  );
+
   const openedAlfaForGratitudeQuestion = await resolveAction(session, { type: 'open_case_summary', caseId: 'alfa-smart' });
   const beforeGratitudeQuestionCount = openedAlfaForGratitudeQuestion.session.userMessageCount;
   const gratitudeWithQuestion = await resolveMessage(
