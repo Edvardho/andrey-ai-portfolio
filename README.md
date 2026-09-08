@@ -54,7 +54,7 @@ AI mode:
 
 ### Full-context Preview
 
-`AI_ANSWER_ENGINE=legacy` remains the default. To test the new assistant in a protected Vercel Preview, set `AI_MODE=live`, `AI_ANSWER_ENGINE=full_context`, `AI_FULL_CONTEXT_MODEL=gpt-5.4-mini`, Supabase credentials, and a private `RATE_LIMIT_HMAC_SECRET`; apply `supabase/migrations/20260906_full_context_ai_rate_limits.sql` first. Do not enable this engine in Production before the evaluation and hiring-lead checks in `docs/specs/rfcs/0003-full-context-portfolio-assistant.md`. Roll back by setting `AI_ANSWER_ENGINE=legacy`.
+`AI_ANSWER_ENGINE=legacy` remains the default. Unknown non-empty values fail as configuration errors. To test the new assistant in a protected Vercel Preview, set `AI_MODE=live`, `AI_ANSWER_ENGINE=full_context`, `AI_FULL_CONTEXT_MODEL=gpt-5.4-mini`, Supabase credentials, and a private `RATE_LIMIT_HMAC_SECRET`; apply `supabase/migrations/20260906_full_context_ai_rate_limits.sql` first. Hosted full-context traffic fails closed when the shared limiter store is unavailable. Do not enable this engine in Production before the evaluation and hiring-lead checks in `docs/specs/rfcs/0003-full-context-portfolio-assistant.md`. Roll back by setting `AI_ANSWER_ENGINE=legacy`.
 
 Required for live model classification and synthesis:
 
@@ -107,9 +107,17 @@ npm run dev
 npm run typecheck
 npm run smoke
 npm run verify:assistant-v1
+npm run verify:assistant-backend-reliability
+npm run verify:assistant-api-reliability
+npm run verify:full-context-rate-limit
+npm run verify:full-context-assistant
+npm run verify:full-context-eval
+npm run verify:dossier-export
 ```
 
 `npm run verify` runs the baseline UI/data checks. `npm run verify:assistant-v1` is the release gate for the AI assistant: AI mode, routing, design-lead questions, synthesis quality, reply states, and case facts.
+
+`npm run eval:full-context:preflight` never calls OpenAI. A paid run additionally requires `npm run eval:full-context:live -- --configuration=gpt-5.4-mini --split=working --limit=12 --remaining-budget-usd=<actual remaining budget>`. See `docs/full-context-eval-guide.md`.
 
 ## Production smoke
 

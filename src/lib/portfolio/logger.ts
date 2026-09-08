@@ -38,7 +38,7 @@ export interface PostCallMetrics {
 }
 
 type OpenAILogEntry = {
-  event: 'call_start' | 'call_end' | 'semantic_router_shadow' | 'grounded_fallback';
+  event: 'call_start' | 'call_end' | 'semantic_router_shadow' | 'grounded_fallback' | 'full_context_attempt';
   route: string;
   model: string;
   [key: string]: unknown;
@@ -201,6 +201,27 @@ export function logGroundedFallback(payload: {
   });
 }
 
+/** Technical-only telemetry. Text, history, prompts and model output are not accepted. */
+export function logFullContextAttempt(payload: {
+  requestId?: string;
+  model: string;
+  dossierVersion: string;
+  promptVersion: string;
+  attempt: 1 | 2;
+  status: 'success' | 'validation_error' | 'provider_error' | 'timeout';
+  durationMs: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  cachedInputTokens?: number;
+  validationReason?: string;
+}): void {
+  writeLog({
+    event: 'full_context_attempt',
+    route: 'fullContextAnswer',
+    ...payload,
+  });
+}
+
 function writeLog(entry: OpenAILogEntry) {
   const logString = JSON.stringify(entry);
 
@@ -217,7 +238,9 @@ function writeLog(entry: OpenAILogEntry) {
       ? entry.status === 'error' ? '❌ ERROR' : '✅ END'
       : entry.event === 'grounded_fallback'
         ? '↩️ FALLBACK'
-        : '🧭 SHADOW';
+        : entry.event === 'full_context_attempt'
+          ? '🧠 FULL CONTEXT'
+          : '🧭 SHADOW';
   console.log(`[OPENAI_TELEMETRY] ${eventLabel} | ${entry.route} | ${entry.model}`);
   
   try {

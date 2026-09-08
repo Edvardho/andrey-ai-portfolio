@@ -2,16 +2,16 @@
 
 ## Status
 
-Implemented behind `AI_ANSWER_ENGINE=full_context`; `legacy` remains the default.
+Implemented behind `AI_ANSWER_ENGINE=full_context`; reliability revision `2026-09-08.1` is in Preview validation. `legacy` remains the default and rollback path.
 
 ## Summary
 
-The assistant answers an information request from a versioned, server-only dossier, the open portfolio context, and up to six completed user/assistant pairs supplied by the browser. One Responses API call produces a structured answer. The server validates every cited record, metric, and allowed action before translating it to the existing `AssistantEnvelope` renderer.
+The assistant answers an information request from a versioned, server-only dossier, the open portfolio context, and up to six completed user/assistant pairs supplied by the browser. One Responses API call normally produces a structured answer. One correcting call is allowed only after a structural or evidence-validation failure and only while at least five seconds remain. The server validates every cited record, canonical metric, and allowed action before translating it to the existing `AssistantEnvelope` renderer.
 
 ## Boundaries
 
 - The dossier is the only authority for candidate facts. Conversation and vacancy text are questions, never evidence.
-- A response uses `fact`, `inference`, or `limitation` blocks. An inference is explicitly labelled as such.
+- A response uses `fact`, `inference`, `limitation`, or `explanation` blocks. The presenter labels inferences and professional explanations; model wording is not used as the guardrail.
 - The model cannot navigate, open arbitrary URLs, read files, use tools, or create facts. It returns known dossier IDs only; the server creates up to three existing case/contact actions.
 - Full question/answer text and browser history are not saved in the server session or telemetry. The browser owns the visible thread history.
 - The dossier is deliberately whole-context (no RAG). Its conservative token estimate must stay within 20,000 tokens; the full input budget is 32,000 and history is reduced in whole oldest pairs to 6,000.
@@ -24,9 +24,13 @@ The assistant answers an information request from a versioned, server-only dossi
 
 ## Model call and validation
 
-The first configuration uses OpenAI Responses (`store: false`), `reasoningEffort: low`, no tools, no automatic SDK retry, 2,000 output-token ceiling and a 20 second model timeout under the existing 30 second route timeout. Provider failure, timeout, invalid output, invalid evidence, or limiter failure returns a retryable neutral API error; it never falls back to marketing copy.
+The first configuration uses OpenAI Responses (`store: false`), `reasoningEffort: low`, no tools, `maxRetries: 0`, a 2,000 output-token ceiling and a 20 second total generation budget under the existing 30 second route timeout. The first call is capped at 15 seconds. Provider failure and timeout go to manual retry; only validation failures may use the correcting call. Failure never falls back to marketing copy.
 
-Validation rejects unknown dossier IDs, unsupported numeric values, invalid case/artifact actions, ungrounded factual blocks, and unlabelled inferences. It is a guardrail, not proof of semantic truth; the eval and human review remain required.
+Validation rejects unknown dossier IDs, free-form numeric claims, metrics without their source record, invalid case actions, and ungrounded factual or inference blocks. Numeric wording is inserted server-side from a typed registry, so a correct number cannot be relabelled as another unit or project. An optional invalid artifact action is removed without discarding otherwise valid text. Validation remains a guardrail, not proof of semantic truth; the eval and human review remain required.
+
+`contextId` supplied by the browser has priority for that request. Older clients without it continue from server session context. This prevents a background case switch or another tab from changing which dossier context answers the current question.
+
+Legacy word filters run only on the legacy answer path. Full context locally blocks prompt exfiltration, while ordinary questions containing words such as «пошёл», «телефон», «приватность» or «развилки» reach the model and are answered or bounded from dossier evidence.
 
 ## Release gates
 
@@ -34,4 +38,4 @@ Preview is configured explicitly with `AI_ANSWER_ENGINE=full_context`; productio
 
 ## Test strategy
 
-Offline contract checks cover stable IDs, all six cases, dossier/token caps, source classes, history truncation, malformed outputs, numeric/case validation, request payload limits, and no server-side text retention. Live eval is opt-in only and records technical metadata plus actual provider usage, never prompts or replies.
+Offline contract checks cover stable IDs, all six cases, real o200k token counts, source classes, history truncation, malformed outputs, numeric/case validation, request payload limits, per-attempt rate limiting, explicit context priority, strict configuration, and no server-side text retention. Live eval is opt-in only, requires an explicit remaining-dollar budget, uses synthetic sessions outside the production session table, and saves its synthetic answers locally for blind review.

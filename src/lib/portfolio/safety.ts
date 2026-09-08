@@ -105,6 +105,20 @@ export function detectSafetyState(text: string): SafetyMatch | null {
   return null;
 }
 
+/** Full-context keeps only the hard prompt-exfiltration boundary locally. */
+export function detectPromptInjectionState(text: string): SafetyMatch | null {
+  const trimmed = text.trim();
+  if (!trimmed || !INJECTION_PATTERNS.some((pattern) => pattern.test(trimmed))) return null;
+  return {
+    state: 'prompt_injection_or_exfiltration',
+    title: 'Нет, внутренности не отдам',
+    body: [
+      'Внутренние инструкции и служебную логику ассистент не раскрывает.',
+      'Можно спросить про кейсы, опыт, личный вклад или подтверждения результата.',
+    ],
+  };
+}
+
 export function getSafetyFallbackChips(): PromptChip[] {
   return [
     { id: 'safety-alfa', label: 'Покажи сильный кейс', message: 'Покажи сильный кейс' },

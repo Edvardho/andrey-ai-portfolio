@@ -8,7 +8,7 @@ export class FullContextRateLimitError extends Error {
   constructor(readonly reason: 'limited' | 'unavailable') { super('Full-context rate limit unavailable.'); this.name = 'FullContextRateLimitError'; }
 }
 
-type Lease = { release(): Promise<void> };
+export type FullContextLease = { consumeAttempt(): Promise<void>; release(): Promise<void> };
 const memoryBuckets = new Map<string, { count: number; expiresAt: number }>();
 const memoryLocks = new Map<string, number>();
 
@@ -29,13 +29,21 @@ function consumeMemory(key: string, windowMs: number, limit: number) {
   existing.count += 1; return true;
 }
 
-export async function acquireFullContextLease(sessionId: string, ip: string): Promise<Lease> {
+export async function acquireFullContextLease(sessionId: string, ip: string): Promise<FullContextLease> {
   const hashedIp = secureIpHash(ip);
   if (shouldUseMemoryStore()) {
+    if (isHosted()) throw new FullContextRateLimitError('unavailable');
     const now = Date.now(); const lockUntil = memoryLocks.get(sessionId) ?? 0;
-    if (lockUntil > now || !consumeMemory(`session:${sessionId}`, 60_000, 6) || !consumeMemory(`ip:${hashedIp}`, 3_600_000, 60)) throw new FullContextRateLimitError('limited');
+    if (lockUntil > now) throw new FullContextRateLimitError('limited');
     memoryLocks.set(sessionId, now + 30_000);
-    return { release: async () => { memoryLocks.delete(sessionId); } };
+    return {
+      consumeAttempt: async () => {
+        if (!consumeMemory(`session:${sessionId}`, 60_000, 6) || !consumeMemory(`ip:${hashedIp}`, 3_600_000, 60)) {
+          throw new FullContextRateLimitError('limited');
+        }
+      },
+      release: async () => { memoryLocks.delete(sessionId); },
+    };
   }
   try {
     const client = createClient(getSupabaseUrl()!, getSupabaseServerKey()!);
@@ -47,10 +55,17 @@ export async function acquireFullContextLease(sessionId: string, ip: string): Pr
       if (result.error) throw result.error;
       return result.data === true;
     };
-    const sessionAllowed = await consume('session', sessionId, 60, 6);
-    const ipAllowed = sessionAllowed && await consume('ip', hashedIp, 3600, 60);
-    if (!sessionAllowed || !ipAllowed) { await client.rpc('portfolio_release_ai_lock', { p_session_id: sessionId }); throw new FullContextRateLimitError('limited'); }
-    return { release: async () => { await client.rpc('portfolio_release_ai_lock', { p_session_id: sessionId }); } };
+    return {
+      consumeAttempt: async () => {
+        const sessionAllowed = await consume('session', sessionId, 60, 6);
+        const ipAllowed = sessionAllowed && await consume('ip', hashedIp, 3600, 60);
+        if (!sessionAllowed || !ipAllowed) throw new FullContextRateLimitError('limited');
+      },
+      release: async () => {
+        const release = await client.rpc('portfolio_release_ai_lock', { p_session_id: sessionId });
+        if (release.error) throw release.error;
+      },
+    };
   } catch (error) {
     if (error instanceof FullContextRateLimitError) throw error;
     throw new FullContextRateLimitError('unavailable');

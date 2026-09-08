@@ -1,5 +1,5 @@
 import { getCaseById } from '@/data/portfolio-content.server';
-import { getAIAnswerEngine, getSemanticRouterMode, isOpenAIEnabled, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
+import { AIConfigurationError, getAIAnswerEngine, getAIMode, getOpenAIKey, getSemanticRouterMode, MAX_USER_MESSAGES_PER_SESSION, type AIAnswerEngine } from '@/lib/portfolio/config';
 import {
   classifyMessageDeterministically,
   classifyMessageWithModel,
@@ -45,7 +45,7 @@ import {
   buildUnsupportedEnvelope,
 } from '@/lib/portfolio/presenters';
 import { appendHistory, persistSession } from '@/lib/portfolio/session-store';
-import { detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
+import { detectPromptInjectionState, detectSafetyState, getSafetyFallbackChips } from '@/lib/portfolio/safety';
 import {
   synthesizeCaseAwareAnswer,
   synthesizeContextualSummary,
@@ -678,10 +678,16 @@ export async function resolveAction(
 export async function resolveMessage(
   session: AssistantSession,
   text: string,
-  fullContext?: { requestId?: string; history?: VisibleHistoryItem[] },
+  fullContext?: { requestId?: string; history?: VisibleHistoryItem[]; beforeModelAttempt?: () => Promise<void> },
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
-  const fullContextEnabled = getAIAnswerEngine() === 'full_context' && isOpenAIEnabled();
-  const safety = detectSafetyState(text);
+  const answerEngine = getAIAnswerEngine();
+  const fullContextEnabled = answerEngine === 'full_context' && getAIMode() === 'live';
+  if (fullContextEnabled && !getOpenAIKey()) {
+    throw new AIConfigurationError('OPENAI_API_KEY', 'missing_api_key');
+  }
+  const safety = fullContextEnabled
+    ? detectPromptInjectionState(text)
+    : detectSafetyState(text);
   if (safety) {
     const nextSession = await persistSession(session, {
       recentHistory: appendHistory(session, `safety:${safety.state}`),
@@ -751,8 +757,21 @@ export async function resolveMessage(
   }
 
   if (useFullContext) {
-    const result = await generateFullContextDraft(nextSession, text, truncateVisibleHistory(fullContext?.history ?? []));
-    return { session: nextSession, envelope: buildFullContextEnvelope(nextSession, result.draft) };
+    const result = await generateFullContextDraft(
+      nextSession,
+      text,
+      truncateVisibleHistory(fullContext?.history ?? []),
+      { requestId, beforeModelAttempt: fullContext?.beforeModelAttempt },
+    );
+    return {
+      session: nextSession,
+      envelope: buildFullContextEnvelope(nextSession, result.draft, {
+        requestId,
+        model: result.model,
+        promptVersion: result.promptVersion,
+        modelCalls: result.modelCalls,
+      }),
+    };
   }
 
   if (isAssistantTrustChallenge(text)) {
@@ -876,6 +895,7 @@ function isGreetingOnly(text: string): boolean {
 export async function resolveChatRequest(
   session: AssistantSession,
   body: ChatRequestBody,
+  execution?: { beforeModelAttempt?: () => Promise<void> },
 ): Promise<{ session: AssistantSession; envelope: AssistantEnvelope }> {
   if (body.input.type === 'action') {
     return resolveAction(session, body.input.action);
@@ -886,7 +906,37 @@ export async function resolveChatRequest(
     return { session, envelope: buildAmbiguousEnvelope(session) };
   }
 
-  return resolveMessage(session, text, { requestId: body.requestId, history: body.history });
+  return resolveMessage(resolveRequestContext(session, body.contextId), text, {
+    requestId: body.requestId,
+    history: body.history,
+    beforeModelAttempt: execution?.beforeModelAttempt,
+  });
+}
+
+export function shouldApplyLegacySafety(engine: AIAnswerEngine, text: string): boolean {
+  return engine === 'legacy' && Boolean(detectSafetyState(text));
+}
+
+export function resolveRequestContext(session: AssistantSession, contextId?: string): AssistantSession {
+  if (!contextId) return session;
+  if (contextId === 'entry') {
+    return { ...session, selectedContext: { kind: 'none', id: null, label: null } };
+  }
+  if (contextId === 'experience') {
+    return { ...session, selectedContext: { kind: 'experience', id: 'experience', label: 'Опыт работы' } };
+  }
+  if (contextId === 'mobile-experience') {
+    return { ...session, selectedContext: { kind: 'overview', id: 'mobile-experience', label: 'Мобильный опыт' } };
+  }
+  if (contextId === 'additional-cases') {
+    return { ...session, selectedContext: { kind: 'overview', id: 'additional-cases', label: 'Дополнительные кейсы' } };
+  }
+  if (contextId.startsWith('case:')) {
+    const caseId = contextId.slice(5);
+    const caseContent = getCaseById(caseId);
+    if (caseContent) return { ...session, selectedContext: { kind: 'case', id: caseId, label: caseContent.shortTitle } };
+  }
+  return session;
 }
 
 export function isKnownCase(caseId: string): boolean {

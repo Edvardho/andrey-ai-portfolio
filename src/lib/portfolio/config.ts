@@ -6,12 +6,24 @@ export type AIAnswerEngine = 'legacy' | 'full_context';
 export type SemanticRouterMode = 'off' | 'shadow' | 'active';
 export type GroundedOutputMode = 'legacy' | 'shadow' | 'v2';
 
+export class AIConfigurationError extends Error {
+  readonly code = 'AI_CONFIGURATION_ERROR';
+
+  constructor(readonly variable: string, readonly reason: 'invalid_value' | 'missing_api_key') {
+    super(`Invalid AI configuration: ${variable}.`);
+    this.name = 'AIConfigurationError';
+  }
+}
+
 export function getAIMode(): AIMode {
   return process.env.AI_MODE?.trim() === 'live' ? 'live' : 'fallback';
 }
 
 export function getAIAnswerEngine(): AIAnswerEngine {
-  return process.env.AI_ANSWER_ENGINE?.trim() === 'full_context' ? 'full_context' : 'legacy';
+  const value = process.env.AI_ANSWER_ENGINE?.trim();
+  if (!value) return 'legacy';
+  if (value === 'legacy' || value === 'full_context') return value;
+  throw new AIConfigurationError('AI_ANSWER_ENGINE', 'invalid_value');
 }
 
 export function getFullContextModel(): string {

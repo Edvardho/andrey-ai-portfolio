@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { isKnownCase, resolveChatRequest } from '@/lib/portfolio/engine';
-import { getAIAnswerEngine, isOpenAIEnabled } from '@/lib/portfolio/config';
+import { AIConfigurationError, getAIAnswerEngine, getAIMode } from '@/lib/portfolio/config';
 import { FullContextUnavailableError } from '@/lib/portfolio/full-context-answer';
 import { acquireFullContextLease, FullContextRateLimitError, getTrustedClientIp } from '@/lib/portfolio/full-context-rate-limit';
 import { getOrCreateSession, SessionStoreUnavailableError } from '@/lib/portfolio/session-store';
@@ -54,7 +54,11 @@ export async function POST(request: Request) {
     if (Number.isFinite(contentLength) && contentLength > 128 * 1024) {
       return NextResponse.json({ error: 'Request payload is too large' }, { status: 413 });
     }
-    const json = await request.json();
+    const rawBody = await request.text();
+    if (Buffer.byteLength(rawBody, 'utf8') > 128 * 1024) {
+      return NextResponse.json({ error: 'Request payload is too large' }, { status: 413 });
+    }
+    const json = JSON.parse(rawBody);
     const body = requestSchema.parse(json);
     if (body.input.type === 'message' && (body.input.text.trim().length < 1 || body.input.text.trim().length > 6000)) {
       return NextResponse.json({ error: 'Message must be 1 to 6000 characters' }, { status: 400 });
@@ -62,24 +66,43 @@ export async function POST(request: Request) {
     if ((body.history ?? []).reduce((sum, item) => sum + item.text.length, 0) > 24_000) {
       return NextResponse.json({ error: 'History is too large' }, { status: 400 });
     }
-    const session = await getOrCreateSession(body.sessionId);
-    const isFullContextMessage = getAIAnswerEngine() === 'full_context' && isOpenAIEnabled() && body.input.type === 'message';
+    let session = await getOrCreateSession(body.sessionId);
+    const isFullContextMessage = getAIAnswerEngine() === 'full_context' && getAIMode() === 'live' && body.input.type === 'message';
     const lease = isFullContextMessage ? await acquireFullContextLease(session.id, getTrustedClientIp(request)) : null;
     try {
-      const { envelope } = await resolveChatRequest(session, body);
+      // The lock is acquired after the initial lookup. Read again so two tabs
+      // cannot both continue from an obsolete counter or request ledger.
+      if (lease) session = await getOrCreateSession(session.id);
+      const { envelope } = await resolveChatRequest(session, body, {
+        beforeModelAttempt: lease ? () => lease.consumeAttempt() : undefined,
+      });
       return NextResponse.json(envelope);
     } finally {
-      await lease?.release();
+      try {
+        await lease?.release();
+      } catch {
+        console.error('AI portfolio lease release failed:', { sessionId: session.id });
+      }
     }
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof z.ZodError || error instanceof SyntaxError) {
       return NextResponse.json(
         {
           error: 'Invalid request payload',
-          issues: error.issues,
+          issues: error instanceof z.ZodError ? error.issues : undefined,
         },
         { status: 400 },
       );
+    }
+
+    if (error instanceof AIConfigurationError) {
+      console.error('AI portfolio configuration error:', { code: error.code, variable: error.variable, reason: error.reason });
+      return NextResponse.json({
+        error: 'Assistant is not configured for this environment.',
+        code: error.code,
+        category: 'configuration',
+        retryable: false,
+      }, { status: 503 });
     }
 
     if (error instanceof SessionStoreUnavailableError) {
@@ -99,10 +122,22 @@ export async function POST(request: Request) {
     }
 
     if (error instanceof FullContextUnavailableError || error instanceof FullContextRateLimitError) {
+      const category = error instanceof FullContextRateLimitError
+        ? error.reason === 'limited' ? 'rate_limit' : 'storage_unavailable'
+        : error.reason === 'timeout'
+          ? 'timeout'
+          : error.reason === 'provider_failure'
+            ? 'provider'
+            : error.reason === 'retry_limit'
+              ? 'attempt_limit'
+              : error.reason.startsWith('validation_')
+                ? 'validation'
+                : 'request';
       return NextResponse.json({
         error: 'Assistant answer is temporarily unavailable. Please retry.',
         code: error.code,
-        retryable: true,
+        category,
+        retryable: category !== 'attempt_limit' && category !== 'request',
       }, { status: error instanceof FullContextRateLimitError && error.reason === 'limited' ? 429 : 503 });
     }
 

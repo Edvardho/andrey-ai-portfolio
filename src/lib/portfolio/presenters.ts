@@ -10,7 +10,7 @@ import {
   portfolioContent,
 } from '@/data/portfolio-content.server';
 import { getAIAnswerEngine, getAIMode, MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
-import { DOSSIER_VERSION } from '@/lib/portfolio/full-context-dossier';
+import { DOSSIER_VERSION, getDossierMetric } from '@/lib/portfolio/full-context-dossier';
 import type { FullContextDraft } from '@/lib/portfolio/full-context-contract';
 import { getSessionStoreMode } from '@/lib/portfolio/session-store';
 import type {
@@ -182,12 +182,32 @@ function createEnvelope({
 export function buildFullContextEnvelope(
   session: AssistantSession,
   draft: FullContextDraft,
+  diagnostics?: { requestId?: string; model: string; promptVersion: string; modelCalls: number },
 ): AssistantEnvelope {
-  const contentBlocks: ContentBlock[] = draft.blocks.map((block, index) => ({
-    type: index === 0 ? 'lead' : 'section',
-    title: index === 0 ? '' : block.kind === 'limitation' ? 'Граница данных' : block.kind === 'inference' ? 'Вывод' : '',
-    body: [block.text],
-  }));
+  const renderedMetricIds = new Set<string>();
+  const contentBlocks: ContentBlock[] = draft.blocks.flatMap((block, index) => {
+    const canonicalMetrics = block.metricIds
+      .filter((metricId) => {
+        if (renderedMetricIds.has(metricId)) return false;
+        renderedMetricIds.add(metricId);
+        return true;
+      })
+      .map(getDossierMetric)
+      .filter((metric): metric is NonNullable<ReturnType<typeof getDossierMetric>> => Boolean(metric))
+      .map((metric) => metric.text);
+    const labelled = block.kind !== 'fact';
+    return [{
+      type: index === 0 && !labelled ? 'lead' as const : 'section' as const,
+      title: block.kind === 'limitation'
+        ? 'Граница данных'
+        : block.kind === 'inference'
+          ? 'Вывод по материалам портфолио'
+          : block.kind === 'explanation'
+            ? 'Профессиональный контекст'
+            : '',
+      body: [block.text, ...canonicalMetrics],
+    }];
+  });
   const chips: PromptChip[] = [
     ...draft.relatedCaseIds.slice(0, 3).map((caseId) => ({
       id: `evidence-case-${caseId}`,
@@ -225,7 +245,15 @@ export function buildFullContextEnvelope(
   });
   return {
     ...envelope,
-    meta: { ...envelope.meta, answerStatus: draft.status, dossierVersion: DOSSIER_VERSION },
+    meta: {
+      ...envelope.meta,
+      answerStatus: draft.status,
+      dossierVersion: DOSSIER_VERSION,
+      promptVersion: diagnostics?.promptVersion,
+      model: diagnostics?.model,
+      requestId: diagnostics?.requestId,
+      modelCalls: diagnostics?.modelCalls,
+    },
   };
 }
 
