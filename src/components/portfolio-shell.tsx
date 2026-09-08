@@ -1058,7 +1058,9 @@ export function PortfolioShell() {
       if (errorPayload?.code === 'SESSION_STORE_UNAVAILABLE') {
         throw new Error('Сессия ассистента временно недоступна. Повторите попытку.');
       }
-      throw new Error(`Chat request failed with ${response.status}`);
+      // The HTTP status is useful in server telemetry, but it is not an
+      // actionable instruction for a portfolio visitor.
+      throw new Error('Не удалось получить ответ ассистента. Повторите попытку.');
     }
 
     return (await response.json()) as AssistantEnvelope;

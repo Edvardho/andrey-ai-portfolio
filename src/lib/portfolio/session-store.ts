@@ -61,7 +61,7 @@ function requiresPersistentSessionStore(): boolean {
   return process.env.VERCEL_ENV === 'production';
 }
 
-function createEmptySession(sessionId: string): AssistantSession {
+export function createEmptySession(sessionId: string): AssistantSession {
   const now = new Date().toISOString();
 
   return {

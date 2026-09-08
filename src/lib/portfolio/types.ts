@@ -761,6 +761,10 @@ export type AssistantEnvelope = {
     answerEngine?: 'legacy' | 'full_context';
     answerStatus?: 'supported' | 'partial' | 'unknown' | 'clarification' | 'out_of_scope';
     dossierVersion?: string;
+    promptVersion?: string;
+    model?: string;
+    requestId?: string;
+    modelCalls?: number;
   };
 };
 

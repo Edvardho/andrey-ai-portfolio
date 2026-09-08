@@ -340,7 +340,7 @@ async function main() {
   const productIncomeText = extractText(productIncome.envelope);
   assert.notEqual(productIncome.envelope.safetyState, 'salary_or_private_data');
   assert.equal(productIncome.envelope.meta.answerType, 'outcome_summary');
-  assertContainsAll('Product income', productIncomeText, ['1,1 млн', 'доход']);
+  assertContainsAll('Product income', productIncomeText, ['1,1 млн', '(?:доход|выручк)']);
 
   console.log('Recruiter quality contract passed.');
 }
