@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Андрей Макаревич — Product Designer</title>
+  <style>
+    @font-face { font-family: Onest; src: url('fonts/onest-cyrillic.woff2') format('woff2'); font-weight: 100 900; unicode-range: U+0400-052F, U+2116; }
+    @font-face { font-family: Onest; src: url('fonts/onest-latin.woff2') format('woff2'); font-weight: 100 900; unicode-range: U+0000-03FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+    * { box-sizing: border-box; }
+    @page { size: A4; margin: 0; }
+    html,body { margin: 0; color: #11131a; background: #fff; font-family: Onest, Arial, sans-serif; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { width: 210mm; height: 297mm; padding: 16mm 17mm 14mm; position: relative; break-after: page; overflow: hidden; }
+    .page:last-child { break-after: auto; }
+    .nav { display: flex; justify-content: space-between; align-items: center; font-size: 9pt; line-height: 1; }
+    .nav strong { font-weight: 650; }
+    .nav .muted { color: #a0a1a9; margin-left: 5px; }
+    .nav .right { color: #6c6f79; }
+    .rule { border: 0; border-top: 1px solid #ececf0; margin: 8mm 0 0; }
+    .hero { margin-top: 13mm; }
+    .identity { display: flex; align-items: center; gap: 5mm; }
+    .portrait { width: 23mm; height: 23mm; object-fit: cover; border-radius: 5.5mm; border: 1px solid #e6e6e9; box-shadow: 0 2px 5px rgba(17,19,26,.09); }
+    h1 { font-size: 30pt; line-height: 1.03; font-weight: 650; letter-spacing: -.055em; margin: 0; }
+    .role { font-size: 10.5pt; color: #666973; margin-top: 2.5mm; }
+    .lead { max-width: 160mm; font-size: 13pt; line-height: 1.45; letter-spacing: -.015em; color: #42434d; margin: 7mm 0 0; }
+    .tags { display: flex; gap: 2.3mm; margin-top: 6mm; flex-wrap: wrap; }
+    .tag { border: 1px solid #e1e1e5; border-radius: 99px; color: #60616b; padding: 2.1mm 3.8mm; font-size: 8.3pt; white-space: nowrap; }
+    .contacts { display: flex; align-items: center; gap: 5mm; border-top: 1px solid #ececf0; padding-top: 4mm; margin-top: 7mm; font-size: 8.7pt; }
+    .contacts a, .bottom-link { color: #11131a; text-decoration: none; border-bottom: 1px solid #c9c9ce; padding-bottom: 1px; }
+    .contacts .city { color: #696b75; }
+    h2 { margin: 11mm 0 6mm; font-size: 18pt; line-height: 1.15; font-weight: 600; letter-spacing: -.025em; }
+    .timeline { display: grid; grid-template-columns: repeat(3,1fr); column-gap: 4mm; margin-bottom: 9mm; }
+    .time { min-width: 0; }
+    .time .years { font-size: 8.2pt; color: #787a85; }
+    .time .company { font-size: 10.5pt; font-weight: 600; margin-top: 1.7mm; }
+    .time .caption { font-size: 8pt; color: #747681; margin-top: 1mm; min-height: 8mm; line-height: 1.25; }
+    .time .line { height: 1px; background: #dedee3; margin-top: 3mm; position: relative; }
+    .time .line::before { content: ''; width: 5px; height: 5px; background: #aaabb3; border-radius: 50%; position: absolute; left: 0; top: -2px; }
+    .job { display: grid; grid-template-columns: 36mm 1fr; gap: 4mm; border-top: 1px solid #ececf0; padding: 5.4mm 0; }
+    .job:last-of-type { border-bottom: 1px solid #ececf0; }
+    .job .name { font-size: 10.2pt; font-weight: 650; letter-spacing: -.01em; }
+    .job .dates { color: #878994; font-size: 8pt; margin-top: 1.5mm; }
+    .job .summary { font-size: 9.2pt; line-height: 1.44; color: #33343d; }
+    .job .result { color: #11131a; font-weight: 600; margin-top: 2mm; }
+    .footer { position: absolute; bottom: 10mm; left: 17mm; right: 17mm; display: flex; justify-content: space-between; border-top: 1px solid #ececf0; padding-top: 3mm; color: #9a9ca5; font-size: 7.5pt; }
+    .intro { font-size: 10.5pt; line-height: 1.45; color: #5b5d67; margin: -2mm 0 7mm; max-width: 160mm; }
+    .case { display: grid; grid-template-columns: 35mm 1fr; gap: 4mm; padding: 6mm 0; border-top: 1px solid #ececf0; break-inside: avoid; }
+    .case:last-of-type { border-bottom: 1px solid #ececf0; }
+    .case .metric { font-size: 21pt; font-weight: 600; letter-spacing: -.04em; line-height: 1.08; }
+    .case .metric.wide { font-size: 17pt; white-space: nowrap; }
+    .case .metric-label { color: #858791; font-size: 7.8pt; line-height: 1.35; margin-top: 2mm; }
+    .case .title { font-size: 10.5pt; font-weight: 650; margin-bottom: 1.8mm; }
+    .case p { margin: 0; font-size: 9.2pt; line-height: 1.48; color: #40424b; }
+    .case .secondary { margin-top: 2mm; color: #737580; }
+    .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 8mm; }
+    .mini-title { font-size: 8.2pt; color: #858791; margin: 0 0 3mm; }
+    .mini-head { font-size: 9.5pt; font-weight: 600; margin: 0 0 1mm; }
+    .mini-text { font-size: 8.8pt; line-height: 1.45; color: #5d5f69; margin: 0 0 4mm; }
+    .footer-note { font-size: 8pt; color: #777983; margin-top: 5mm; }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="nav"><div><strong>Андрей Макаревич</strong><span class="muted">· Product Designer</span></div><div class="right">Резюме · 2026</div></div>
+    <hr class="rule">
+    <div class="hero">
+      <div class="identity"><img class="portrait" src="portrait.png" alt=""><div><h1>Андрей Макаревич</h1><div class="role">Продуктовый дизайнер · Senior</div></div></div>
+      <p class="lead">Проектирую интерфейсы для финтеха, кибербезопасности и enterprise. Разбираюсь в сложной логике, упрощаю сценарии и довожу решения до релиза.</p>
+      <div class="tags"><span class="tag">5+ лет опыта</span><span class="tag">Санкт-Петербург</span><span class="tag">B2B / B2C</span><span class="tag">Финтех & Enterprise</span></div>
+      <div class="contacts"><a href="mailto:andrew.makarevitch@yandex.ru">Email</a><a href="https://t.me/Edvardho">Telegram</a><a href="https://andrey-ai-portfolio.vercel.app/">Портфолио</a><span class="city">+7 (911) 910-41-59</span></div>
+    </div>
+    <h2>Где работал</h2>
+    <div class="timeline">
+      <div class="time"><div class="years">2024 — сейчас</div><div class="company">Positive Technologies</div><div class="caption">Продуктовый дизайнер · Киберполигон и багбаунти</div><div class="line"></div></div>
+      <div class="time"><div class="years">2023 — 2024</div><div class="company">Альфа-Банк</div><div class="caption">Продуктовый дизайнер · Подписка и финтех</div><div class="line"></div></div>
+      <div class="time"><div class="years">2021 — 2023</div><div class="company">MTS Digital</div><div class="caption">UI/UX-дизайнер · CRM и коммуникации</div><div class="line"></div></div>
+    </div>
+    <div class="job"><div><div class="name">Positive Technologies</div><div class="dates">Июнь 2024 — сейчас</div></div><div class="summary">Проектирую сценарии Cyberrange и работу с отчётами об уязвимостях в BugBounty. Переработал подачу и обработку отчётов, спроектировал статусы и уведомления.<div class="result">Скорость прохождения заданий выросла на 22%; время валидации отчётов сократилось на 18%.</div></div></div>
+    <div class="job"><div><div class="name">Альфа-Банк</div><div class="dates">Май 2023 — июнь 2024</div></div><div class="summary">Проектировал семейную подписку «Альфа-Смарт» для iOS, Android и web. Проверил прототипы с 15 респондентами. Согласовал между двумя командами функцию расходов дополнительных держателей карт.<div class="result">После запуска продукт набрал 32 111 подписок и принёс 1,1 млн руб. выручки за первый месяц.</div></div></div>
+    <div class="job"><div><div class="name">MTS Digital</div><div class="dates">Апрель 2021 — май 2023</div></div><div class="summary">Проектировал чат-центр для операторов и B2B-сервис коммуникаций. Менял сценарии на основе исследований и аналитики, создавал быстрые ответы и отчётность.<div class="result">Время обработки диалога снизилось с 900 до 580 секунд; дневной объём вырос с 1000 до 2000 диалогов.</div></div></div>
+    <div class="footer"><span>Андрей Макаревич · Product Designer</span><span>1 / 2</span></div>
+  </section>
+  <section class="page">
+    <div class="nav"><div><strong>Андрей Макаревич</strong><span class="muted">· Product Designer</span></div><div class="right">Резюме · 2026</div></div>
+    <hr class="rule">
+    <h2 style="margin-top: 13mm">Что изменилось в продуктах</h2>
+    <p class="intro">Три примера работы со сложными сценариями и измеримыми результатами.</p>
+    <div class="case"><div><div class="metric">−18%</div><div class="metric-label">время валидации отчётов</div></div><div><div class="title">BugBounty · Positive Technologies</div><p>Переработал путь подачи и обработки отчётов об уязвимостях. Добавил статусы и уведомления, чтобы участники видели ход проверки.</p><p class="secondary">В Cyberrange оптимизировал тренировочные сценарии: скорость прохождения заданий выросла на 22%.</p></div></div>
+    <div class="case"><div><div class="metric">32 111</div><div class="metric-label">подписок за первый месяц</div></div><div><div class="title">«Альфа-Смарт» · Альфа-Банк</div><p>Разобрал требования, собрал User Flow и прототипы, провёл юзабилити-тестирование с 15 респондентами. Передал интерфейсы для iOS, Android и web в разработку.</p><p class="secondary">Выручка продукта за первый месяц после запуска — 1,1 млн руб.</p></div></div>
+    <div class="case"><div><div class="metric wide">900 → 580</div><div class="metric-label">секунд на диалог</div></div><div><div class="title">Чат-центр · MTS Digital</div><p>Исследовал работу операторов и изменил их ежедневные сценарии. Спроектировал управление диалогами, быстрые ответы и отчётность.</p><p class="secondary">Дневной объём обработки вырос с 1000 до 2000 диалогов.</p></div></div>
+    <div class="columns">
+      <div><div class="mini-title">ИНСТРУМЕНТЫ И ПОДХОД</div><div class="mini-head">Исследования и прототипы</div><p class="mini-text">User Flow, интервью, юзабилити-тестирование, аналитика интерфейсов, Figma и дизайн-ревью.</p><div class="mini-head">AI в работе</div><p class="mini-text">Использую Codex и настроенный мной инструмент для сборки React-прототипов по требованиям и публикации кода на GitHub.</p></div>
+      <div><div class="mini-title">ОБРАЗОВАНИЕ И ЯЗЫКИ</div><div class="mini-head">Тверской государственный университет</div><p class="mini-text">Бакалавриат · Управление персоналом</p><div class="mini-head">Тверской институт экономики и менеджмента</div><p class="mini-text">Бакалавриат · Менеджмент</p><p class="mini-text">Русский — C2 · Английский — B1</p></div>
+    </div>
+    <div class="footer-note">Полные кейсы и интерфейсы: <a class="bottom-link" href="https://andrey-ai-portfolio.vercel.app/">andrey-ai-portfolio.vercel.app</a></div>
+    <div class="footer"><span>Андрей Макаревич · Product Designer</span><span>2 / 2</span></div>
+  </section>
+</body>
+</html>
