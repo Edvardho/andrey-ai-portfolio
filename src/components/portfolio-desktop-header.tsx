@@ -3,8 +3,8 @@
 import { motion } from 'framer-motion';
 
 import { WORKSPACE_EASE } from './portfolio-motion';
-import { PortfolioAvailabilityPill } from './portfolio-availability-pill';
 import { PortfolioButton } from './portfolio-button';
+import { portfolioFocusRing } from './portfolio-interaction-styles';
 
 export function PortfolioDesktopHeader({
   onContactClick,
@@ -44,7 +44,14 @@ export function PortfolioDesktopHeader({
         </button>
 
         <div className="flex items-center gap-3">
-          <PortfolioAvailabilityPill />
+          <a
+            href="/cv/andrey-makarevich-product-designer.pdf"
+            download
+            aria-label="Скачать CV"
+            className={`inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-[#ECECF1] px-[18px] text-[15px] font-medium leading-5 text-[#202129] transition-colors hover:bg-[#E2E3E9] ${portfolioFocusRing}`}
+          >
+            Скачать CV
+          </a>
           <PortfolioButton onClick={() => onContactClick(ctaSource)}>Написать мне</PortfolioButton>
         </div>
       </div>

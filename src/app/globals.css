@@ -177,6 +177,16 @@ textarea {
   opacity: 0.36;
 }
 
+.portfolio-landing-project-controls {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.portfolio-landing-projects.has-overflow .portfolio-landing-project-controls {
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .portfolio-compact-workspace {
   overscroll-behavior: none;
 }
@@ -209,7 +219,16 @@ textarea {
   }
 
   .portfolio-landing-project-rail {
+    --project-row-width: calc(var(--project-count) * 270px + (var(--project-count) - 1) * 24px);
+    --project-expanded-gutter: max(24px, (100vw - var(--project-row-width)) / 2);
     overflow: visible;
+    transition: padding-inline 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .portfolio-landing-projects.is-expanded .portfolio-landing-project-rail {
+    /* Keep the open row centered: outer cards travel in opposite directions. */
+    padding-inline: var(--project-expanded-gutter);
+    scroll-padding-inline: var(--project-expanded-gutter);
   }
 
   .portfolio-landing-project-track {
@@ -261,6 +280,9 @@ textarea {
   @media (min-width: 1280px) {
     .portfolio-landing-project-rail {
       overflow-x: auto;
+      padding-inline: var(--project-expanded-gutter);
+      scroll-padding-inline: var(--project-expanded-gutter);
+      transition: none;
     }
 
     .portfolio-landing-project-card-wrap {

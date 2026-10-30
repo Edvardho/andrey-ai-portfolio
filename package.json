@@ -15,6 +15,8 @@
     "smoke:deployment": "node --import tsx scripts/deployment-smoke.ts",
     "verify:case-layout": "tsx scripts/case-layout-contract.ts",
     "verify:project-rail": "node --import tsx scripts/verify-project-rail.ts",
+    "verify:case-links": "node --import tsx scripts/verify-case-links.ts",
+    "verify:case-links-browser": "node --import tsx scripts/verify-case-links-browser.ts",
     "verify:compact-workspace": "node --import tsx scripts/compact-workspace-contract.ts",
     "verify:release-quality": "node --import tsx scripts/release-quality-contract.ts",
     "verify:structured-summary": "tsx scripts/structured-summary-contract.ts",
