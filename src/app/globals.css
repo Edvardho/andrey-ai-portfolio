@@ -137,6 +137,22 @@ textarea {
   flex: 0 0 auto;
 }
 
+@media (min-width: 768px) {
+  .portfolio-landing-project-rail {
+    /* Clip at the screen edge, not inside the centered content column. */
+    --project-rail-gutter: calc((100vw - min(1124px, 100vw - clamp(48px, 8vw, 96px))) / 2);
+    width: 100vw;
+    margin-inline: calc(50% - 50vw);
+    padding-inline: var(--project-rail-gutter);
+    scroll-padding-inline: var(--project-rail-gutter);
+  }
+
+  .portfolio-landing-project-track {
+    /* A horizontal scroller also clips vertically: reserve room for shadows. */
+    padding: 32px 0 40px;
+  }
+}
+
 .portfolio-landing-arrow {
   display: inline-flex;
   width: 44px;
@@ -193,21 +209,14 @@ textarea {
   }
 
   .portfolio-landing-project-rail {
-    height: 351px;
-    /* Reserve room for fan-card shadows when this becomes a scroll container on hover. */
-    margin-inline: -80px;
     overflow: visible;
-    padding-inline: 80px;
   }
 
   .portfolio-landing-project-track {
     width: max-content;
     min-width: 100%;
-    height: 343px;
     justify-content: flex-start;
     gap: 24px;
-    /* Keep the first and last card shadows inside the horizontal scroller. */
-    padding: 12px 24px 0;
   }
 
   .portfolio-landing-project-card-wrap {
