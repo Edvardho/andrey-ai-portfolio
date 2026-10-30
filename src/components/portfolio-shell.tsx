@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 
 import { MAX_USER_MESSAGES_PER_SESSION } from '@/lib/portfolio/config';
@@ -16,6 +16,8 @@ import {
   buildClientErrorRetryEnvelope,
 } from '@/lib/portfolio/client-seeds';
 import { getSyncActionForContext } from '@/lib/portfolio/context-sync';
+import { readCaseLink } from '@/lib/portfolio/case-links';
+import type { CaseId } from '@/data/portfolio-index';
 import type {
   AssistantEnvelope,
   ArtifactOpenTarget,
@@ -41,6 +43,7 @@ import { PortfolioChatWorkspace } from './portfolio-chat-workspace';
 import { PortfolioCompactWorkspace } from './portfolio-compact-workspace';
 import { PortfolioModalOverlay } from './portfolio-modal-overlay';
 import { PortfolioDesktopHeader } from './portfolio-desktop-header';
+import { usePortfolioCaseUrlSync } from './portfolio-case-url-sync';
 import type { PortfolioThreadViewHandle, ReplyFocusRequest } from './portfolio-thread-view';
 import {
   useDebouncedPortfolioPersistence,
@@ -733,6 +736,13 @@ export function PortfolioShell() {
       ? 'Коротко об Андрее'
       : 'Ответ ИИ-ассистента';
   const railTitle = showChatStage ? 'Подробнее о кейсах' : 'Мои проекты';
+
+  usePortfolioCaseUrlSync({
+    enabled: hasHydrated,
+    activeCaseId: workspaceMode === 'chat' ? currentCaseId : null,
+    onCase: handleCaseUrlNavigation,
+    onHome: handleHomeClick,
+  });
 
   useDebouncedPortfolioPersistence({
     activeContextId,
@@ -1480,6 +1490,10 @@ export function PortfolioShell() {
     });
   }
 
+  const openInitialLinkedCase = useEffectEvent((caseId: CaseId) => (
+    openKnownContextLocally(getCanonicalActionForCase(caseId), { appendUserBubble: false })
+  ));
+
   useEffect(() => {
     let cancelled = false;
 
@@ -1495,6 +1509,7 @@ export function PortfolioShell() {
           const nextUrl = `${globalThis.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${globalThis.location.hash}`;
           globalThis.history.replaceState(null, '', nextUrl);
         }
+        const initialCaseLink = readCaseLink(globalThis.location.search);
 
         try {
           const persistedRaw = readPersistedThreadState();
@@ -1502,15 +1517,27 @@ export function PortfolioShell() {
             const persisted = JSON.parse(persistedRaw) as Partial<PersistedThreadState>;
             const persistedThreads = hydratePersistedThreads(persisted.threadsByContextId ?? {});
             const persistedContextUiState = persisted.contextUiStateByContextId ?? {};
-            const persistedActiveContext = persisted.activeContextId ?? 'entry';
-            const persistedWorkspaceMode = inferWorkspaceMode(persisted, persistedThreads, persistedActiveContext);
+            const persistedActiveContext: ContextId = initialCaseLink.explicit
+              ? (initialCaseLink.caseId ? makeCaseContextId(initialCaseLink.caseId) : 'entry')
+              : persisted.activeContextId ?? 'entry';
+            const persistedWorkspaceMode = initialCaseLink.explicit
+              ? (initialCaseLink.caseId ? 'chat' : 'landing')
+              : inferWorkspaceMode(persisted, persistedThreads, persistedActiveContext);
             const shouldHydratePersistedState =
               Boolean(persisted.sessionId && Object.keys(persistedThreads).length) ||
               persistedWorkspaceMode === 'chat';
 
             if (shouldHydratePersistedState) {
               if (isCaseContextId(persistedActiveContext)) {
-                await loadCaseById(persistedActiveContext.replace(/^case:/, ''));
+                const caseId = persistedActiveContext.replace(/^case:/, '');
+                const caseContent = await loadCaseById(caseId);
+                if (!persistedThreads[persistedActiveContext]?.initialized) {
+                  const envelope = buildClientEnvelopeForAction(
+                    getCanonicalActionForCase(caseId), persisted.sessionId ?? null,
+                    persisted.sessionMeta?.used ?? 0, caseContent,
+                  );
+                  if (envelope) persistedThreads[persistedActiveContext] = createContextThread(persistedActiveContext, envelope);
+                }
               }
               if (!cancelled) {
                 setSessionId(persisted.sessionId ?? null);
@@ -1530,6 +1557,13 @@ export function PortfolioShell() {
           }
         } catch {
           clearPersistedThreadState();
+        }
+
+        if (initialCaseLink.caseId) {
+          if (cancelled) return;
+          setWorkspaceMode('chat');
+          setInput('');
+          await openInitialLinkedCase(initialCaseLink.caseId);
         }
 
         if (!cancelled) {
@@ -1628,6 +1662,14 @@ export function PortfolioShell() {
     void openFreshContext(targetContextId, action, { appendUserBubble: false });
   }
 
+  async function handleCaseUrlNavigation(caseId: CaseId) {
+    setWorkspaceMode('chat');
+    setInput('');
+    const contextId = makeCaseContextId(caseId);
+    if (threadsRef.current[contextId]?.initialized) await restoreExistingContext(contextId);
+    else await openKnownContextLocally(getCanonicalActionForCase(caseId), { appendUserBubble: false });
+  }
+
   function handleAssistantReturnClick() {
     if (activeContextId === 'entry') {
       return;
@@ -1637,6 +1679,7 @@ export function PortfolioShell() {
   }
 
   function handleHomeClick() {
+    caseLoadRequestRef.current += 1;
     clearModal();
     clearChatError();
     captureActiveThreadScrollState();

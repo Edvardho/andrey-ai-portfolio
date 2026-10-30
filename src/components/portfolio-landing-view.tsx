@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { portfolioLanding } from '@/data/portfolio-landing';
 import { portfolioProfile } from '@/data/portfolio-profile';
@@ -79,6 +79,7 @@ export function PortfolioLandingView({
   const projectExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
   const [scrollState, setScrollState] = useState({ atStart: true, atEnd: false });
   const caseItemsById = useMemo(
     () => new Map(railItems.filter((item) => item.kind === 'case').map((item) => [item.id, item])),
@@ -89,15 +90,31 @@ export function PortfolioLandingView({
     .map((project) => ({ project, item: caseItemsById.get(project.id) }))
     .filter((entry): entry is { project: (typeof portfolioLanding.projects)[number]; item: RailItem } => Boolean(entry.item));
 
-  function updateScrollState() {
+  const updateScrollState = useCallback(() => {
     const rail = railRef.current;
     if (!rail) return;
+    const track = rail.firstElementChild as HTMLElement | null;
+    // The fan transforms overlap visually, but the open row retains its real width.
+    const overflow = globalThis.innerWidth >= 1280 && track
+      ? track.scrollWidth + 48 > rail.clientWidth + 1
+      : rail.scrollWidth > rail.clientWidth + 1;
+    setHasOverflow(overflow);
     const max = Math.max(0, rail.scrollWidth - rail.clientWidth);
     setScrollState({
       atStart: rail.scrollLeft <= 1,
-      atEnd: rail.scrollLeft >= max - 1,
+      atEnd: !overflow || rail.scrollLeft >= max - 1,
     });
-  }
+  }, []);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(rail);
+    if (rail.firstElementChild) observer.observe(rail.firstElementChild);
+    updateScrollState();
+    return () => observer.disconnect();
+  }, [updateScrollState]);
 
   function scrollProjects(direction: 'left' | 'right') {
     railRef.current?.scrollBy({
@@ -224,7 +241,8 @@ export function PortfolioLandingView({
         </section>
 
         <section
-          className={`portfolio-landing-projects mt-12 pb-6 ${expanded ? 'is-expanded' : ''} ${scrollEnabled ? 'is-scrollable' : ''}`}
+          className={`portfolio-landing-projects mt-12 pb-6 ${expanded ? 'is-expanded' : ''} ${scrollEnabled ? 'is-scrollable' : ''} ${hasOverflow ? 'has-overflow' : ''}`}
+          style={{ '--project-count': projects.length } as React.CSSProperties}
           aria-labelledby="projects-title"
           onMouseEnter={expandProjects}
           onMouseLeave={collapseProjects}
